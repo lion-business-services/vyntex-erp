@@ -23,6 +23,8 @@ import { money } from '@/lib/money';
 import { GROUPS, TEAM_ICON_OFFICE, modulesFor, type ModuleDef } from './modules';
 import { searchAll } from './search';
 import { assistantOn } from '@/features/assistant/deploy';
+import { ThemeToggle } from '@/ui/ThemeToggle';
+import { switchTheme } from '@/ui/theme';
 import './shell-ext.css';
 
 // Read straight from the build constant where a branch must leave the other product's wording out of the bundle.
@@ -130,7 +132,10 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
           ) : <span className="sp" />}
           <span className="sp" />
           {ai && <IconButton label={t('cmd.ask')} className="ai" onClick={() => go('/assistant')} data-testid="topbar-ai"><LuSparkles /></IconButton>}
-          <IconButton label={t(prefs.theme === 'dark' ? 'demo.light' : 'demo.dark')} onClick={() => setPrefs({ theme: prefs.theme === 'dark' ? 'light' : 'dark' })}>{prefs.theme === 'dark' ? <LuSun /> : <LuMoon />}</IconButton>
+          {/* LBS keeps its own quiet icon button; VYNTEX has the day/night switch used on every public page */}
+          {(typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs')
+            ? <IconButton label={t(prefs.theme === 'dark' ? 'demo.light' : 'demo.dark')} onClick={(e) => switchTheme(prefs.theme === 'dark' ? 'light' : 'dark', e.currentTarget)}>{prefs.theme === 'dark' ? <LuSun /> : <LuMoon />}</IconButton>
+            : <ThemeToggle />}
           {!isWorker && (
             <div style={{ position: 'relative' }}>
               <IconButton label={t('notif.open')} onClick={() => setBell((b) => !b)} aria-expanded={bell} data-testid="bell">

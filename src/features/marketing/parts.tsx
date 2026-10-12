@@ -10,6 +10,7 @@ import { Lockup, ScrollProgress } from '@/brand';
 import type { IndustryPack } from '@/packs/types';
 import { pick, type TFn } from '@/i18n';
 import { cx } from '@/ui';
+import { ThemeToggle } from '@/ui/ThemeToggle';
 
 export type MkPageId = 'home' | 'pricing' | 'request';
 /** Sections of the overview that the header links to. */
@@ -147,12 +148,12 @@ export function MkHeader({ current }: { current: MkPageId }) {
             </button>
           </>
         ) : (
-          <>{nav}{language}{demo}{request}</>
+          <>{nav}{language}<ThemeToggle className="mk-theme" />{demo}{request}</>
         )}
       </div>
       {compact && (
         <div id="mk-menu" className="mk-menu" hidden={!open}>
-          <div className="mk-wrap mk-menu-in">{nav}<div className="mk-menu-end">{demo}{language}</div>{phone && request}</div>
+          <div className="mk-wrap mk-menu-in">{nav}<div className="mk-menu-end">{demo}<span className="mk-menu-prefs">{language}<ThemeToggle className="mk-theme" /></span></div>{phone && request}</div>
         </div>
       )}
     </header>
@@ -201,7 +202,7 @@ export function MkFooter({ current }: { current?: MkPageId }) {
   );
 }
 
-/** Page frame for the public pages. They are always dark: the brand lives on graphite. */
+/** Page frame for the public pages. They follow the visitor's theme: pearl and graphite by day, graphite and navy by night. */
 export function MkPage({ current, children }: { current: MkPageId; children: ReactNode }) {
   const { t } = useApp();
   return (

@@ -32,6 +32,7 @@ function finish(meta) {
   if (deploy === 'lbs') {
     fs.rmSync(path.join(stage, 'brand'), { recursive: true, force: true });
     fs.rmSync(path.join(stage, 'favicon.png'), { force: true });   // the VYNTEX tab icon; the LBS page shell names its own in brand-lbs/
+    fs.rmSync(path.join(stage, 'theme-init.js'), { force: true });  // reads the VYNTEX preferences; the LBS page shell does not load it
     copyDir(path.join(root, 'public-lbs'), stage);
   }
   // find the entry files esbuild wrote (app-<hash>.js and its stylesheet)

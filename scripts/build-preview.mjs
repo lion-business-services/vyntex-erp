@@ -24,7 +24,7 @@ const fonts = lbs ? 'family=Playfair+Display:wght@700&family=Poppins:wght@400;50
 fs.writeFileSync(path.join(out, 'preview.html'), `<title>${lbs ? 'LBS Command Preview' : 'VYNTEX Command Demo'}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fonts}">
 <link rel="stylesheet" href="assets/${css}">
-<style>:root{color-scheme:dark}body{background:${lbs ? '#06160E' : '#111829'}}</style>
+<style>${lbs ? ':root{color-scheme:dark}body{background:#06160E}' : 'body{background:var(--bg,#EEF3F9)}'}</style>
 <div id="root"></div>
 <script>window.__VX_PREVIEW__ = true;${lbs ? " document.documentElement.dataset.brand = 'lbs';" : ''}</script>
 <script type="module" src="assets/${js}"></script>

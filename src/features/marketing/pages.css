@@ -1,4 +1,4 @@
-/* Pricing and Request a demo. Both pages are always dark: the page root (.mk) pins the dark tokens.
+/* Pricing and Request a demo. Both follow the visitor's theme through the tokens the page root (.mk) sets for each.
    Everything here uses the tokens of ui/styles.css; nothing depends on marketing.css. Class prefix: mkp-.
    Chamfer and the chrome-to-cyan edge appear on three surfaces only: the most popular plan, the first-payment panel and the form. */
 .mkp{--mkp-pad:var(--mk-pad,32px);--mkp-max:1264px;position:relative;font-size:17px;line-height:1.6;color:var(--text)}

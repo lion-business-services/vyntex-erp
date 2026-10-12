@@ -1,5 +1,7 @@
 /* The LBS Command brand layer. Inert until the page carries data-brand="lbs" (see src/config/deployment.ts). */
 @import "./theme-lbs.css";
+/* the day/night switch and the theme change animation */
+@import "./theme.css";
 /* VYNTEX Command design system: "Metallic Intelligence".
    The look comes from the VYNTEX mark: graphite depth, brushed chrome, and a blue spectrum that runs cobalt > VYNTEX blue > electric cyan > ice.
    Rules of use: cyan marks the one thing to act on or the thing that is active; chrome is an identity accent, never body text;

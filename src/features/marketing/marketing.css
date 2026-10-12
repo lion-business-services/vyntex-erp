@@ -1,5 +1,7 @@
-/* Public sales pages. Always dark: the brand lives on graphite, so this scope pins the dark tokens of the design system
-   whatever theme the workspace uses. Signature moments: the dimensional V behind the product window, the circuit trace
+/* Public sales pages. They follow the visitor's theme. Night is the original look: this scope pins the dark tokens of the
+   design system. Day (the default) is the same brand on pearl and ice: graphite text, chrome rendered as dark brushed
+   steel so it reads on a light ground, cyan kept for light and lines, and a deeper VYNTEX blue wherever colour carries
+   text. The day values are in the :root[data-theme="light"] blocks below. Signature moments: the dimensional V behind the product window, the circuit trace
    that follows the chosen industry, and the convergence of eight tools into one window. Everything else stays calm. */
 .mk{
   --bg:#111829;--surface:#182135;--surface-2:#1F2A42;--surface-3:#293651;--surface-4:#354464;
@@ -23,6 +25,56 @@
   background:radial-gradient(1000px 760px at 104% 22%,rgba(11,63,168,.24),transparent 70%),radial-gradient(1000px 760px at -4% 72%,rgba(11,63,168,.20),transparent 70%),var(--bg);
   background-size:100% 3000px,100% 3000px,auto;background-repeat:repeat-y,repeat-y,repeat;
 }
+/* day: pearl ground with the same returning light, in ice blue instead of cobalt */
+:root[data-theme="light"] .mk{
+  --bg:#EEF3F9;--surface:#FFFFFF;--surface-2:#F6F9FC;--surface-3:#EAF0F7;--surface-4:#DDE6F1;
+  --line:#D6DFEA;--line-strong:#BFCBDA;--line-chrome:rgba(64,78,99,.24);
+  --text:#0A1422;--text-2:#3B4860;--text-3:#526077;
+  /* text-bearing accent is a deep VYNTEX blue (5.6:1 on the ground); cyan stays for light, lines and glow */
+  --accent:#0062B0;--accent-2:#0A4FB5;--accent-ink:#FFFFFF;--accent-soft:rgba(10,139,240,.10);--accent-line:rgba(10,111,207,.38);
+  --blue-soft:rgba(10,139,240,.08);--cobalt-soft:rgba(10,111,207,.07);
+  --cyan:#00B4E2;--ice:#0A72D1;
+  --chrome-hi:#3A4554;--chrome:#768294;--chrome-lo:#A3AEBD;
+  /* brushed dark steel: the same banding as the night chrome, inverted so it reads on pearl */
+  --grad-chrome:linear-gradient(178deg,#1B2431 0%,#4F5B6D 30%,#131B27 52%,#5B677A 64%,#252F3D 100%);
+  --grad-brand:linear-gradient(100deg,#0B3FA8 0%,#0A6FCF 52%,#0090C6 100%);
+  --grad-cta:linear-gradient(180deg,#1C8AE4 0%,#0A6FCF 52%,#005BAA 100%);
+  --grad-edge:linear-gradient(90deg,#8C97A8 0%,#0A8BF0 100%);
+  --ok:#0B6A40;--ok-soft:rgba(11,106,64,.10);--warn:#8A5A00;--warn-soft:rgba(190,130,0,.13);--bad:#B4232F;--bad-soft:rgba(180,35,47,.09);--bad-ink:#FFFFFF;
+  --info:#1D5FA8;--info-soft:rgba(29,95,168,.10);--violet:#5B3FB0;--violet-soft:rgba(91,63,176,.10);--neutral-soft:rgba(67,80,102,.08);
+  --shadow:0 22px 54px rgba(18,32,54,.15);--shadow-1:0 1px 2px rgba(18,32,54,.05);--shadow-2:0 1px 2px rgba(18,32,54,.06),0 12px 30px rgba(18,32,54,.08);
+  --glow:0 0 0 1px rgba(10,111,207,.28),0 6px 18px rgba(10,139,240,.22);--glow-soft:0 0 16px rgba(10,139,240,.14);
+  --mk-glow:rgba(10,139,240,.45);
+  color-scheme:light;
+  background:radial-gradient(1000px 760px at 104% 22%,rgba(10,139,240,.10),transparent 70%),radial-gradient(1000px 760px at -4% 72%,rgba(11,63,168,.06),transparent 70%),var(--bg);
+  background-size:100% 3000px,100% 3000px,auto;background-repeat:repeat-y,repeat-y,repeat;
+}
+/* the header floats over the page as frosted pearl */
+:root[data-theme="light"] .mk-top{background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4)}
+:root[data-theme="light"] .mk-menu{background:var(--bg)}
+/* the cobalt washes become a thin ice-blue light, so the hero still glows without muddying the pearl */
+:root[data-theme="light"] .mk-hero-bg{background:
+    radial-gradient(52% 58% at 76% 34%,color-mix(in srgb,var(--blue) 15%,transparent),transparent 72%),
+    radial-gradient(30% 34% at 84% 22%,color-mix(in srgb,var(--cyan) 12%,transparent),transparent 74%),
+    radial-gradient(36% 40% at 8% 4%,color-mix(in srgb,var(--blue) 8%,transparent),transparent 72%)}
+:root[data-theme="light"] .mk-hero-bg::before{opacity:.32}
+:root[data-theme="light"] .mk-sheen{background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.85) 50%,transparent 58%),var(--grad-chrome)}
+:root[data-theme="light"] .mk-conv{background:radial-gradient(48% 60% at 72% 50%,color-mix(in srgb,var(--blue) 8%,transparent),transparent 72%)}
+:root[data-theme="light"] .mk-tool::before{box-shadow:0 14px 30px rgba(18,32,54,.12)}
+:root[data-theme="light"] .mk-btn.primary:hover{--edge:#0A72D1;--fill:#0A72D1}
+:root[data-theme="light"] .mk-btn:focus-visible{--edge:var(--text)}
+:root[data-theme="light"] .mk-btn.primary:focus-visible::before{box-shadow:inset 0 0 0 2px #fff}
+:root[data-theme="light"] .mk-kpi,:root[data-theme="light"] .mk-tool{background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+:root[data-theme="light"] .mk-card{background:linear-gradient(180deg,var(--surface),var(--surface-2))}
+/* brand pieces drawn for graphite (src/brand/brand.css), lifted onto pearl */
+:root[data-theme="light"] .mk .vx-frame{box-shadow:0 0 0 1px rgba(255,255,255,.7) inset,0 26px 60px rgba(18,32,54,.16),0 0 60px rgba(10,139,240,.08)}
+:root[data-theme="light"] .mk .vx-frame::before{background:linear-gradient(90deg,transparent,rgba(118,130,148,.55) 22%,rgba(10,139,240,.7) 68%,transparent)}
+:root[data-theme="light"] .mk .vx-frame-h{background:linear-gradient(180deg,#FFFFFF,var(--surface-2))}
+/* the V itself is chrome and blue artwork: it keeps its own bright pulses, and a softer light and shadow sit behind it */
+:root[data-theme="light"] .mk .vx3d{--ice:#C4F1FF;--cyan:#00DDFF}
+:root[data-theme="light"] .mk .vx3d-light{opacity:.5}
+:root[data-theme="light"] .mk .vx3d-glow{opacity:.3}
+:root[data-theme="light"] .mk .vx3d-plane>img:not(.vx3d-glow){filter:drop-shadow(0 18px 22px rgba(18,32,54,.22))}
 .mk-wrap{width:100%;max-width:1264px;margin:0 auto;padding-left:var(--mk-pad);padding-right:var(--mk-pad)}
 .mk main:focus{outline:none}
 /* a short fade when a public page opens */
@@ -61,6 +113,9 @@
 .mk-top-demo{color:var(--text-2);font-weight:650;font-size:14.5px;text-decoration:none;white-space:nowrap;padding:9px 4px;border-radius:6px;transition:color var(--motion-fast) var(--ease-vyntex)}
 .mk-top-demo:hover{color:var(--accent)}
 .mk-top-cta{flex:none}
+/* the day/night switch (ui/ThemeToggle.tsx) sits beside the language choice, in the header and in the phone menu */
+.mk-top .mk-theme{margin:0 -4px}
+.mk-menu-prefs{display:flex;align-items:center;gap:8px}
 .mk-menu-btn{display:grid;place-items:center;flex:none;width:40px;height:40px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);color:var(--text)}
 .mk-menu-btn svg{width:20px;height:20px}
 .mk-top.compact .mk-top-in{gap:10px}

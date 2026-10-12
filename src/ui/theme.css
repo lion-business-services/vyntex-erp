@@ -1,0 +1,44 @@
+/* Day and night: the switch (ui/ThemeToggle.tsx) and the animation of the change (ui/theme.ts). */
+
+/* The switch. The button is the 44px target; the pill drawn inside it is 52 by 28. Day: an ice track and a polished
+   chrome knob holding a VYNTEX-blue sun. Night: a graphite track lit by a cyan hairline and a dark chrome knob holding a
+   cyan moon. Everything keys off <html data-theme>, so it is right in the frame the theme changes. */
+.tt{position:relative;display:inline-grid;place-items:center;flex:none;min-width:44px;min-height:44px;margin:-4px 0;padding:0 2px;border:0;background:none;border-radius:999px;color:inherit;-webkit-tap-highlight-color:transparent}
+.tt-track{position:relative;display:block;width:52px;height:28px;border-radius:999px;
+  background:linear-gradient(180deg,#D3DEEB,#EDF3F9);border:1px solid rgba(70,84,104,.26);box-shadow:inset 0 1px 3px rgba(18,32,54,.16),0 1px 0 rgba(255,255,255,.8);
+  transition:background-color var(--motion-standard) var(--ease-vyntex),border-color var(--motion-standard) var(--ease-vyntex),box-shadow var(--motion-standard) var(--ease-vyntex)}
+/* the far end of the track: a small cyan node in the day, which the knob travels to at night */
+.tt-track::after{content:"";position:absolute;right:8px;top:50%;width:5px;height:5px;margin-top:-2.5px;border-radius:50%;background:#0A8BF0;opacity:.5;transition:opacity var(--motion-fast) var(--ease-vyntex),transform var(--motion-standard) var(--ease-vyntex)}
+.tt-knob{position:absolute;left:2px;top:2px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;
+  background:linear-gradient(160deg,#FFFFFF 0%,#E6EBF2 45%,#C3CCD8 100%);box-shadow:0 1px 2px rgba(18,32,54,.28),0 3px 8px rgba(18,32,54,.14),inset 0 1px 0 #fff;
+  transition:transform 460ms var(--ease-spring),background-color var(--motion-standard) var(--ease-vyntex),box-shadow var(--motion-standard) var(--ease-vyntex)}
+.tt-knob svg{position:absolute;width:13px;height:13px;stroke-width:2.4;transition:transform 520ms var(--ease-vyntex),opacity var(--motion-standard) var(--ease-vyntex)}
+.tt-sun{color:#0A6FCF;transform:rotate(0) scale(1);opacity:1}
+.tt-moon{color:#00DDFF;transform:rotate(-120deg) scale(.4);opacity:0}
+.tt:hover .tt-track{border-color:rgba(10,111,207,.5)}
+.tt:hover .tt-sun{transform:rotate(45deg) scale(1)}
+.tt:active .tt-knob{width:26px}
+.tt:focus-visible{outline:none}
+.tt:focus-visible .tt-track{outline:2px solid var(--accent);outline-offset:2px}
+:root[data-theme="dark"] .tt-track{background:linear-gradient(180deg,#0A1120,#16203A);border-color:rgba(0,221,255,.34);box-shadow:inset 0 1px 3px rgba(0,0,0,.55),0 0 12px rgba(0,190,255,.14)}
+:root[data-theme="dark"] .tt-track::after{right:auto;left:9px;background:#C4F1FF;opacity:.35;box-shadow:7px -5px 0 -1px #C4F1FF,4px 6px 0 -1.5px #C4F1FF}
+:root[data-theme="dark"] .tt-knob{transform:translateX(24px);background:linear-gradient(160deg,#4A5873 0%,#26314A 55%,#1A2336 100%);box-shadow:0 0 0 1px rgba(200,210,225,.28),0 2px 8px rgba(0,0,0,.5),0 0 10px rgba(0,221,255,.25)}
+:root[data-theme="dark"] .tt:active .tt-knob{transform:translateX(20px)}
+:root[data-theme="dark"] .tt-sun{transform:rotate(120deg) scale(.4);opacity:0}
+:root[data-theme="dark"] .tt-moon{transform:rotate(0) scale(1);opacity:1}
+:root[data-theme="dark"] .tt:hover .tt-track{border-color:rgba(0,221,255,.6)}
+:root[data-theme="dark"] .tt:hover .tt-moon{transform:rotate(-18deg) scale(1)}
+
+/* The change itself. With view transitions the new theme is uncovered by a circle growing from the switch (the clip is
+   animated from ui/theme.ts), so the browser's own cross-fade is turned off and the new picture sits over the old one. */
+:root.theme-vt::view-transition-old(root),:root.theme-vt::view-transition-new(root){animation:none;mix-blend-mode:normal}
+:root.theme-vt::view-transition-old(root){z-index:1}
+:root.theme-vt::view-transition-new(root){z-index:2}
+/* the new picture is live: colour transitions inside it would replay the old colours under the circle. The switch keeps its own. */
+:root.theme-vt *:not(.tt):not(.tt *){transition:none!important}
+/* Without view transitions: colours ease across for a moment (gradients cannot ease; they change at once). */
+:root.theme-fade,:root.theme-fade *,:root.theme-fade *::before,:root.theme-fade *::after{
+  transition-property:background-color,color,border-color,fill,stroke,box-shadow,outline-color,text-decoration-color!important;transition-duration:350ms!important;transition-timing-function:var(--ease-vyntex)!important;transition-delay:0s!important}
+:root.theme-fade .tt-knob{transition:transform 460ms var(--ease-spring),background-color 350ms,box-shadow 350ms!important}
+:root.theme-fade .tt-knob svg{transition:transform 520ms var(--ease-vyntex),opacity 320ms!important}
+@media (prefers-reduced-motion:reduce){.tt-knob,.tt-knob svg,.tt-track{transition:none!important}}

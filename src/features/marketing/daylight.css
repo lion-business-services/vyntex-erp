@@ -1,0 +1,139 @@
+/* "Daylight Circuit" on the sales pages (/, /pricing, /request-demo): the part of the VYNTEX day theme that only these pages
+   use, so it ships with them and never in a deployment without them. The tokens (--dc-*) and the living ground are in
+   ui/daylight.css; the colour tokens of this scope are the :root[data-theme="light"] .mk block of marketing.css.
+   Every rule is scoped to the VYNTEX day; night is untouched. */
+
+/* ---------- panels: frosted ice glass over the moving ground ---------- */
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mkp-plan,.mkp-legend,.mkp-addon-g,.mkp-talk,.mks-pl-preview,.mk-req-in,.mk-wf-panel,.mk-wf-inline,.mk-card,.mk-tool,.mk-conv-shell){
+  background:var(--dc-glass);border-color:var(--dc-edge);box-shadow:var(--dc-panel)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk :is(.mkp-plan,.mkp-legend,.mkp-addon-g,.mkp-talk,.mks-pl-preview,.mk-req-in,.mk-wf-panel,.mk-card,.mk-tool,.mk-conv-shell,.card){
+  -webkit-backdrop-filter:var(--dc-blur);backdrop-filter:var(--dc-blur)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mk-card,.mkp-plan,.mk-tool):hover{border-color:rgba(0,190,240,.6);box-shadow:var(--dc-panel-hover)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-menu{background:var(--dc-glass-solid);border-color:var(--dc-edge);box-shadow:var(--dc-ring),var(--shadow)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mkp-select select,.mk-select select,.mkp-field input,.mkp-field select,.mkp-field textarea){background:rgba(255,255,255,.88);border-color:rgba(46,88,150,.34)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mkp-choice>div,.mk-choice>div){background:rgba(255,255,255,.62);border-color:rgba(46,88,150,.30)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mkp-choice,.mk-choice) input:checked+span{background:#fff;box-shadow:inset 0 -2px 0 var(--accent),0 2px 6px -2px rgba(11,63,168,.30)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mkp-result,.mk-result,.mk-404){background:linear-gradient(rgba(214,150,0,.13),rgba(214,150,0,.13)),rgba(255,255,255,.9)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mkp-switch,.mk-lang){background:rgba(255,255,255,.62);border-color:rgba(46,88,150,.24)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-lang button[aria-pressed="true"]{background:#fff;box-shadow:inset 0 -2px 0 var(--accent),0 2px 6px -2px rgba(11,63,168,.30)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-switch::before{background:#fff}
+
+/* ---------- buttons ---------- */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk .btn.primary{animation:dc-sheen 7s ease-in-out 1.2s infinite}
+/* the chamfered buttons of the pricing and request pages: the same beam and the same ice glass */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-btn{--edge:rgba(10,98,214,.32);--fill:linear-gradient(180deg,#FFFFFF,#E8F3FF)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-btn:hover{--edge:rgba(0,170,230,.75);--fill:linear-gradient(180deg,#FFFFFF,#DDEEFF)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-btn.primary{--edge:#0A6FE0;--fill:var(--dc-beam);color:#fff;text-shadow:0 1px 1px rgba(6,22,48,.30);filter:drop-shadow(0 8px 14px rgba(10,111,224,.38))}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-btn.primary:hover{--edge:#00B4E2;--fill:linear-gradient(100deg,#0D47BA 0%,#0A66DA 48%,#0074C8 100%)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-btn[aria-pressed="true"]{--fill:linear-gradient(rgba(10,111,224,.12),rgba(10,111,224,.12)),#fff}
+
+/* ---------- spectrum icon chips ---------- */
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mk-card-i,.mk-tool-i,.mks-ed-i,.mks-ai-mark){
+  background:var(--dc-spec-1);color:#fff;border-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 14px -6px rgba(11,63,168,.55)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mk-card-i,.mk-tool-i,.mks-ed-i) svg{filter:drop-shadow(0 1px 1px rgba(6,22,48,.35))}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mk-cards>:nth-child(4n+2),.mk-conv-grid>:nth-child(4n+2),.mks-ed-row:nth-child(4n+2)) :is(.mk-card-i,.mk-tool-i,.mks-ed-i){background:var(--dc-spec-2)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mk-cards>:nth-child(4n+3),.mk-conv-grid>:nth-child(4n+3),.mks-ed-row:nth-child(4n+3)) :is(.mk-card-i,.mk-tool-i,.mks-ed-i){background:var(--dc-spec-3)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mk-cards>:nth-child(4n+4),.mk-conv-grid>:nth-child(4n+4),.mks-ed-row:nth-child(4n+4)) :is(.mk-card-i,.mk-tool-i,.mks-ed-i){background:var(--dc-spec-4)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-ai-mark{background:var(--dc-spec-2)}
+
+/* ---------- header, headline, hero ---------- */
+/* header: frosted ice glass with a thin spectrum underline */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-top{background:linear-gradient(180deg,rgba(255,255,255,.78),rgba(232,243,255,.62));border-bottom-color:transparent;-webkit-backdrop-filter:var(--dc-blur);backdrop-filter:var(--dc-blur);box-shadow:0 10px 30px -18px rgba(11,63,168,.45)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-top::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,rgba(11,63,168,0) 0%,#0B3FA8 14%,#0A8BF0 50%,#00DDFF 86%,rgba(0,221,255,0) 100%);opacity:.85;pointer-events:none}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-nav a::after{height:2px;background:var(--dc-spectrum)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-menu-btn{background:rgba(255,255,255,.7);border-color:rgba(46,88,150,.26)}
+
+/* the headline: navy into cobalt into electric blue, flowing slowly; the display words carry the electric end */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-hero h1{
+  background:linear-gradient(100deg,#061630 0%,#0B2A6E 22%,#0B3FA8 40%,#061630 60%,#0B2A6E 80%,#061630 100%) 0 0/200% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:dc-flow 18s ease-in-out infinite alternate}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-hero h1 .mk-sheen{
+  background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.9) 50%,transparent 58%),linear-gradient(100deg,#0B3FA8 0%,#0A5FD6 30%,#0A7FEA 55%,#0B3FA8 80%,#0A5FD6 100%);
+  background-size:260% 100%,200% 100%;animation:mk-sheen 1.8s var(--ease-vyntex) .5s 1 both,dc-flow-2 12s ease-in-out 2.4s infinite alternate}
+@keyframes dc-flow{from{background-position:0% 0}to{background-position:100% 0}}
+@keyframes dc-flow-2{from{background-position:-60% 0,0% 0}to{background-position:-60% 0,100% 0}}
+/* small accent words over the brightest part of the aurora take a deeper cobalt */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-hero-ed b{color:#0047AD}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-hero-facts span:not(:last-child)::after{background:#00B4E2;opacity:1;box-shadow:0 0 6px rgba(0,221,255,.9)}
+
+/* the product window and the hero scene */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk .vx-frame{background:var(--dc-glass-strong);border-color:var(--dc-edge);
+  box-shadow:inset 0 1px 0 #fff,0 0 0 1px rgba(10,139,240,.16),0 34px 70px -24px rgba(11,63,168,.48),0 0 70px -10px rgba(0,190,240,.30);-webkit-backdrop-filter:var(--dc-blur);backdrop-filter:var(--dc-blur)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-win.vx-frame{background:radial-gradient(60% 34% at 78% 0,rgba(0,200,245,.16),transparent 70%),var(--dc-glass-strong)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk .vx-frame-n{background:linear-gradient(90deg,rgba(10,111,224,.14),rgba(0,221,255,.06))}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mk-kpi,.mk-win-lead,.mk-win-stages li,.mk-win-auto){background:rgba(255,255,255,.78);border-color:rgba(46,88,150,.18)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-kpi::before{background:var(--dc-spectrum);height:2px;width:30px}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-win-auto{background:linear-gradient(160deg,rgba(10,111,224,.10),transparent 60%),rgba(255,255,255,.82)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-stage-win::before{background:#fff;border-color:#0A6FE0;box-shadow:0 0 10px #00DDFF}
+
+/* the edition selector: glass cards, a spectrum chip each, the chosen one lit with a beam edge */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-card-i{width:32px;height:32px;border-radius:9px}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-card::before{background:var(--dc-spectrum);height:3px}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-card::after{background:linear-gradient(170deg,rgba(10,139,240,.14),transparent 62%)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-card[aria-pressed="true"]{border-color:rgba(10,111,224,.55);box-shadow:var(--dc-panel-hover)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-card[aria-pressed="true"] .mk-card-i{color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 0 0 3px rgba(0,221,255,.25),0 8px 18px -6px rgba(11,63,168,.6)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-card:hover .mk-card-i{color:#fff}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-pick-trace .line{stroke:#0A6FE0;opacity:.75}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-pick-trace .spark{stroke:#00DDFF;filter:drop-shadow(0 0 4px #00DDFF)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-pick-trace .node{fill:#fff}
+
+/* sections: rules become spectrum hairlines; the tool cells and stops carry chips */
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mk-value,.mk-conv,.mk-wf,.mk-req,.mk-foot){border-top-color:rgba(46,88,150,.18)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-proof li::before{width:64px;height:2px;top:-1.5px;background:var(--dc-spectrum)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-tool-i{width:38px;height:38px;border-radius:10px}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-tool::after{background:var(--dc-spectrum)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-conv-shell{background:var(--dc-glass-strong)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-conv-bus path{stroke:#0A6FE0}
+/* the workflow rail: each stop a spectrum chip, the rail a beam */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-wf-node{background:var(--dc-spec-4);border-color:transparent;color:#fff;box-shadow:0 0 0 5px rgba(255,255,255,.75),0 6px 14px -6px rgba(11,63,168,.55)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-wf-rail>li:nth-child(4n+1) .mk-wf-node{background:var(--dc-spec-1)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-wf-rail>li:nth-child(4n+2) .mk-wf-node{background:var(--dc-spec-2)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-wf-rail>li:nth-child(4n+3) .mk-wf-node{background:var(--dc-spec-3)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-wf-rail>li.on .mk-wf-node{box-shadow:0 0 0 5px rgba(255,255,255,.85),0 0 0 7px rgba(0,200,245,.55),0 10px 24px -6px rgba(10,111,224,.75)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-wf-rail::after{background:var(--dc-spectrum);height:2px;box-shadow:0 0 10px rgba(0,221,255,.7)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-wf-rail::before{background:rgba(46,88,150,.28)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-wf-panel::before{background:linear-gradient(#0A6FE0,#00C4F0) 50% 0/2px 100% no-repeat}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-wf-at span{background:var(--dc-spec-1);color:#fff}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-req-steps li>span,:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-steps li::before{background:var(--dc-spec-1);border-color:transparent;color:#fff;box-shadow:0 6px 14px -6px rgba(11,63,168,.55)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-req-steps li:nth-child(2)>span,:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-steps li:nth-child(2)::before{background:var(--dc-spec-2)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-req-steps li:nth-child(3)>span,:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-steps li:nth-child(3)::before{background:var(--dc-spec-3)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-req-steps li:nth-child(4)>span,:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-steps li:nth-child(4)::before{background:var(--dc-spec-4)}
+/* the editions list: a chip beside each name */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-ed-name{display:grid;grid-template-columns:40px minmax(0,1fr);column-gap:14px;align-items:center}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-ed-name .mks-ed-i{display:grid;place-items:center;grid-row:span 2;width:40px;height:40px;margin:0;border-radius:11px}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-ed-name .mks-ed-i svg{width:19px;height:19px}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-ed-row.on{background:linear-gradient(90deg,rgba(255,255,255,.7),rgba(255,255,255,0) 80%)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-ed-row::before{width:3px;background:linear-gradient(180deg,#0B3FA8,#0A8BF0,#00DDFF)}
+/* the AI and automation stories: the AI card and the AI truths take the beam */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-ai-truths li::before{background:#fff;border-color:#0A6FE0;box-shadow:0 0 0 3px rgba(0,221,255,.18)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-ai-card{background:linear-gradient(160deg,rgba(10,111,224,.10),transparent 55%),rgba(255,255,255,.85)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-pl-plan.popular{background:linear-gradient(180deg,rgba(10,139,240,.12),transparent 70%)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-pl-plan.popular::before{background:var(--dc-spectrum)}
+/* the closing band and the pricing close: the glass of the page, a spectrum hairline over it */
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mks-cl,.mkp-close){background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 80%)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mks-cl,.mkp-close)::before{background:var(--dc-spectrum);opacity:.85;height:2px}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-foot{background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.45))}
+
+/* pricing: the plans are glass; the most popular one carries the beam edge and a cyan glow */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-plan.popular{background:linear-gradient(180deg,rgba(214,236,255,.92),rgba(255,255,255,.80) 34%,rgba(240,248,255,.70));border-color:rgba(10,111,224,.4);box-shadow:var(--dc-panel),0 0 40px -8px rgba(0,190,240,.40)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.mkp-premium,.mkp-plan.popular)::before{background:var(--dc-spectrum);height:3px}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-premium{background:linear-gradient(160deg,rgba(10,111,224,.12),transparent 44%),var(--dc-glass-strong);-webkit-backdrop-filter:var(--dc-blur);backdrop-filter:var(--dc-blur);box-shadow:var(--dc-lift)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-bar[data-stuck]{background:linear-gradient(180deg,rgba(255,255,255,.80),rgba(232,243,255,.66));-webkit-backdrop-filter:var(--dc-blur);backdrop-filter:var(--dc-blur)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-head::before{background:radial-gradient(58% 100% at 72% 0%,rgba(10,139,240,.16),transparent 72%)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-credit{background:linear-gradient(160deg,rgba(10,139,240,.12),rgba(0,221,255,.06));border-color:rgba(10,111,224,.28)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp .mkp-pick.on{background:linear-gradient(180deg,rgba(214,236,255,.95),rgba(232,244,255,.9));border-color:rgba(10,111,224,.5)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-benefits li>svg{box-sizing:content-box;width:20px;height:20px;padding:8px;margin:-6px 0 0 -6px;border-radius:10px;background:var(--dc-spec-1);color:#fff;box-shadow:0 6px 14px -6px rgba(11,63,168,.55)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-benefits li:nth-child(2)>svg{background:var(--dc-spec-2)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-benefits li:nth-child(3)>svg{background:var(--dc-spec-3)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-benefits li:nth-child(4)>svg{background:var(--dc-spec-4)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-benefits li{grid-template-columns:36px minmax(0,1fr)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mkp-rd-bg{background:radial-gradient(52% 100% at 76% 0%,rgba(10,139,240,.16),transparent 74%)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-frame{--edge:rgba(10,98,214,.32);--fill:var(--dc-glass-strong)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .mk-frame.accent{--edge:rgba(10,111,224,.55)}
+/* ---------- details ---------- */
+/* the example brand button of the customization story: navy ink on the brand colour, as at night (the ground colour is pale by day) */
+:root[data-theme="light"]:not([data-brand="lbs"]) .mks-cu-new{color:#061630}
+
+@media (prefers-reduced-motion:reduce){
+  :root[data-theme="light"]:not([data-brand="lbs"]) .mk-hero h1{background-position:30% 0}
+}

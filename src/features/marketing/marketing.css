@@ -25,56 +25,48 @@
   background:radial-gradient(1000px 760px at 104% 22%,rgba(11,63,168,.24),transparent 70%),radial-gradient(1000px 760px at -4% 72%,rgba(11,63,168,.20),transparent 70%),var(--bg);
   background-size:100% 3000px,100% 3000px,auto;background-repeat:repeat-y,repeat-y,repeat;
 }
-/* day: pearl ground with the same returning light, in ice blue instead of cobalt */
+/* day: "Daylight Circuit", the tokens of ui/styles.css restated for this scope. The page itself is clear, so the ice ground
+   and the moving aurora and circuit layer behind it (ui/DayBackdrop.tsx, ui/daylight.css) show through. The panels, beam
+   buttons, spectrum icon chips and the flowing headline of these pages are in ./daylight.css. */
 :root[data-theme="light"] .mk{
-  --bg:#EEF3F9;--surface:#FFFFFF;--surface-2:#F6F9FC;--surface-3:#EAF0F7;--surface-4:#DDE6F1;
-  --line:#D6DFEA;--line-strong:#BFCBDA;--line-chrome:rgba(64,78,99,.24);
-  --text:#0A1422;--text-2:#3B4860;--text-3:#526077;
-  /* text-bearing accent is a deep VYNTEX blue (5.6:1 on the ground); cyan stays for light, lines and glow */
-  --accent:#0062B0;--accent-2:#0A4FB5;--accent-ink:#FFFFFF;--accent-soft:rgba(10,139,240,.10);--accent-line:rgba(10,111,207,.38);
-  --blue-soft:rgba(10,139,240,.08);--cobalt-soft:rgba(10,111,207,.07);
+  --bg:#D6E8F8;--surface:#F6FAFE;--surface-2:#EDF5FD;--surface-3:#E1EDF9;--surface-4:#D2E2F3;
+  --line:#C3D6EC;--line-strong:#9FB9D8;--line-chrome:rgba(46,68,104,.26);
+  --text:#061630;--text-2:#2E4468;--text-3:#3E5579;
+  /* text-bearing accent is #0056CC (5.0:1 on the darkest ground); cyan stays for light, lines and glow */
+  --accent:#0056CC;--accent-2:#0B3FA8;--accent-ink:#FFFFFF;--accent-soft:rgba(10,111,224,.11);--accent-line:rgba(10,98,214,.40);
+  --blue-soft:rgba(10,139,240,.11);--cobalt-soft:rgba(11,63,168,.09);
   --cyan:#00B4E2;--ice:#0A72D1;
-  --chrome-hi:#3A4554;--chrome:#768294;--chrome-lo:#A3AEBD;
-  /* brushed dark steel: the same banding as the night chrome, inverted so it reads on pearl */
-  --grad-chrome:linear-gradient(178deg,#1B2431 0%,#4F5B6D 30%,#131B27 52%,#5B677A 64%,#252F3D 100%);
-  --grad-brand:linear-gradient(100deg,#0B3FA8 0%,#0A6FCF 52%,#0090C6 100%);
-  --grad-cta:linear-gradient(180deg,#1C8AE4 0%,#0A6FCF 52%,#005BAA 100%);
-  --grad-edge:linear-gradient(90deg,#8C97A8 0%,#0A8BF0 100%);
-  --ok:#0B6A40;--ok-soft:rgba(11,106,64,.10);--warn:#8A5A00;--warn-soft:rgba(190,130,0,.13);--bad:#B4232F;--bad-soft:rgba(180,35,47,.09);--bad-ink:#FFFFFF;
-  --info:#1D5FA8;--info-soft:rgba(29,95,168,.10);--violet:#5B3FB0;--violet-soft:rgba(91,63,176,.10);--neutral-soft:rgba(67,80,102,.08);
-  --shadow:0 22px 54px rgba(18,32,54,.15);--shadow-1:0 1px 2px rgba(18,32,54,.05);--shadow-2:0 1px 2px rgba(18,32,54,.06),0 12px 30px rgba(18,32,54,.08);
-  --glow:0 0 0 1px rgba(10,111,207,.28),0 6px 18px rgba(10,139,240,.22);--glow-soft:0 0 16px rgba(10,139,240,.14);
-  --mk-glow:rgba(10,139,240,.45);
+  --chrome-hi:#3A4A66;--chrome:#6E80A0;--chrome-lo:#9DB0CB;
+  --grad-chrome:linear-gradient(178deg,#0E1D38 0%,#4A5C7C 32%,#0B1830 54%,#5A6D8E 66%,#1A2A47 100%);
+  --grad-brand:linear-gradient(100deg,#0B3FA8 0%,#0A6FE0 52%,#0089C9 100%);
+  --grad-cta:linear-gradient(100deg,#0B3FA8 0%,#0A62D6 48%,#0072C6 100%);
+  --grad-edge:linear-gradient(90deg,#0B3FA8 0%,#0A8BF0 55%,#00DDFF 100%);
+  --ok:#08583A;--ok-soft:rgba(8,88,58,.11);--warn:#7F5200;--warn-soft:rgba(190,130,0,.15);--bad:#B01F2C;--bad-soft:rgba(176,31,44,.10);--bad-ink:#FFFFFF;
+  --info:#1A5699;--info-soft:rgba(26,86,153,.11);--violet:#5B3FB0;--violet-soft:rgba(91,63,176,.11);--neutral-soft:rgba(46,68,104,.08);
+  --shadow:0 26px 60px -14px rgba(11,63,168,.34),0 2px 6px rgba(11,63,168,.08);--shadow-1:0 1px 2px rgba(11,63,168,.07);--shadow-2:0 2px 4px rgba(11,63,168,.06),0 18px 40px -16px rgba(11,63,168,.32);
+  --glow:0 0 0 1px rgba(10,111,224,.32),0 8px 24px -6px rgba(10,111,224,.50);--glow-soft:0 0 22px rgba(10,139,240,.18);
+  --mk-glow:rgba(10,139,240,.55);
   color-scheme:light;
-  background:radial-gradient(1000px 760px at 104% 22%,rgba(10,139,240,.10),transparent 70%),radial-gradient(1000px 760px at -4% 72%,rgba(11,63,168,.06),transparent 70%),var(--bg);
-  background-size:100% 3000px,100% 3000px,auto;background-repeat:repeat-y,repeat-y,repeat;
+  background:transparent;
 }
-/* the header floats over the page as frosted pearl */
-:root[data-theme="light"] .mk-top{background:color-mix(in srgb,var(--bg) 86%,transparent);-webkit-backdrop-filter:blur(14px) saturate(1.4);backdrop-filter:blur(14px) saturate(1.4)}
-:root[data-theme="light"] .mk-menu{background:var(--bg)}
-/* the cobalt washes become a thin ice-blue light, so the hero still glows without muddying the pearl */
+/* the cobalt washes become ice light, so the hero glows without clouding the ground */
 :root[data-theme="light"] .mk-hero-bg{background:
-    radial-gradient(52% 58% at 76% 34%,color-mix(in srgb,var(--blue) 15%,transparent),transparent 72%),
-    radial-gradient(30% 34% at 84% 22%,color-mix(in srgb,var(--cyan) 12%,transparent),transparent 74%),
-    radial-gradient(36% 40% at 8% 4%,color-mix(in srgb,var(--blue) 8%,transparent),transparent 72%)}
-:root[data-theme="light"] .mk-hero-bg::before{opacity:.32}
-:root[data-theme="light"] .mk-sheen{background-image:linear-gradient(100deg,transparent 42%,rgba(255,255,255,.85) 50%,transparent 58%),var(--grad-chrome)}
-:root[data-theme="light"] .mk-conv{background:radial-gradient(48% 60% at 72% 50%,color-mix(in srgb,var(--blue) 8%,transparent),transparent 72%)}
-:root[data-theme="light"] .mk-tool::before{box-shadow:0 14px 30px rgba(18,32,54,.12)}
-:root[data-theme="light"] .mk-btn.primary:hover{--edge:#0A72D1;--fill:#0A72D1}
+    radial-gradient(52% 58% at 76% 34%,rgba(10,139,240,.16),transparent 72%),
+    radial-gradient(30% 34% at 84% 22%,rgba(0,221,255,.16),transparent 74%),
+    radial-gradient(36% 40% at 8% 4%,rgba(255,255,255,.55),transparent 72%)}
+:root[data-theme="light"] .mk-hero-bg::before{opacity:.38;background-image:linear-gradient(rgba(11,63,168,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(11,63,168,.16) 1px,transparent 1px)}
+:root[data-theme="light"] .mk-conv{background:radial-gradient(48% 60% at 72% 50%,rgba(10,139,240,.10),transparent 72%)}
+:root[data-theme="light"] .mk-tool::before{box-shadow:0 14px 30px rgba(11,63,168,.16)}
 :root[data-theme="light"] .mk-btn:focus-visible{--edge:var(--text)}
 :root[data-theme="light"] .mk-btn.primary:focus-visible::before{box-shadow:inset 0 0 0 2px #fff}
-:root[data-theme="light"] .mk-kpi,:root[data-theme="light"] .mk-tool{background:linear-gradient(180deg,var(--surface),var(--surface-2))}
-:root[data-theme="light"] .mk-card{background:linear-gradient(180deg,var(--surface),var(--surface-2))}
-/* brand pieces drawn for graphite (src/brand/brand.css), lifted onto pearl */
-:root[data-theme="light"] .mk .vx-frame{box-shadow:0 0 0 1px rgba(255,255,255,.7) inset,0 26px 60px rgba(18,32,54,.16),0 0 60px rgba(10,139,240,.08)}
-:root[data-theme="light"] .mk .vx-frame::before{background:linear-gradient(90deg,transparent,rgba(118,130,148,.55) 22%,rgba(10,139,240,.7) 68%,transparent)}
-:root[data-theme="light"] .mk .vx-frame-h{background:linear-gradient(180deg,#FFFFFF,var(--surface-2))}
+/* brand pieces drawn for graphite (src/brand/brand.css), lifted onto ice */
+:root[data-theme="light"] .mk .vx-frame::before{background:linear-gradient(90deg,transparent,#0B3FA8 18%,#0A8BF0 52%,#00DDFF 80%,transparent)}
+:root[data-theme="light"] .mk .vx-frame-h{background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(237,245,253,.85))}
 /* the V itself is chrome and blue artwork: it keeps its own bright pulses, and a softer light and shadow sit behind it */
 :root[data-theme="light"] .mk .vx3d{--ice:#C4F1FF;--cyan:#00DDFF}
-:root[data-theme="light"] .mk .vx3d-light{opacity:.5}
-:root[data-theme="light"] .mk .vx3d-glow{opacity:.3}
-:root[data-theme="light"] .mk .vx3d-plane>img:not(.vx3d-glow){filter:drop-shadow(0 18px 22px rgba(18,32,54,.22))}
+:root[data-theme="light"] .mk .vx3d-light{opacity:.6}
+:root[data-theme="light"] .mk .vx3d-glow{opacity:.35}
+:root[data-theme="light"] .mk .vx3d-plane>img:not(.vx3d-glow){filter:drop-shadow(0 18px 24px rgba(11,63,168,.30))}
 .mk-wrap{width:100%;max-width:1264px;margin:0 auto;padding-left:var(--mk-pad);padding-right:var(--mk-pad)}
 .mk main:focus{outline:none}
 /* a short fade when a public page opens */

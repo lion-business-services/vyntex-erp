@@ -12,6 +12,7 @@ import { NoAccess } from './shared';
 import { Empty, Overlays, Button } from '@/ui';
 import { hasSample, loadSample, setPrefs, useStore } from '@/store/store';
 import { applyTheme } from '@/ui/theme';
+import { DayBackdrop } from '@/ui/DayBackdrop';
 import { isLive, onSession, session } from '@/platform/session';
 
 // Read straight from the build constant (not through DEPLOY) so the bundler leaves the sales pages and the tour out of a
@@ -31,6 +32,8 @@ const ResetPassword = lazy(() => import('@/features/auth').then((m) => ({ defaul
 const Mfa = lazy(() => import('@/features/auth').then((m) => ({ default: m.Mfa })));
 const SignPage = lazy(() => import('@/features/public').then((m) => ({ default: m.SignPage })));
 const ReviewPage = lazy(() => import('@/features/public').then((m) => ({ default: m.ReviewPage })));
+// the moving day ground of the public pages (ui/DayBackdrop.tsx); the LBS deployment keeps its own ground and leaves it out
+const DAY_SKY = !(typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs');
 const NotFound = lazy(() => import('@/features/public').then((m) => ({ default: m.NotFound })));
 
 /** Shown for the instant a page is being fetched. Quiet on purpose. */
@@ -113,5 +116,7 @@ export function App() {
   }
   // a deployment without sales pages: its home page is the sign-in page
   else page = top === '' ? <SignIn /> : <NotFound />;
-  return <><Suspense fallback={<Loading />}>{page}</Suspense><Overlays /></>;
+  // every page outside a workspace (sales, sign-in, invitations, signing) gets the living day ground; a workspace keeps a still one
+  const inWorkspace = ws.mode === 'demo' || (ws.mode === 'workspace' && isLive() && who?.slug === ws.slug);
+  return <>{DAY_SKY && !inWorkspace && <DayBackdrop />}<Suspense fallback={<Loading />}>{page}</Suspense><Overlays /></>;
 }

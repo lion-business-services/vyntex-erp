@@ -19,5 +19,5 @@
   } catch (e) { /* no URLSearchParams: keep what storage said */ }
   document.documentElement.setAttribute('data-theme', theme);
   var meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#111829' : '#EEF3F9');
+  if (meta) meta.setAttribute('content', theme === 'dark' ? '#111829' : '#D6E8F8');
 })();

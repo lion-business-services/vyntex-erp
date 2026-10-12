@@ -8,6 +8,8 @@ import type { IndustryPack } from '@/packs/types';
 import { switchPack } from '@/store/store';
 import { cx } from '@/ui';
 import { EditionName, Head } from './shared';
+import { EDITION_ICON } from '../hero/hero';
+import { LuBriefcase } from 'react-icons/lu';
 import './editions.css';
 
 export function EditionsSection() {
@@ -22,6 +24,8 @@ export function EditionsSection() {
         {PACK_LIST.map((p, i) => (
           <li key={p.id} style={{ ['--i' as string]: i }} className={cx('mks-ed-row', p.id === pack.id && 'on')}>
             <div className="mks-ed-name">
+              {/* a spectrum icon chip, drawn in the day theme only (ui/daylight.css) */}
+              <span className="mks-ed-i">{EDITION_ICON[p.id] ?? <LuBriefcase aria-hidden="true" />}</span>
               <h3><EditionName pack={p} /></h3>
               <span>{p.label[lang]}{p.id === pack.id && <em>{t('mk.s.ed.current')}</em>}</span>
             </div>

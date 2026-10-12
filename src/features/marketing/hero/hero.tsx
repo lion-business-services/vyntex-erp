@@ -17,7 +17,7 @@ import { editionWord } from '../parts';
 import { ProductWindow } from './window';
 
 /** A small picture for each edition card. An edition without one gets the general icon. */
-const EDITION_ICON: Record<string, ReactNode> = {
+export const EDITION_ICON: Record<string, ReactNode> = {
   build: <LuHardHat aria-hidden="true" />, clean: <LuSparkles aria-hidden="true" />, landscape: <LuTrees aria-hidden="true" />, wash: <LuDroplets aria-hidden="true" />,
   haul: <LuTruck aria-hidden="true" />, snow: <LuSnowflake aria-hidden="true" />, turnover: <LuKeyRound aria-hidden="true" />, events: <LuTent aria-hidden="true" />,
 };

@@ -2,6 +2,8 @@
 @import "./theme-lbs.css";
 /* the day/night switch and the theme change animation */
 @import "./theme.css";
+/* the day theme's panels, beam buttons, spectrum icons and living ground ("Daylight Circuit") */
+@import "./daylight.css";
 /* VYNTEX Command design system: "Metallic Intelligence".
    The look comes from the VYNTEX mark: graphite depth, brushed chrome, and a blue spectrum that runs cobalt > VYNTEX blue > electric cyan > ice.
    Rules of use: cyan marks the one thing to act on or the thing that is active; chrome is an identity accent, never body text;
@@ -44,21 +46,28 @@
   color-scheme:dark;
 }
 :root[data-theme="light"]{
-  /* pearl and ice, graphite text, cobalt for action */
-  --bg:#EEF3F9;--surface:#FFFFFF;--surface-2:#F5F8FC;--surface-3:#E7EDF5;--surface-4:#DCE4EF;
-  --line:#DCE3ED;--line-strong:#C3CEDC;--line-chrome:rgba(70,84,104,.28);
-  --text:#0A1422;--text-2:#435066;--text-3:#5C6A80;
-  --ground:none;
-  --accent:#0066B3;--accent-2:#0A4FB5;--accent-ink:#FFFFFF;--accent-soft:rgba(0,102,179,.09);--accent-line:rgba(0,102,179,.38);
-  --blue-soft:rgba(10,111,214,.09);--cobalt-soft:rgba(11,63,168,.08);
-  --chrome-hi:#55606F;--chrome:#7C8797;--chrome-lo:#A9B3C1;
-  --grad-chrome:linear-gradient(178deg,#1B2533 0%,#566274 45%,#232D3B 60%,#6A7687 100%);
-  --grad-cta:linear-gradient(180deg,#1479D2 0%,#0066B3 55%,#0A56A0 100%);
-  --grad-edge:linear-gradient(90deg,#8D98A8 0%,#0A8BF0 100%);
-  --ok:#0B6A40;--ok-soft:rgba(11,106,64,.11);--warn:#8A5A00;--warn-soft:rgba(190,130,0,.14);--bad:#B4232F;--bad-soft:rgba(180,35,47,.10);--bad-ink:#FFFFFF;
-  --info:#1D5FA8;--info-soft:rgba(29,95,168,.10);--violet:#5B3FB0;--violet-soft:rgba(91,63,176,.10);--neutral-soft:rgba(67,80,102,.08);
-  --shadow:0 18px 44px rgba(18,32,54,.16);--shadow-1:0 1px 2px rgba(18,32,54,.05);--shadow-2:0 1px 2px rgba(18,32,54,.06),0 10px 26px rgba(18,32,54,.09);
-  --glow:0 0 0 1px rgba(0,102,179,.30),0 6px 18px rgba(0,102,179,.20);--glow-soft:0 0 14px rgba(0,102,179,.12);
+  /* "Daylight Circuit" (matches the day mode of vyntexusa.com): an ice-blue ground, never white; frosted ice-glass panels;
+     deep navy ink; cobalt and VYNTEX blue for action, cyan for light. Text pairs hold AA on the darkest ground (#CFE3F7):
+     ink 13.7:1, --text-2 7.5:1, --text-3 5.8:1, --accent 5.0:1, --ok 6.5:1; white on the beam 4.9:1 at its lightest. The panels and the moving ground are in ui/daylight.css. */
+  --bg:#D6E8F8;--surface:#F6FAFE;--surface-2:#EDF5FD;--surface-3:#E1EDF9;--surface-4:#D2E2F3;
+  --line:#C3D6EC;--line-strong:#9FB9D8;--line-chrome:rgba(46,68,104,.26);
+  --text:#061630;--text-2:#2E4468;--text-3:#3E5579;
+  /* still in the workspace: a pale highlight at the top, a blue light from the top right, a cyan one low on the left */
+  --ground:radial-gradient(1200px 520px at 50% -14%,rgba(255,255,255,.72),transparent 70%),radial-gradient(1100px 700px at 92% -8%,rgba(10,139,240,.17),transparent 64%),radial-gradient(900px 720px at -12% 106%,rgba(0,221,255,.13),transparent 62%),linear-gradient(180deg,#E2EFFB 0%,#D9EAFA 24%,#CFE3F7 62%,#D6E8F8 100%);
+  --accent:#0056CC;--accent-2:#0B3FA8;--accent-ink:#FFFFFF;--accent-soft:rgba(10,111,224,.11);--accent-line:rgba(10,98,214,.40);
+  --blue-soft:rgba(10,139,240,.11);--cobalt-soft:rgba(11,63,168,.09);
+  --chrome-hi:#3A4A66;--chrome:#6E80A0;--chrome-lo:#9DB0CB;
+  /* brushed dark steel with a navy cast, so the chrome of the mark still reads on ice */
+  --grad-chrome:linear-gradient(178deg,#0E1D38 0%,#4A5C7C 32%,#0B1830 54%,#5A6D8E 66%,#1A2A47 100%);
+  /* --grad-brand keeps the night spectrum: it is drawn on the dark sidebar and the dark sign-in panel in either theme */
+  /* the beam: cobalt into VYNTEX blue, deep enough at its bright end for white text at AA (4.9:1); the cyan is in its glow */
+  --grad-cta:linear-gradient(100deg,#0B3FA8 0%,#0A62D6 48%,#0072C6 100%);
+  --grad-edge:linear-gradient(90deg,#0B3FA8 0%,#0A8BF0 55%,#00DDFF 100%);
+  --ok:#08583A;--ok-soft:rgba(8,88,58,.11);--warn:#7F5200;--warn-soft:rgba(190,130,0,.15);--bad:#B01F2C;--bad-soft:rgba(176,31,44,.10);--bad-ink:#FFFFFF;
+  --info:#1A5699;--info-soft:rgba(26,86,153,.11);--violet:#5B3FB0;--violet-soft:rgba(91,63,176,.11);--neutral-soft:rgba(46,68,104,.08);
+  /* depth is blue-tinted light, not grey */
+  --shadow:0 26px 60px -14px rgba(11,63,168,.34),0 2px 6px rgba(11,63,168,.08);--shadow-1:0 1px 2px rgba(11,63,168,.07);--shadow-2:0 2px 4px rgba(11,63,168,.06),0 18px 40px -16px rgba(11,63,168,.32);
+  --glow:0 0 0 1px rgba(10,111,224,.32),0 8px 24px -6px rgba(10,111,224,.50);--glow-soft:0 0 22px rgba(10,139,240,.18);
   color-scheme:light;
 }
 *,*::before,*::after{box-sizing:border-box}

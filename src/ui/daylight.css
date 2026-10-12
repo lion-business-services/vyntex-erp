@@ -1,0 +1,176 @@
+/* ==========================================================================================================================
+   "Daylight Circuit": the VYNTEX day theme. One brand with the day mode of vyntexusa.com.
+   The colour tokens are in ui/styles.css (:root[data-theme="light"]) and, for the sales pages, features/marketing/marketing.css.
+   This file is everything else the day needs:
+     1  tokens of the day only (glass, beam, spectrum)
+     2  the ground, and the living layer of the public pages (ui/DayBackdrop.tsx): aurora, circuit traces, light pulses
+     3  ice-glass panels
+     4  buttons: the beam and the ice-glass secondary
+     5  spectrum icon chips
+     7  sign-in and the other public frames
+     8  workspace: the same ice, a still ground, calm work screens
+   Section 6, the sales pages, is features/marketing/daylight.css: it ships with those pages only (never in the LBS bundle).
+   Every rule is scoped to the VYNTEX day (light theme, not the LBS brand), so night and the LBS brand layer are untouched.
+   Motion: transforms, opacity and dash offsets only; nothing ambient with reduced motion (the global rule in styles.css
+   stops it, and the rules at the end leave a finished, still picture); phones get a lighter layer.
+   ========================================================================================================================== */
+
+/* ---------- 1. tokens ---------- */
+:root[data-theme="light"]:not([data-brand="lbs"]){
+  /* ice glass: frosted white over the ground, a white edge, a faint blue ring and a blue-tinted lift */
+  --dc-glass:linear-gradient(160deg,rgba(255,255,255,.82),rgba(236,246,255,.62));
+  --dc-glass-strong:linear-gradient(160deg,rgba(255,255,255,.94),rgba(240,248,255,.86));
+  --dc-glass-solid:linear-gradient(160deg,#FFFFFF,#EEF6FF);
+  --dc-edge:rgba(255,255,255,.95);
+  --dc-ring:0 0 0 1px rgba(10,139,240,.12);
+  --dc-lift:0 18px 40px -16px rgba(11,63,168,.32);
+  --dc-panel:inset 0 1px 0 rgba(255,255,255,.9),0 0 0 1px rgba(10,139,240,.12),0 18px 40px -16px rgba(11,63,168,.32);
+  --dc-panel-hover:inset 0 1px 0 #fff,0 0 0 1px rgba(0,190,240,.55),0 24px 50px -16px rgba(10,111,224,.48),0 0 30px -4px rgba(0,221,255,.30);
+  --dc-blur:blur(14px) saturate(1.4);
+  /* the beam: cobalt into VYNTEX blue. vyntexusa.com ends it in #0094D6; here the bright end stops at #0072C6 so white
+     button text holds AA (4.9:1 at its lightest), and the cyan rides on the lower edge, the glow and the sheen instead */
+  --dc-beam:linear-gradient(100deg,#0B3FA8 0%,#0A62D6 48%,#0072C6 100%);
+  --dc-beam-glow:0 0 0 1px rgba(11,63,168,.35),0 10px 26px -8px rgba(10,111,224,.70),0 0 22px -6px rgba(0,180,240,.55);
+  /* the spectrum: neighbouring icon tiles cycle through these four */
+  --dc-spec-1:linear-gradient(135deg,#0B3FA8 0%,#0A8BF0 100%);
+  --dc-spec-2:linear-gradient(135deg,#0A7FE6 0%,#00C4F0 100%);
+  --dc-spec-3:linear-gradient(135deg,#0E7490 0%,#00C8EC 100%);
+  --dc-spec-4:linear-gradient(135deg,#34486A 0%,#7D93B5 100%);
+  --dc-spectrum:linear-gradient(90deg,#0B3FA8 0%,#0A8BF0 50%,#00DDFF 100%);
+}
+
+/* ---------- 2. the ground ---------- */
+/* the base gradient and the still aurora tint are the --ground token (styles.css), on a fixed layer behind every page */
+:root[data-theme="light"]:not([data-brand="lbs"]) body{background:#D6E8F8}
+
+/* the living layer: the public pages only (ui/DayBackdrop.tsx renders it there and nowhere else) */
+.dc-sky{display:none}
+:root[data-theme="light"]:not([data-brand="lbs"]) .dc-sky{display:block;position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;contain:strict}
+
+/* aurora: four wide light fields (cobalt, blue, cyan, white) that drift and breathe. Transforms only, no blur filter:
+   the softness is in the gradients themselves. */
+.dc-aurora i{position:absolute;display:block;border-radius:50%;will-change:transform;animation:dc-drift-1 26s ease-in-out infinite alternate}
+.dc-a1{left:-18vmax;top:-26vmax;width:78vmax;height:62vmax;background:radial-gradient(closest-side,rgba(11,63,168,.22),rgba(11,63,168,.07) 55%,transparent)}
+.dc-a2{right:-22vmax;top:-18vmax;width:84vmax;height:70vmax;background:radial-gradient(closest-side,rgba(10,139,240,.28),rgba(10,139,240,.08) 58%,transparent);animation-name:dc-drift-2!important;animation-duration:30s!important}
+.dc-a3{left:6vmax;bottom:-34vmax;width:80vmax;height:64vmax;background:radial-gradient(closest-side,rgba(0,221,255,.30),rgba(0,221,255,.08) 58%,transparent);animation-name:dc-drift-3!important;animation-duration:22s!important}
+.dc-a4{left:24vmax;top:-12vmax;width:60vmax;height:36vmax;background:radial-gradient(closest-side,rgba(255,255,255,.62),rgba(255,255,255,.18) 60%,transparent);animation-name:dc-drift-4!important;animation-duration:24s!important}
+@keyframes dc-drift-1{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(14vmax,10vmax,0) scale(1.14)}}
+@keyframes dc-drift-2{from{transform:translate3d(0,0,0) scale(1.08)}to{transform:translate3d(-16vmax,14vmax,0) scale(.94)}}
+@keyframes dc-drift-3{from{transform:translate3d(0,0,0) scale(.96)}to{transform:translate3d(18vmax,-12vmax,0) scale(1.12)}}
+@keyframes dc-drift-4{from{transform:translate3d(-6vmax,0,0) scale(1)}to{transform:translate3d(10vmax,4vmax,0) scale(1.2)}}
+
+/* circuit traces in the language of the mark: straight runs, 45 degree bends, small round nodes */
+.dc-circuit{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.dc-narrow{display:none}
+.dc-traces path{fill:none;stroke:rgba(11,63,168,.20);stroke-width:1.4;stroke-linejoin:round}
+/* the light: a short cyan dash that travels each trace, then rests; a soft glow around it */
+.dc-pulses{filter:drop-shadow(0 0 3px rgba(0,221,255,.95)) drop-shadow(0 0 7px rgba(10,139,240,.55))}
+.dc-pulses path{fill:none;stroke:#00DDFF;stroke-width:2.4;stroke-linecap:round;stroke-dasharray:7 193;stroke-dashoffset:7;opacity:0;
+  animation:dc-run var(--dc-d,10s) linear var(--dc-t,0s) infinite}
+@keyframes dc-run{0%{stroke-dashoffset:7;opacity:0}4%{opacity:1}56%{stroke-dashoffset:-100;opacity:1}60%,100%{stroke-dashoffset:-100;opacity:0}}
+.dc-nodes circle{fill:#F4FAFF;stroke:#0A6FE0;stroke-width:1.4;transform-box:fill-box;transform-origin:center;animation:dc-node 5s ease-in-out var(--dc-t,0s) infinite}
+@keyframes dc-node{0%,100%{opacity:.55;transform:scale(.85)}50%{opacity:1;transform:scale(1.25)}}
+
+/* the light under the pointer (fine pointers only; ui/DayBackdrop.tsx moves it) */
+.dc-glow{position:absolute;left:-260px;top:-260px;width:520px;height:520px;border-radius:50%;opacity:0;
+  background:radial-gradient(closest-side,rgba(255,255,255,.55),rgba(196,241,255,.30) 45%,transparent);transition:opacity 600ms var(--ease-vyntex)}
+.dc-glow[data-on]{opacity:1}
+
+/* phones: the narrow board, two fields fewer, and slower light */
+@media (max-width:700px){
+  .dc-wide{display:none}.dc-narrow{display:block}
+  .dc-a4,.dc-glow{display:none}
+  .dc-aurora{opacity:.72}
+  .dc-aurora i{animation-duration:34s!important}
+  .dc-pulses{filter:drop-shadow(0 0 3px rgba(0,221,255,.9))}
+}
+@media (prefers-reduced-motion:reduce){
+  .dc-pulses,.dc-glow{display:none}
+  .dc-nodes circle{opacity:.8}
+}
+@media print{.dc-sky{display:none!important}}
+
+/* ---------- 3. ice-glass panels ---------- */
+/* the workspace keeps them light: the glass fill without the blur, since nothing moves behind its data */
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.card,.kpi,.kcol){
+  background:var(--dc-glass);border-color:var(--dc-edge);box-shadow:var(--dc-panel)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .card.raised{background:var(--dc-glass-strong)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .card.premium{background:linear-gradient(160deg,rgba(10,111,224,.10),transparent 46%),var(--dc-glass-strong);border-color:rgba(10,111,224,.34);box-shadow:var(--dc-panel),0 0 26px -6px rgba(0,190,240,.30)}
+/* on the public pages the panels are frosted for real: the aurora moves behind them (the sales pages add theirs in
+   features/marketing/daylight.css) */
+:root[data-theme="light"]:not([data-brand="lbs"]) .auth :is(.card,.auth-form){
+  -webkit-backdrop-filter:var(--dc-blur);backdrop-filter:var(--dc-blur)}
+/* things you can open lift with a cyan ring and a stronger blue glow */
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(button.kpi,a.kpi,.kcard):hover{border-color:rgba(0,190,240,.6);box-shadow:var(--dc-panel-hover)}
+/* floating layers stay opaque so text over them never fights the page */
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.menu,.pop,.dm-pop,.modal){background:var(--dc-glass-solid);border-color:var(--dc-edge);box-shadow:var(--dc-ring),var(--shadow)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .palette{background:rgba(250,253,255,.92);-webkit-backdrop-filter:var(--dc-blur);backdrop-filter:var(--dc-blur)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .overlay{background:rgba(6,22,48,.42)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .toast{background:var(--dc-glass-solid);box-shadow:var(--dc-ring),var(--shadow)}
+/* inputs: clear ice with a blue-tinted edge */
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.input,.field input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]),.field select,.field textarea,.searchbox input,.filters select){
+  background:rgba(255,255,255,.88);border-color:rgba(46,88,150,.34)}
+/* notes and results: the tint of their status over white, so amber stays amber on the blue ground */
+:root[data-theme="light"]:not([data-brand="lbs"]) .note{background:linear-gradient(var(--accent-soft),var(--accent-soft)),rgba(255,255,255,.9)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .note.warn{background:linear-gradient(rgba(214,150,0,.13),rgba(214,150,0,.13)),rgba(255,255,255,.9)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .note.bad{background:linear-gradient(var(--bad-soft),var(--bad-soft)),rgba(255,255,255,.9)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .seg{background:rgba(255,255,255,.62);border-color:rgba(46,88,150,.24)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .seg button[aria-pressed="true"],:root[data-theme="light"]:not([data-brand="lbs"]) .seg button[aria-selected="true"]{background:#fff;box-shadow:inset 0 -2px 0 var(--accent),0 2px 6px -2px rgba(11,63,168,.30)}
+
+/* ---------- 4. buttons ---------- */
+/* secondary: white ice glass with a blue-tinted edge */
+:root[data-theme="light"]:not([data-brand="lbs"]) .btn:not(.primary):not(.ghost):not(.danger):not(.outline){
+  background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(232,243,255,.82));border-color:rgba(10,98,214,.26);color:var(--text);box-shadow:inset 0 1px 0 #fff,0 4px 12px -6px rgba(11,63,168,.35)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .btn:not(.primary):not(.ghost):not(.danger):not(.outline):hover{border-color:rgba(0,170,230,.6);background:linear-gradient(180deg,#fff,rgba(226,242,255,.92));box-shadow:inset 0 1px 0 #fff,0 0 0 1px rgba(0,190,240,.25),0 8px 18px -8px rgba(10,111,224,.45)}
+/* primary: the beam, white text, a glow */
+:root[data-theme="light"]:not([data-brand="lbs"]) .btn.primary{
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.34) 50%,transparent 70%) -160% 0/240% 100% no-repeat,var(--dc-beam);
+  border-color:transparent;color:#fff;text-shadow:0 1px 1px rgba(6,22,48,.30);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -2px 0 rgba(0,221,255,.75),var(--dc-beam-glow)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .btn.primary:hover{filter:brightness(1.08) saturate(1.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -2px 0 #00DDFF,0 0 0 1px rgba(0,190,240,.45),0 12px 30px -8px rgba(10,111,224,.80),0 0 28px -4px rgba(0,200,245,.60)}
+/* on the public pages the sheen travels the beam slowly, every few seconds (the sales pages: features/marketing/daylight.css) */
+:root[data-theme="light"]:not([data-brand="lbs"]) .auth .btn.primary{animation:dc-sheen 7s ease-in-out 1.2s infinite}
+@keyframes dc-sheen{0%{background-position:-160% 0,0 0}38%,100%{background-position:260% 0,0 0}}
+:root[data-theme="light"]:not([data-brand="lbs"]) .btn.ghost:hover,:root[data-theme="light"]:not([data-brand="lbs"]) .iconbtn:hover{background:rgba(255,255,255,.6)}
+
+/* ---------- 5. spectrum icon chips ---------- */
+/* a brand gradient tile with a white glyph; neighbours cycle cobalt>blue, blue>cyan, teal>cyan, steel (the sales pages
+   cycle theirs in features/marketing/daylight.css) */
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.vx-frame-b,.empty>svg,.dash-quiet-ico,.dash-tour-ico){
+  background:var(--dc-spec-1);color:#fff;border-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 14px -6px rgba(11,63,168,.55)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .palette .hit[aria-selected="true"] .ic{background:var(--dc-spec-1);color:#fff}
+:root[data-theme="light"]:not([data-brand="lbs"]) .dash-tour-ico{box-sizing:content-box;padding:5px;border-radius:7px}
+/* the empty states keep their circuit node, now in the beam colours */
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.empty:has(> svg),.dash-quiet-ico)::after{background:#00B4E2;box-shadow:0 0 6px rgba(0,221,255,.8);opacity:1}
+:root[data-theme="light"]:not([data-brand="lbs"]) .dash-quiet.ok .dash-quiet-ico{background:linear-gradient(135deg,#0A6340,#14A06A);color:#fff}
+
+/* ---------- 7. sign-in and the other public frames ---------- */
+/* the brand panel stays dark; the form side sits on the living ground, the form on a sheet of ice glass */
+:root[data-theme="light"]:not([data-brand="lbs"]) .auth-form{position:relative;padding:34px 36px;border:1px solid var(--dc-edge);border-radius:18px;background:var(--dc-glass);box-shadow:var(--dc-panel)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .auth-form::before{content:"";position:absolute;left:28px;right:28px;top:-1px;height:2px;border-radius:2px;background:var(--dc-spectrum)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .auth-foot{border-top-color:rgba(46,88,150,.22)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .auth-pick button{background:rgba(255,255,255,.8)}
+@media (max-width:900px){:root[data-theme="light"]:not([data-brand="lbs"]) .auth-form{padding:24px 20px;border-radius:14px;margin-top:10px}}
+
+/* ---------- 8. workspace ---------- */
+/* the settings preview draws the dark sidebar too: its initials keep the night cyan unless a company colour is chosen */
+:root[data-theme="light"]:not([data-brand="lbs"]) .settings-preview:not([data-custom]) .settings-pv-side{--accent:#00DDFF;--accent-soft:rgba(0,200,255,.11);--accent-line:rgba(0,221,255,.36)}
+/* the still ground shows through: the top bar and the demo bar are frosted ice with the spectrum underline */
+:root[data-theme="light"]:not([data-brand="lbs"]) .topbar{background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(232,243,255,.58));-webkit-backdrop-filter:var(--dc-blur);backdrop-filter:var(--dc-blur);border-bottom-color:rgba(46,88,150,.18)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .demobar{background:linear-gradient(90deg,rgba(255,255,255,.62),rgba(225,240,255,.55));border-bottom:0;box-shadow:inset 0 -2px 0 transparent;position:relative}
+:root[data-theme="light"]:not([data-brand="lbs"]) .demobar::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#0B3FA8,#0A8BF0 50%,#00DDFF);opacity:.75;pointer-events:none}
+:root[data-theme="light"]:not([data-brand="lbs"]) .topbar .gs{background:rgba(255,255,255,.82);border-color:rgba(46,88,150,.26)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .demobar select{background:rgba(255,255,255,.85)}
+/* KPI tiles: glass, the cut corner in the ground colour, and a spectrum edge that cycles along the row */
+:root[data-theme="light"]:not([data-brand="lbs"]) .kpi::after{background:linear-gradient(225deg,#D4E7F8 50%,transparent 50%)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .kpi::before{width:44px;height:3px;top:-1.5px;background:var(--dc-spec-1);opacity:1}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.kpis,.dash-kpis)>:nth-child(4n+2)::before{background:var(--dc-spec-2)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.kpis,.dash-kpis)>:nth-child(4n+3)::before{background:var(--dc-spec-3)}
+:root[data-theme="light"]:not([data-brand="lbs"]) :is(.kpis,.dash-kpis)>:nth-child(4n+4)::before{background:var(--dc-spec-4)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .card.premium::before{background:var(--dc-spectrum);height:3px}
+/* the boards: a tinted ice column with white cards */
+:root[data-theme="light"]:not([data-brand="lbs"]) .kcard{background:rgba(255,255,255,.92);border-color:rgba(46,88,150,.16)}
+:root[data-theme="light"]:not([data-brand="lbs"]) .tbl tbody tr.click:hover,:root[data-theme="light"]:not([data-brand="lbs"]) .item.click:hover{background:rgba(10,139,240,.10)}
+
+/* reduced motion: the still picture (the global rule in styles.css has already stopped every animation) */
+@media (prefers-reduced-motion:reduce){
+}

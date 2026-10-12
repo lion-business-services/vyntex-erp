@@ -10,7 +10,10 @@ import { BrandLockup } from '@/brand';
 import type { SignPayload, SignerView } from '@/domain/esign/types';
 import { SigningFlow, type SigningAdapter, type SubmitResult } from '@/features/esign/signing';
 import { useTitle } from './title';
+import { ThemeToggle } from '@/ui/ThemeToggle';
 import '@/features/esign/esign.css';
+
+declare const __VX_DEPLOY__: string | undefined;
 
 /** What the server answers. The addresses and shapes are the contract the server side is built to. */
 interface ViewAnswer { ok: boolean; view?: SignerView; reason?: string }
@@ -52,7 +55,7 @@ export function SignPage({ token }: { token?: string }) {
   const adapter = useMemo(() => linkAdapter(token ?? ''), [token]);
   return (
     <div className="es-public" data-testid="public-sign">
-      <header className="es-public-head"><BrandLockup size="sm" /></header>
+      <header className="es-public-head"><BrandLockup size="sm" />{(typeof __VX_DEPLOY__ === 'undefined' || __VX_DEPLOY__ !== 'lbs') && <ThemeToggle />}</header>
       <main id="main" className="es-public-main"><SigningFlow adapter={adapter} wording={(l) => makeT(l ?? lang, pack)} /></main>
       <footer className="es-public-foot small muted">{t('esign.sign.foot')}</footer>
     </div>

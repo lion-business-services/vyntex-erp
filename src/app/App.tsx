@@ -11,7 +11,7 @@ import { moduleExists } from './modules';
 import { NoAccess } from './shared';
 import { Empty, Overlays, Button } from '@/ui';
 import { hasSample, loadSample, setPrefs, useStore } from '@/store/store';
-import { DEPLOY } from '@/config/deployment';
+import { applyTheme } from '@/ui/theme';
 import { isLive, onSession, session } from '@/platform/session';
 
 // Read straight from the build constant (not through DEPLOY) so the bundler leaves the sales pages and the tour out of a
@@ -89,9 +89,9 @@ export function App() {
   const who = useSession();
   const top = route.parts[0] || '';
   const ws = workspaceOf(route.path);
-  // the sales pages are always dark (the brand); everything else follows the visitor's choice
-  const theme = ws.mode || !DEPLOY.marketing ? prefs.theme : 'dark';
-  useEffect(() => { document.documentElement.dataset.theme = theme; document.documentElement.lang = prefs.lang; }, [theme, prefs.lang]);
+  // every page, the sales pages included, follows the visitor's theme (day unless they picked night)
+  useEffect(() => { applyTheme(prefs.theme); }, [prefs.theme]);
+  useEffect(() => { document.documentElement.lang = prefs.lang; }, [prefs.lang]);
 
   let page;
   if (ws.mode === 'demo') page = <SampleWorkspace />;

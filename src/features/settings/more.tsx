@@ -4,7 +4,7 @@ import { LuArrowRight, LuDownload, LuFileDown, LuRotateCcw } from 'react-icons/l
 import { useApp } from '@/app/hooks';
 import { A, PREVIEW } from '@/app/router';
 import { DemoTag, PlanBadge } from '@/app/shared';
-import { act, mutate, resetDemo, setLanguage, setPrefs } from '@/store/store';
+import { act, mutate, resetDemo, setLanguage } from '@/store/store';
 import { Badge, Button, Card, Note, Seg, confirmDialog, toast } from '@/ui';
 import { RULES } from '@/domain/automations';
 import { planName } from '@/lib/pricing';
@@ -16,6 +16,7 @@ import type { Permission } from '@/domain/permissions';
 import { ops, saveFile } from '@/features/security/ops';
 import { reasonText } from '@/features/security/parts';
 import { StepUpHost } from '@/features/security/stepup';
+import { switchTheme } from '@/ui/theme';
 import { downloadFile, emailSendingRule } from './helpers';
 import { defaultLang, setDefaultLang } from './actions';
 
@@ -84,7 +85,7 @@ export function AppearanceSection() {
           </div>
           <div>
             <div className="label">{t('demo.theme')}</div>
-            <Seg<'dark' | 'light'> label={t('demo.theme')} value={prefs.theme} onChange={(v) => setPrefs({ theme: v })} options={[{ value: 'dark', label: <span data-testid="settings-theme-dark">{t('demo.dark')}</span> }, { value: 'light', label: <span data-testid="settings-theme-light">{t('demo.light')}</span> }]} />
+            <Seg<'dark' | 'light'> label={t('demo.theme')} value={prefs.theme} onChange={(v) => switchTheme(v, document.querySelector('[data-testid=settings-theme-' + v + ']'))} options={[{ value: 'dark', label: <span data-testid="settings-theme-dark">{t('demo.dark')}</span> }, { value: 'light', label: <span data-testid="settings-theme-light">{t('demo.light')}</span> }]} />
             <p className="xs dim settings-hint">{t('settings.look.themeHint')}</p>
           </div>
         </div>

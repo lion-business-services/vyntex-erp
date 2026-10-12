@@ -1,16 +1,16 @@
 // Puts the day/night theme on the page before the first paint, so it never flashes the other one while the app loads.
 // A separate file because the Content-Security-Policy allows no inline script. Mirrors loadPrefs in src/store/store.ts:
-// a ?theme=light|dark handed over by vyntexusa.com wins; otherwise night only when the visitor picked it (themeSet);
-// day is the default.
+// a ?theme=light|dark handed over by vyntexusa.com wins, then the choice shared by vyntexusa.com (cookie), then day
+// only when the visitor picked it here (themeChosen); night is the default.
 (function () {
-  var theme = 'light';
+  var theme = 'dark';
   try {
     var p = JSON.parse(localStorage.getItem('vyntex.prefs') || '{}') || {};
-    if (p.theme === 'dark' && p.themeSet === true) theme = 'dark';
+    if (p.theme === 'light' && p.themeChosen === true) theme = 'light';
   } catch (e) { /* storage blocked: keep the default */ }
   try {
     // shared with vyntexusa.com (a cookie on .vyntexusa.com): a switch on either site carries over to the other
-    var c = /(?:^|;\s*)vx_theme=(light|dark)/.exec(document.cookie);
+    var c = /(?:^|;\s*)vx_mode=(light|dark)/.exec(document.cookie);
     if (c) theme = c[1];
   } catch (e) { /* cookies blocked */ }
   try {

@@ -41,9 +41,9 @@ const STALE_AFTER_DAYS = 3;
 export interface Prefs {
   lang: Lang;
   theme: 'dark' | 'light';
-  /** True once the viewer picked a theme. Until then the deployment's default applies, so a value saved only because it
-   *  was the old default (VYNTEX used to start dark) never pins anyone to it. */
-  themeSet: boolean;
+  /** True once the viewer picked a theme. Until then the deployment's default applies. Renamed from `themeSet` when
+   *  night became the default (Oct 2026), so every browser starts on night once and later picks are kept. */
+  themeChosen: boolean;
   pack: IndustryId;
   viewAs: ViewAs;
   /** Plan being previewed: 0 entry, 1 middle, 2 top. */
@@ -62,26 +62,24 @@ const storage = {
 const offered = (lang: unknown): lang is Lang => typeof lang === 'string' && (DEPLOY.languages as string[]).includes(lang);
 /** The edition this deployment starts in: the one it is locked to, or VYNTEX BUILD. */
 const HOME_PACK: IndustryId = DEPLOY.lockedEdition ?? 'build';
-/** The theme a first visit gets: day for VYNTEX, while LBS keeps the dark look it was designed in. */
-export const DEFAULT_THEME: Prefs['theme'] = DEPLOY.id === 'lbs' ? 'dark' : 'light';
+/** The theme a first visit gets: night, on every device and whatever the system appearance. */
+export const DEFAULT_THEME: Prefs['theme'] = 'dark';
 
 function defaultPrefs(): Prefs {
   let lang: Lang = 'en';
   try { const nav = navigator.language?.toLowerCase().slice(0, 2); if (offered(nav)) lang = nav; } catch { /* keep English */ }
-  return { lang, theme: DEFAULT_THEME, themeSet: false, pack: HOME_PACK, viewAs: 'owner', planTier: 1, tourSeen: false };
+  return { lang, theme: DEFAULT_THEME, themeChosen: false, pack: HOME_PACK, viewAs: 'owner', planTier: 1, tourSeen: false };
 }
 function loadPrefs(): Prefs {
   const p = defaultPrefs();
   let handedOver = false;
   try { Object.assign(p, JSON.parse(storage.get(PREFS_KEY) || '{}')); } catch { /* ignore */ }
-  // A theme nobody chose follows the deployment's default. Before the flag existed every browser saved 'dark' (the old
-  // default) whether or not it was picked, so only a saved 'light' is known to be a choice; a bare 'dark' is not.
-  if (p.themeSet !== true) p.themeSet = p.theme === 'light';
-  if (!p.themeSet || (p.theme !== 'dark' && p.theme !== 'light')) { p.theme = DEFAULT_THEME; p.themeSet = false; }
+  // A theme nobody chose follows the default (night).
+  if (!p.themeChosen || (p.theme !== 'dark' && p.theme !== 'light')) { p.theme = DEFAULT_THEME; p.themeChosen = false; }
   // The day/night choice is shared with vyntexusa.com through a cookie on .vyntexusa.com (see src/ui/theme.ts), so a
   // switch on either site is what the other one opens with. It outranks this browser's older saved value.
   if (DEPLOY.id !== 'lbs') {
-    try { const c = /(?:^|;\s*)vx_theme=(light|dark)/.exec(document.cookie)?.[1]; if (c === 'light' || c === 'dark') { p.theme = c; p.themeSet = true; } } catch { /* cookies blocked */ }
+    try { const c = /(?:^|;\s*)vx_mode=(light|dark)/.exec(document.cookie)?.[1]; if (c === 'light' || c === 'dark') { p.theme = c; p.themeChosen = true; } } catch { /* cookies blocked */ }
   }
   try {
     const q = new URLSearchParams(location.search);
@@ -91,7 +89,7 @@ function loadPrefs(): Prefs {
     // Only VYNTEX reads it, and it is then taken out of the address so a shared or bookmarked link does not pin it.
     // Nothing else reads this parameter (the router keeps its own copy of the query, which is harmless).
     const theme = DEPLOY.id === 'lbs' ? null : q.get('theme');
-    if (theme === 'light' || theme === 'dark') { p.theme = theme; p.themeSet = true; handedOver = true; }
+    if (theme === 'light' || theme === 'dark') { p.theme = theme; p.themeChosen = true; handedOver = true; }
     if (theme !== null && !(window as unknown as { __VX_PREVIEW__?: boolean }).__VX_PREVIEW__) {
       q.delete('theme');
       const rest = q.toString();
@@ -172,7 +170,7 @@ function commit(persistData = true) {
   snapshot = { prefs, data };
   // Someone signed in keeps their own choices (language, theme) in this browser. The edition, the role and the plan of a
   // live workspace belong to the company, so the choices saved for the sample workspace are left as they were.
-  storage.set(PREFS_KEY, JSON.stringify(samplePrefs ? { ...samplePrefs, lang: prefs.lang, theme: prefs.theme, themeSet: prefs.themeSet } : prefs));
+  storage.set(PREFS_KEY, JSON.stringify(samplePrefs ? { ...samplePrefs, lang: prefs.lang, theme: prefs.theme, themeChosen: prefs.themeChosen } : prefs));
   // business records of a live workspace are never written to browser storage
   if (isLive()) { if (persistData) syncSoon(); }
   else if (persistData && sampleLoaded) storage.set(dataKey(data.pack), JSON.stringify(data));
@@ -229,7 +227,7 @@ export function setPrefs(patch: Partial<Prefs>) {
   if (isLive()) { const { viewAs: _role, pack: _pack, ...rest } = patch; patch = rest; }
   if (patch.lang && !offered(patch.lang)) patch = { ...patch, lang: prefs.lang };
   // picking a theme is the one way it becomes the viewer's own choice
-  if (patch.theme) patch = { ...patch, themeSet: true };
+  if (patch.theme) patch = { ...patch, themeChosen: true };
   prefs = { ...prefs, ...patch };
   commit(false);
 }
@@ -369,7 +367,7 @@ export function endLive(): void {
   clearTimeout(timer); syncFn = null; acked = null; busy = false; again = false; unavailable = new Set();
   setSession(null);
   // back to the choices this browser had for the sample workspace, keeping the language and theme chosen meanwhile
-  prefs = samplePrefs ? { ...samplePrefs, lang: prefs.lang, theme: prefs.theme, themeSet: prefs.themeSet } : { ...prefs, viewAs: 'owner' };
+  prefs = samplePrefs ? { ...samplePrefs, lang: prefs.lang, theme: prefs.theme, themeChosen: prefs.themeChosen } : { ...prefs, viewAs: 'owner' };
   samplePrefs = null;
   data = blankData(prefs.pack, prefs.lang);
   resetSyncStatus();

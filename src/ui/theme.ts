@@ -31,7 +31,7 @@ export function shareTheme(theme: Theme): void {
   try {
     if (document.documentElement.dataset.brand === 'lbs') return;
     const host = location.hostname, parent = host === 'vyntexusa.com' || host.endsWith('.vyntexusa.com');
-    document.cookie = `vx_theme=${theme}; Path=/; Max-Age=31536000; SameSite=Lax${parent ? '; Domain=.vyntexusa.com' : ''}${location.protocol === 'https:' ? '; Secure' : ''}`;
+    document.cookie = `vx_mode=${theme}; Path=/; Max-Age=31536000; SameSite=Lax${parent ? '; Domain=.vyntexusa.com' : ''}${location.protocol === 'https:' ? '; Secure' : ''}`;
   } catch { /* cookies blocked: the choice still lives in this browser's preferences */ }
 }
 

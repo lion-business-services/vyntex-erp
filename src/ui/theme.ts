@@ -26,12 +26,12 @@ interface Transition { ready: Promise<void>; finished: Promise<void> }
 /** View transitions, typed here so the code does not depend on the DOM typings of a given TypeScript version. */
 interface VTDocument { startViewTransition?: (cb: () => void) => Transition }
 
-/** Shares the choice with vyntexusa.com: a cookie on the parent domain that both sites read (VYNTEX only, not LBS). */
+/** Shares the choice with vyntexusa.com for this browser session only (no expiry date): the next visit opens in night. */
 export function shareTheme(theme: Theme): void {
   try {
     if (document.documentElement.dataset.brand === 'lbs') return;
     const host = location.hostname, parent = host === 'vyntexusa.com' || host.endsWith('.vyntexusa.com');
-    document.cookie = `vx_mode=${theme}; Path=/; Max-Age=31536000; SameSite=Lax${parent ? '; Domain=.vyntexusa.com' : ''}${location.protocol === 'https:' ? '; Secure' : ''}`;
+    document.cookie = `vx_mode=${theme}; Path=/; SameSite=Lax${parent ? '; Domain=.vyntexusa.com' : ''}${location.protocol === 'https:' ? '; Secure' : ''}`;
   } catch { /* cookies blocked: the choice still lives in this browser's preferences */ }
 }
 

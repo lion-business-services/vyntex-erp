@@ -74,18 +74,16 @@ function loadPrefs(): Prefs {
   const p = defaultPrefs();
   let handedOver = false;
   try { Object.assign(p, JSON.parse(storage.get(PREFS_KEY) || '{}')); } catch { /* ignore */ }
-  // A theme nobody chose follows the default (night).
-  if (!p.themeChosen || (p.theme !== 'dark' && p.theme !== 'light')) { p.theme = DEFAULT_THEME; p.themeChosen = false; }
-  // The day/night choice is shared with vyntexusa.com through a cookie on .vyntexusa.com (see src/ui/theme.ts), so a
-  // switch on either site is what the other one opens with. It outranks this browser's older saved value.
-  if (DEPLOY.id !== 'lbs') {
-    try { const c = /(?:^|;\s*)vx_mode=(light|dark)/.exec(document.cookie)?.[1]; if (c === 'light' || c === 'dark') { p.theme = c; p.themeChosen = true; } } catch { /* cookies blocked */ }
-  }
+  // Every visit opens in night, on every device and whatever the system appearance (owner's rule). A switch to day
+  // lasts for that visit only: it is never remembered, here or through the cookie shared with vyntexusa.com.
+  if (DEPLOY.id !== 'lbs') { p.theme = DEFAULT_THEME; p.themeChosen = false; }
+  // LBS Command keeps its own rule: a theme nobody chose follows the default (night).
+  else if (!p.themeChosen || (p.theme !== 'dark' && p.theme !== 'light')) { p.theme = DEFAULT_THEME; p.themeChosen = false; }
   try {
     const q = new URLSearchParams(location.search);
     const ind = q.get('industry'); if (isIndustry(ind)) p.pack = ind;
     const lang = q.get('lang'); if (offered(lang)) p.lang = lang;
-    // vyntexusa.com hands over the theme the visitor is using there (?theme=dark): an explicit choice, so it is kept.
+    // vyntexusa.com hands over the theme the visitor is using right now (?theme=dark): kept for this visit only.
     // Only VYNTEX reads it, and it is then taken out of the address so a shared or bookmarked link does not pin it.
     // Nothing else reads this parameter (the router keeps its own copy of the query, which is harmless).
     const theme = DEPLOY.id === 'lbs' ? null : q.get('theme');

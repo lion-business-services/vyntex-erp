@@ -1,6 +1,6 @@
 # NOVA security containment
 
-**Nothing here has been applied.** This folder holds a change for the live NOVA database (Supabase project "Nova-crm") and its undo. It is applied by a person, IN: Supabase Dashboard, when the owner says so. The build that produced VYNTEX Command never touches NOVA.
+**Nothing here has been applied.** This folder holds a change for the live NOVA database (Supabase project "Nova-crm") and its undo. It is applied by a person, IN: Supabase Dashboard, when the owner says so. The build that produced VYNTEX ERP never touches NOVA.
 
 NOVA is the older internal system of Lion Business Services. An audit of its code found weaknesses that are open today, while it is still in use. This change closes the ones that can be closed with permissions alone, without touching any client record and without changing how staff work. The rest is fixed by design in the new platform (`docs/security/legacy-defects.md`).
 

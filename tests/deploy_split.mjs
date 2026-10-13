@@ -1,7 +1,7 @@
 // Proves the two deployments are separate bundles: builds both into temporary folders and reads every file that was written.
 //   LBS Command      no sales pages (their wording, their styles, their code), no VYNTEX brand pictures, no /demo address,
 //                    no other edition's sample business; its own brand files are there.
-//   VYNTEX Command   no LBS brand files, no "LBS Command", and "Lion Business Services" only where the product has always
+//   VYNTEX ERP   no LBS brand files, no "LBS Command", and "Lion Business Services" only where the product has always
 //                    named the firm: the 1099 service of the pricing file is performed by it.
 // Usage: node tests/deploy_split.mjs      (npm run test:split)
 import { execFileSync } from 'node:child_process';
@@ -27,7 +27,7 @@ let bad = 0; let checks = 0;
 const check = (ok, what, detail = '') => { checks++; if (!ok) { bad++; console.error(`  ✗ ${what}${detail ? ': ' + detail : ''}`); } else console.log(`  ✓ ${what}`); };
 const absent = (b, label, needles) => { for (const n of needles) { const hit = where(b, n); check(!hit.length, `${label}: no "${n}"`, hit.slice(0, 3).join(', ')); } };
 
-console.log('building VYNTEX Command, LBS Command, and LBS Command with the sample preview');
+console.log('building VYNTEX ERP, LBS Command, and LBS Command with the sample preview');
 const vyntex = read(build('vyntex', []));
 const lbs = read(build('lbs', ['--deploy', 'lbs']));
 const lbsPreview = read(build('lbs-preview', ['--deploy', 'lbs'], { VX_SAMPLE_PREVIEW: '1' }));
@@ -38,7 +38,7 @@ const VYNTEX_BRAND = ['vyntex-v.webp', 'vyntex-v-sm.webp', 'vyntex-v-xs.webp', '
 const DEMO_ROUTE = ['"/demo"', "'/demo'", '`/demo', '/demo/', '"/pricing"', '"/request-demo"'];
 const OTHER_EDITIONS = ['Sample Builders LLC', 'VB-J-', 'Sparkle Sample Cleaning'];
 // the other product's name, the names of its editions, and lines only the pricing file and its wording have
-const VYNTEX_PRODUCT = ['VYNTEX Command', 'VYNTEX BUILD', 'VYNTEX CLEAN', 'test mode first', 'VYNTEX absorbs', 'price.f.core'];
+const VYNTEX_PRODUCT = ['VYNTEX ERP', 'VYNTEX BUILD', 'VYNTEX CLEAN', 'test mode first', 'VYNTEX absorbs', 'price.f.core'];
 
 for (const [label, b] of [['LBS', lbs], ['LBS preview', lbsPreview]]) {
   console.log(label);

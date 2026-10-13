@@ -7,7 +7,7 @@ import { setTestEnv, svixHeaders, ORIGIN } from './helpers.mjs';
 
 const KEY = 're_test_' + randomBytes(16).toString('hex');
 const WH = 'whsec_' + randomBytes(24).toString('base64');
-setTestEnv({ RESEND_API_KEY: KEY, SYSTEM_EMAIL_FROM: 'VYNTEX Command <system@mail.example.com>', RESEND_WEBHOOK_SECRET: WH });
+setTestEnv({ RESEND_API_KEY: KEY, SYSTEM_EMAIL_FROM: 'VYNTEX ERP <system@mail.example.com>', RESEND_WEBHOOK_SECRET: WH });
 const resend = (await import('../../api/_lib/integrations/providers/resend.js')).default;
 const { ProviderError } = await import('../../api/_lib/integrations/oauth.js');
 const { env } = await import('../../api/_lib/env.js');
@@ -86,7 +86,7 @@ test('sendEmail: the request Resend receives', async () => {
   assert.equal(init.headers.authorization, 'Bearer ' + KEY);
   assert.equal(init.headers['idempotency-key'], 'invite:abc');
   const body = JSON.parse(init.body);
-  assert.equal(body.from, 'VYNTEX Command <system@mail.example.com>');
+  assert.equal(body.from, 'VYNTEX ERP <system@mail.example.com>');
   assert.deepEqual(body.to, ['client@example.com']);
   assert.equal(body.subject, 'Hello Bcc: other@example.com', 'line breaks cannot be used to add headers');
   assert.equal(body.reply_to, 'office@example.com');

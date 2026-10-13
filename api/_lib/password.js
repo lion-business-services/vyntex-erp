@@ -14,7 +14,7 @@ const COMMON_BASES = new Set([
   'admin', 'administrator', 'iloveyou', 'monkey', 'dragon', 'football', 'baseball', 'superman', 'batman', 'trustno', 'sunshine',
   'princess', 'starwars', 'whatever', 'changeme', 'changeit', 'default', 'secret', 'master', 'login', 'access', 'hello', 'freedom',
   'michael', 'jennifer', 'jessica', 'charlie', 'shadow', 'summer', 'winter', 'spring', 'autumn', 'january', 'february', 'december',
-  'contrasena', 'contraseña', 'bienvenido', 'bienvenida', 'tequiero', 'teamo', 'vyntex', 'vyntexcommand', 'lbscommand', 'lionbusiness',
+  'contrasena', 'contraseña', 'bienvenido', 'bienvenida', 'tequiero', 'teamo', 'vyntex', 'vyntexcommand', 'vyntexerp', 'lbscommand', 'lionbusiness',
   'company', 'business', 'office', 'accounting', 'bookkeeping', 'quickbooks', 'taxes', 'payroll',
 ]);
 const COMMON_EXACT = new Set([

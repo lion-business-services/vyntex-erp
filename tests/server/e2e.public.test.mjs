@@ -21,7 +21,7 @@ let startedPg = false;
 const tokens = new Set();   // every link token seen by a test: none may appear in an answer
 
 async function startStack() {
-  setTestEnv({ RESEND_API_KEY: 're_test_' + randomBytes(16).toString('hex'), SYSTEM_EMAIL_FROM: 'VYNTEX Command <system@mail.example.com>' });
+  setTestEnv({ RESEND_API_KEY: 're_test_' + randomBytes(16).toString('hex'), SYSTEM_EMAIL_FROM: 'VYNTEX ERP <system@mail.example.com>' });
   if (process.env.VX_PG_PUBLIC_READY !== '1') {
     const r = spawnSync('bash', [path.join(root, 'tests/server/pg_local.sh'), 'start'], { env: pgEnv, encoding: 'utf8' });
     if (r.status !== 0) throw new Error('the local PostgreSQL did not start:\n' + r.stdout + r.stderr);

@@ -53,7 +53,7 @@ Do everything in the sandbox of each provider before production. Production tran
 4. IN: Vercel, the project's environment variables, set `SQUARE_APPLICATION_ID`, `SQUARE_APPLICATION_SECRET`,
    `SQUARE_ENVIRONMENT=sandbox`, `SQUARE_WEBHOOK_SIGNATURE_KEY`. Set them separately in each deployment (VYNTEX
    Command and LBS Command share nothing).
-5. IN: VYNTEX Command, Integrations, connect Square with a sandbox seller account. The card must read
+5. IN: VYNTEX ERP, Integrations, connect Square with a sandbox seller account. The card must read
    `<business name> (sandbox)`.
 6. IN: Square Developer Dashboard, send test events and take sandbox payments. Check the payment appears once.
 
@@ -67,7 +67,7 @@ Do everything in the sandbox of each provider before production. Production tran
 4. IN: Vercel, the project's environment variables, set `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`,
    `QUICKBOOKS_ENVIRONMENT=sandbox`, `QUICKBOOKS_WEBHOOK_VERIFIER_TOKEN`, and `QUICKBOOKS_APPROVED=true` (the card
    shows "provider approval pending" until this is true).
-5. IN: VYNTEX Command, Integrations, connect QuickBooks and choose the sandbox company. The card must read
+5. IN: VYNTEX ERP, Integrations, connect QuickBooks and choose the sandbox company. The card must read
    `<company name> (sandbox)`.
 
 ### Environment variables

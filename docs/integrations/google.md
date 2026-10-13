@@ -54,7 +54,7 @@ Each connection asks only for its own scopes (`include_granted_scopes` is left o
 
 ## 3. Google Cloud setup, step by step
 
-Do this once per deployment. VYNTEX Command and LBS Command are separate deployments: each gets its **own** Google
+Do this once per deployment. VYNTEX ERP and LBS Command are separate deployments: each gets its **own** Google
 Cloud project, client, key and topic. Nothing is shared between them.
 
 1. **IN: Google Cloud Console, project picker (top bar), New project.** Create one project for this deployment.

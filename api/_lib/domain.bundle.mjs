@@ -7152,7 +7152,7 @@ var DEPLOY = typeof __VX_DEPLOY__ !== "undefined" && __VX_DEPLOY__ === "lbs" ? {
   ]
 } : {
   id: "vyntex",
-  productName: "VYNTEX Command",
+  productName: "VYNTEX ERP",
   theme: "vyntex",
   lockedEdition: null,
   marketing: true,

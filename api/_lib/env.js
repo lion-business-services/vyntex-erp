@@ -2,7 +2,7 @@
 // Every server file reads its settings through here, so there is one list of what a deployment needs, one set of
 // parsing rules, and one promise: a value is never logged and never put in an answer. Only names are.
 //
-// VYNTEX Command and LBS Command are separate Vercel projects with separate values for everything below, and
+// VYNTEX ERP and LBS Command are separate Vercel projects with separate values for everything below, and
 // separate Supabase projects behind them. Nothing here is shared between the two.
 
 /** What each variable is for. `need`: 'core' = the workspace cannot run without it, 'feature' = one feature stays off, 'optional'. */

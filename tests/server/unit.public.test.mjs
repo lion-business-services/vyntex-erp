@@ -237,7 +237,7 @@ test('outgoing messages: consent, and what "no provider" does', async () => {
   // a message the server wrote: system email. Not set up means failed, never sent.
   calls.length = 0; db.message_get = () => msg({ system: true, link: sealToken({ url: ORIGIN + '/review/abc' }, 'msg-link:' + T) });
   assert.equal(await deliver(T, M), 'failed:not_connected');
-  process.env.RESEND_API_KEY = 're_test_' + randomBytes(12).toString('hex'); process.env.SYSTEM_EMAIL_FROM = 'VYNTEX Command <system@mail.example.com>';
+  process.env.RESEND_API_KEY = 're_test_' + randomBytes(12).toString('hex'); process.env.SYSTEM_EMAIL_FROM = 'VYNTEX ERP <system@mail.example.com>';
   let mailed = null;
   resend = (body, headers) => { mailed = { body, headers }; return new Response(JSON.stringify({ id: 'email_abc' }), { status: 200 }); };
   calls.length = 0;
@@ -264,7 +264,7 @@ test('emails: the signer email, the sealed queue copy, and a summary that names 
   assert.ok(!signerEmail({ kind: 'request', lang: 'en', company: 'A\r\nBcc: x@example.com', title: 't', name: 'n', link: 'l' }).subject.includes('\n'), 'no header can be slipped into the subject');
 
   // a notice that cannot be sent now goes to the queue sealed: no token, no address in the clear
-  process.env.RESEND_API_KEY = 're_test_' + randomBytes(12).toString('hex'); process.env.SYSTEM_EMAIL_FROM = 'VYNTEX Command <system@mail.example.com>';
+  process.env.RESEND_API_KEY = 're_test_' + randomBytes(12).toString('hex'); process.env.SYSTEM_EMAIL_FROM = 'VYNTEX ERP <system@mail.example.com>';
   resend = () => new Response('{}', { status: 500 });
   db.job_enqueue = () => '33333333-3333-4333-8333-333333333333';
   const t = token();
@@ -277,7 +277,7 @@ test('emails: the signer email, the sealed queue copy, and a summary that names 
 
   assert.equal(summaryEmail({ newLeads: 0, tasksDue: 0 }), null, 'a day with nothing to report sends nothing');
   const s = summaryEmail({ newLeads: 3, tasksDue: 1, appointmentsToday: 0, signaturesWaiting: 2, messagesFailed: 0, reviewsAnswered: 0, clientName: 'Sample Client' });
-  assert.equal(s.subject, 'Your daily summary from VYNTEX Command');
+  assert.equal(s.subject, 'Your daily summary from VYNTEX ERP');
   assert.ok(s.text.includes('3 new leads') && s.text.includes('3 prospectos nuevos') && !s.text.includes('appointments today') && !s.text.includes('Sample Client'));
 });
 

@@ -1,6 +1,6 @@
 // Which product this bundle is. One codebase builds two separate deployments (docs/MASTER-BUILD-SPEC.md, section 1):
 //
-//   vyntex   VYNTEX Command, the product sold to client companies: sales pages, public demo, a workspace per company.
+//   vyntex   VYNTEX ERP, the product sold to client companies: sales pages, public demo, a workspace per company.
 //   lbs      LBS Command, the standalone workspace of Lion Business Services: its own address, sign-in, database,
 //            storage, secrets and brand. No sales pages, no public demo, no plans, one edition.
 //
@@ -55,7 +55,7 @@ export const DEPLOY: Deployment = typeof __VX_DEPLOY__ !== 'undefined' && __VX_D
     ],
   }
   : {
-    id: 'vyntex', productName: 'VYNTEX Command', theme: 'vyntex', lockedEdition: null,
+    id: 'vyntex', productName: 'VYNTEX ERP', theme: 'vyntex', lockedEdition: null,
     marketing: true, publicDemo: true, samplePreview: false, showPlans: true,
     languages: ['en', 'es'], liveBase: 'slug',
     support: { email: 'info@vyntexusa.com', phone: '609-780-3218' },

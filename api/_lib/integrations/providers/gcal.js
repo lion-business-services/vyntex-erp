@@ -29,7 +29,7 @@ const MAX_PAGES = 20;
 
 const iso = (v) => { const t = Date.parse(v); return Number.isFinite(t) ? new Date(t).toISOString() : null; };
 const ms = (v) => { const t = Date.parse(v || ''); return Number.isFinite(t) ? t : 0; };
-const calendarName = (ctx) => ctx.env('GOOGLE_CALENDAR_NAME') || (ctx.env('VX_DEPLOY') === 'lbs' ? 'LBS Command' : 'VYNTEX Command');
+const calendarName = (ctx) => ctx.env('GOOGLE_CALENDAR_NAME') || (ctx.env('VX_DEPLOY') === 'lbs' ? 'LBS Command' : 'VYNTEX ERP');
 const eventsUrl = (calId) => `${API}/calendars/${seg(calId, CAL_ID)}/events`;
 
 /**

@@ -6,9 +6,9 @@ Each step names the software it happens in, in the form "IN: Supabase Dashboard,
 
 ## What is being deployed
 
-One repository, `lion-business-services/VYNTEX-COMMAND`, builds two separate products. They share the code and nothing else.
+One repository, `lion-business-services/vyntex-erp`, builds two separate products. They share the code and nothing else.
 
-| | VYNTEX Command | LBS Command |
+| | VYNTEX ERP | LBS Command |
 | --- | --- | --- |
 | For | Client companies of Vyntex LLC | Lion Business Services only |
 | Address | `command.vyntexusa.com` | `lbscommand.vyntexusa.com` |
@@ -29,7 +29,7 @@ Have these, or stop here.
 1. **The owner's go-ahead, in writing,** for each deployment separately.
 2. **Approval of the cost.** Creating a Supabase project may add cost, and so may a paid Vercel plan, a second Vercel team, a second Supabase organization and paid GitHub security features. The owner approves each one before it is created. Read the current prices on the vendors' own pricing pages; no price is written here.
 3. **Accounts,** each with two-factor sign-in on: GitHub, Vercel, Supabase, Resend, the domain registrar that holds `vyntexusa.com`, and each provider to be connected.
-4. **Two folders in the company password manager:** "VYNTEX Command" and "LBS Command". Every secret below goes into the folder of its deployment before it is used anywhere.
+4. **Two folders in the company password manager:** "VYNTEX ERP" and "LBS Command". Every secret below goes into the folder of its deployment before it is used anywhere.
 5. **A decision on where LBS lives:** in its own Supabase organization and its own Vercel team (recommended), or next to VYNTEX. See `docs/security/isolation.md`, "Who can open LBS".
 6. **The repository settings done:** `docs/security/github-settings.md`, all ten steps.
 7. **Green checks on `main`:** IN: GitHub (repository, Actions), the latest runs of CI and Secret scan passed.
@@ -40,7 +40,7 @@ Rules for every step:
 * Do one deployment from start to finish, then the other. Use a separate browser window (or browser profile) for each, and read the project name at the top of the page before every paste. The most likely serious mistake in this whole procedure is putting one deployment's key into the other's project.
 * If a step fails, stop. Copy the error text (it holds no secret) and send it to the developer. Do not continue with the next step.
 
-Sections 1 to 9 are done **twice**: once for VYNTEX Command, once for LBS Command. The examples say "the deployment's".
+Sections 1 to 9 are done **twice**: once for VYNTEX ERP, once for LBS Command. The examples say "the deployment's".
 
 ## 1. Create the Supabase project
 
@@ -48,7 +48,7 @@ Cost: owner's approval first (section 0).
 
 1. IN: Supabase Dashboard. Choose the organization for this deployment.
 2. IN: Supabase Dashboard. Press **New project**.
-3. Name: `vyntex-command` or `lbs-command`. The name must say which one it is.
+3. Name: `vyntex-erp` or `lbs-command`. The name must say which one it is.
 4. Database password: press **Generate a password**.
 5. IN: your password manager. Save that password in the deployment's folder as "Database password".
 6. IN: Supabase Dashboard. Region: the one closest to the users (for New Jersey, an East US region).
@@ -154,7 +154,7 @@ A new database requires the second step (an authenticator app) from nobody until
    ```
 
 3. The result is one row showing the four roles. If it shows no row, stop: the migrations were not applied completely.
-4. For VYNTEX Command, the owner decides whether the operator requires it for any role, or leaves it to each client company. Record the decision.
+4. For VYNTEX ERP, the owner decides whether the operator requires it for any role, or leaves it to each client company. Record the decision.
 
 To reconcile: the statement above is written from the table definition in that migration. The server document (planned as `docs/SERVER.md`) is to confirm it, or name the function to use instead.
 
@@ -190,8 +190,8 @@ Importing a repository into Vercel builds it and publishes it at a `vercel.app` 
 
 1. IN: Vercel. Choose the team for this deployment.
 2. IN: Vercel. Press **Add New**, then **Project**.
-3. Choose **Import Git Repository**, then `lion-business-services/VYNTEX-COMMAND`. If asked, install the Vercel GitHub app for that one repository only.
-4. Project name: `vyntex-command` or `lbs-command`.
+3. Choose **Import Git Repository**, then `lion-business-services/vyntex-erp`. If asked, install the Vercel GitHub app for that one repository only.
+4. Project name: `vyntex-erp` or `lbs-command`.
 5. Framework Preset: **Other**. Leave the build and output settings alone: they are read from `vercel.json`.
 6. Open **Environment Variables**. Before pressing Deploy, add the variables of the table below. For each one: type the name exactly, paste the value, tick **Sensitive** when the table says secret, and tick **Production** only.
 
@@ -209,7 +209,7 @@ Importing a repository into Vercel builds it and publishes it at a `vercel.app` 
    | `RESEND_API_KEY` | From step 5 | **yes** |
    | `SYSTEM_EMAIL_FROM` | A sender on the domain verified in Resend | no |
 
-   VYNTEX Command only: `DEMO_REQUEST_TO` and `DEMO_REQUEST_FROM` for the demo request form, and `ANTHROPIC_API_KEY` (secret) if the assistant is to answer in connected mode.
+   VYNTEX ERP only: `DEMO_REQUEST_TO` and `DEMO_REQUEST_FROM` for the demo request form, and `ANTHROPIC_API_KEY` (secret) if the assistant is to answer in connected mode.
 
    LBS Command only, optional: `VX_LINK_BOOKKEEPING` and `VX_LINK_PAYROLL`, the two client links shown on its home screen. They are public addresses, not secrets.
 
@@ -274,7 +274,7 @@ Do every line. Write the date and the result of each in the security log.
 
 1. `/api/health` on the deployment's address answers with `"ok": true`. It lists which settings are in place as yes or no, never a value.
 2. The padlock is shown, and the `http://` address redirects to `https://`.
-3. VYNTEX Command: `/`, `/pricing` and `/demo` load. LBS Command: `/` shows the sign-in page, and `/pricing` and `/demo` do not exist.
+3. VYNTEX ERP: `/`, `/pricing` and `/demo` load. LBS Command: `/` shows the sign-in page, and `/pricing` and `/demo` do not exist.
 4. An address that does not exist shows the "not found" page of the site, not an error.
 5. There is no page that lets a stranger create an account.
 
@@ -337,7 +337,7 @@ No provider has been connected live by this build. The adapters are proved with 
 
 **Rolling back the whole deployment.** If a deployment must be taken away entirely: IN: Vercel, Project, Settings, Domains, remove the domain (the address stops answering); the Supabase project stays untouched with its data. Deleting a Supabase project destroys its data and its backups: never without the owner's written instruction and a verified extra backup.
 
-**Adding a client company (VYNTEX Command).** Section 8 again, in the VYNTEX project.
+**Adding a client company (VYNTEX ERP).** Section 8 again, in the VYNTEX project.
 
 ## 12. To reconcile before the first real use
 

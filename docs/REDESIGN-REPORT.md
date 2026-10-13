@@ -1,4 +1,4 @@
-# Redesign report: VYNTEX Command
+# Redesign report: VYNTEX ERP
 
 Brand, interface, motion and conversion upgrade of the platform built in the first phase. Prepared 2 October 2026.
 This was an upgrade, not a rebuild. No business rule, calculation, price, role or database file was changed: `src/domain/`, `src/lib/`, `config/`, `api/` and `supabase/` are identical to the first delivery.
@@ -18,7 +18,7 @@ Only what was built and checked is listed as done. What was not done, or not ver
 
 ## 2. Branding
 
-* The product is named VYNTEX Command, "AI-Powered Business Operating Platform", with the promise "One intelligent command center. Built around your business." All three are settings in `src/config/brand.ts`. The eight editions keep their names.
+* The product is named VYNTEX ERP, "AI-Powered Business Operating Platform", with the promise "One intelligent command center. Built around your business." All three are settings in `src/config/brand.ts`. The eight editions keep their names.
 * The official V mark was cut out of the supplied logo as a transparent image in three sizes (`public/brand/vyntex-v*.webp`). It is the real mark, not a redrawing.
 * Wordmark lockup: VYNTEX in chrome, COMMAND in the blue spectrum, used in the page header, the sidebar, the footer and the "Powered by" line.
 * The assistant is called VYNTEX AI everywhere in the interface, including the sidebar.

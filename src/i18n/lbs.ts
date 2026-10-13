@@ -1,4 +1,4 @@
-// Workspace wording of LBS Command. The shared wording was written for the public demo of VYNTEX Command and says "demo"
+// Workspace wording of LBS Command. The shared wording was written for the public demo of VYNTEX ERP and says "demo"
 // in many places. A firm looking at its own product is not in a demo: where LBS Command shows sample records (the sample
 // preview of a test build) these lines say "sample" instead. Key for key, same meaning, nothing added.
 // Registered only in the LBS build, through src/features/settings/i18n-lbs.ts, so scripts/check-i18n.mjs checks that

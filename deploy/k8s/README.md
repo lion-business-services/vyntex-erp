@@ -30,7 +30,7 @@ If the need is only "a server we control", a single container on a managed conta
 
 | Asked for (brief, section 58) | In the reference | Left to do when it is used |
 | --- | --- | --- |
-| Separate namespaces and environments | One namespace per deployment (`vyntex-command`, `lbs-command`), never shared. | Separate clusters or accounts for LBS if the isolation requirement says so. A staging namespace per deployment. |
+| Separate namespaces and environments | One namespace per deployment (`vyntex-erp`, `lbs-command`), never shared. | Separate clusters or accounts for LBS if the isolation requirement says so. A staging namespace per deployment. |
 | Least-privilege service accounts | An account with no role; no API token is mounted in the pod. | |
 | Network policies | Default deny in the namespace. In: from the ingress controller and from the scheduled jobs only. Out: name lookups and HTTPS to public addresses only, never to private ranges or the cloud metadata address. | Rules by host name (the Supabase project, each provider) need the cluster network's own policy type or an egress gateway. Confirm the cluster enforces NetworkPolicy at all. |
 | Secret management | Secrets are referenced by name; `secret.example.yaml` lists names only and is not applied. | A secret store with an operator (External Secrets or the Secrets Store CSI driver), encryption of Secrets at rest in the cluster, and access to Secrets limited by role. |
@@ -66,7 +66,7 @@ Not done here. When it is needed:
 3. IN: VS Code terminal. Build one image per deployment:
 
    ```
-   docker build --build-arg VX_DEPLOY=vyntex -t vyntex-command .
+   docker build --build-arg VX_DEPLOY=vyntex -t vyntex-erp .
    docker build --build-arg VX_DEPLOY=lbs -t lbs-command .
    ```
 
@@ -74,7 +74,7 @@ Not done here. When it is needed:
 4. IN: VS Code terminal. Start it the way production would, read-only and without privileges, and look at it:
 
    ```
-   docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges -p 8080:8080 vyntex-command
+   docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges -p 8080:8080 vyntex-erp
    ```
 
 5. IN: a browser. Open `http://localhost:8080/healthz` (answers "ok") and `http://localhost:8080/`.

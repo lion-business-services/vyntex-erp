@@ -23,7 +23,7 @@ IN: VS Code terminal, in the repository folder. Git Bash is needed for the lines
 | `node scripts/security/scan-pii.mjs` | Real people's data in the files | Nothing | clean |
 | `node scripts/security/check-headers.mjs` | Browser protections in `vercel.json` | Nothing | 20 of 20 passed |
 | `node scripts/security/scan-bundle.mjs dist --deploy vyntex` | The VYNTEX build carries nothing it must not | A build (`npm run build`) | clean |
-| `node scripts/security/scan-bundle.mjs dist-lbs --deploy lbs` | The same for the LBS build | A build (`npm run build:lbs`) | **2 findings**: the product name "VYNTEX Command" is inside the LBS build (section 5) |
+| `node scripts/security/scan-bundle.mjs dist-lbs --deploy lbs` | The same for the LBS build | A build (`npm run build:lbs`) | **2 findings**: the product name "VYNTEX ERP" is inside the LBS build (section 5) |
 | `node scripts/security/check-evidence.mjs` | The security documents cite files and tests that exist; no screen claims a certification | Nothing | clean |
 | `bash scripts/backup/restore-test.sh` | Backup, encryption and restore, end to end (section 2.4) | PostgreSQL, age | passed, about nine seconds |
 
@@ -117,7 +117,7 @@ An independent penetration test or security review has not been done. Whether an
 
 ## 5. Open findings from this pass
 
-* `node scripts/security/scan-bundle.mjs dist-lbs --deploy lbs` reports the text "VYNTEX Command" in two script files of the LBS build: the brand settings object and a note inside the pricing file, which is bundled into both builds. The build specification says neither build carries the other's product name. `npm run test:split` does not check for that text and passes. One of the two has to change: the build, or the rule. Until then the bundle scan job of CI fails for the LBS build.
+* `node scripts/security/scan-bundle.mjs dist-lbs --deploy lbs` reports the text "VYNTEX ERP" in two script files of the LBS build: the brand settings object and a note inside the pricing file, which is bundled into both builds. The build specification says neither build carries the other's product name. `npm run test:split` does not check for that text and passes. One of the two has to change: the build, or the rule. Until then the bundle scan job of CI fails for the LBS build.
 * The pricing file's internal note (it names who approves price changes) is shipped to every visitor inside both builds. It is not a secret, and it is not meant for the public either.
 * The end-to-end server tests and the database mutation check were not run in this pass.
 

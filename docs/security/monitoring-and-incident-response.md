@@ -100,7 +100,7 @@ An incident is anything that may have exposed, changed or destroyed protected da
 | Counsel | ______ | ______ |
 | Insurer, if there is a cyber policy | ______ | ______ |
 
-**Step 1. Write it down (minutes 0 to 5).** The time, who noticed, what was seen, on which deployment (VYNTEX Command or LBS Command). Start a timeline and add a line for every action from now on. Do not delete, tidy or "fix" anything yet.
+**Step 1. Write it down (minutes 0 to 5).** The time, who noticed, what was seen, on which deployment (VYNTEX ERP or LBS Command). Start a timeline and add a line for every action from now on. Do not delete, tidy or "fix" anything yet.
 
 **Step 2. Contain (minutes 5 to 30).** Stop the damage without destroying the evidence. Pick the row that matches.
 
@@ -146,7 +146,7 @@ One per incident, kept by the firm, not in this repository.
 | Field | |
 | --- | --- |
 | Number and date opened | |
-| Deployment | VYNTEX Command or LBS Command |
+| Deployment | VYNTEX ERP or LBS Command |
 | Who noticed, how, when | |
 | What happened, in plain words | |
 | Timeline of actions, with times and names | |

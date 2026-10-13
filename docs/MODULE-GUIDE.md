@@ -1,4 +1,4 @@
-# Module guide: how a screen plugs into VYNTEX Command
+# Module guide: how a screen plugs into VYNTEX ERP
 
 For engineers building a module on the foundation. Read `docs/MASTER-BUILD-SPEC.md` first; this file is the practical part.
 The reference for quality and structure is `src/features/leads/` (page, i18n, css) and `src/features/clients/`.

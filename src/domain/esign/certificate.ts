@@ -23,7 +23,7 @@ export interface CertificateInput {
   company: string;
   /** Name of the person who sent the request. */
   sentBy?: string;
-  /** Product the record was made with, e.g. "VYNTEX Command". */
+  /** Product the record was made with, e.g. "VYNTEX ERP". */
   product: string;
   hashes: { original: string; signed: string };
   lang: Lang;

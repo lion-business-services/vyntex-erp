@@ -3,7 +3,7 @@
 # and a task from a conversation, links from other pages, the client tab), the settings section, roles, the honest states
 # (nothing is ever sent, connected or published in a sample), the return from a provider, and posts from draft to "published
 # in the sample".
-# Usage: PORT=4690 python3 tests/qa_comms.py [lang]          VYNTEX Command, /demo?industry=practice
+# Usage: PORT=4690 python3 tests/qa_comms.py [lang]          VYNTEX ERP, /demo?industry=practice
 #        PORT=4690 NS=lbs python3 tests/qa_comms.py [lang]   LBS Command built with VX_SAMPLE_PREVIEW=1, /preview
 # Takes about three minutes. Exits with an error code when a check fails.
 import asyncio, json, os, sys

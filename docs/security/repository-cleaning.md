@@ -92,10 +92,10 @@ A history that held customer data may hold other things. The NOVA audit found no
    & "C:\Program Files\Git\bin\git.exe" log --all --oneline -- supabase/migrations/0015_customers_import.sql
    ```
 
-4. Run this platform's scan on the rewritten copy (adjust the path to where VYNTEX-COMMAND is on the computer):
+4. Run this platform's scan on the rewritten copy (adjust the path to where vyntex-erp is on the computer):
 
    ```
-   node ..\VYNTEX-COMMAND\scripts\security\scan-pii.mjs --root . --all
+   node ..\vyntex-erp\scripts\security\scan-pii.mjs --root . --all
    ```
 
    It must end with `personal data scan: clean`. If it reports another file, that file holds customer data too: add another `--path` for it and repeat steps 2 to 4.
@@ -158,7 +158,7 @@ A single old copy that is pushed again brings everything back.
 2. Run the scan on it:
 
    ```
-   node VYNTEX-COMMAND\scripts\security\scan-pii.mjs --root nova-verify --all
+   node vyntex-erp\scripts\security\scan-pii.mjs --root nova-verify --all
    ```
 
    Expected: `personal data scan: clean`.

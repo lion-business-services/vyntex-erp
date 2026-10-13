@@ -43,13 +43,13 @@ jobs:
         run: npm run typecheck
       - name: Pricing, wording and sample data checks
         run: npm run check
-      - name: Build VYNTEX Command
+      - name: Build VYNTEX ERP
         run: node scripts/build.mjs
       - name: Build LBS Command
         run: node scripts/build.mjs --deploy lbs
       - name: The two builds are separate products (neither carries the other's brand, name or routes)
         run: npm run test:split
-      - name: Bundle scan, VYNTEX Command
+      - name: Bundle scan, VYNTEX ERP
         run: node scripts/security/scan-bundle.mjs dist --deploy vyntex
       - name: Bundle scan, LBS Command
         run: node scripts/security/scan-bundle.mjs dist-lbs --deploy lbs

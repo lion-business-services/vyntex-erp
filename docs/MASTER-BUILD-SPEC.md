@@ -1,4 +1,4 @@
-# VYNTEX Command: master build specification
+# VYNTEX ERP: master build specification
 
 Engineering contract for the integrated build ordered in the owner's brief (111 sections):
 `/root/.claude/uploads/94014889-6396-5951-a153-f13fef057bc9/2b66d966-attachment.txt` (cited below as "brief §N").
@@ -7,7 +7,7 @@ this file says how everything else fits around it.
 
 ## 0. Rules that never bend
 
-1. One codebase, one platform. VYNTEX Command stays the principal codebase. NOVA is not embedded; its business rules are ported
+1. One codebase, one platform. VYNTEX ERP stays the principal codebase. NOVA is not embedded; its business rules are ported
    as configuration and domain logic (brief §1, §5, §100).
 2. Keep what works. The eight field editions, every route, every `data-testid`, both languages and the three QA suites
    (`tests/qa_matrix.py`, `qa_flows.py`, `qa_motion.py`) keep passing. An upgrade, never a rewrite.
@@ -35,7 +35,7 @@ constant `__VX_DEPLOY__`. `VX_SAMPLE_PREVIEW=1` becomes `__VX_SAMPLE_PREVIEW__`.
 export type DeployId = 'vyntex' | 'lbs';
 export interface Deployment {
   id: DeployId;
-  productName: string;            // 'VYNTEX Command' | 'LBS Command'
+  productName: string;            // 'VYNTEX ERP' | 'LBS Command'
   theme: 'vyntex' | 'lbs';        // sets <html data-brand>
   lockedEdition: IndustryId | null;   // lbs: 'practice'
   marketing: boolean;             // sales pages exist

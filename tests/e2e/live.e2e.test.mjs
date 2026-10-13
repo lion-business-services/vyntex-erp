@@ -14,7 +14,7 @@ import { launch, person, fillSignIn, typeCode, ageSession, readQr, shot } from '
 
 const PW = { ownerP: 'Quiet-harbor-lamp-41', ownerF: 'Maple-river-stone-88', reader: 'Copper-window-field-27', staff: 'Linen-orchard-bridge-63', lbs: 'Amber-meadow-signal-52' };
 let st; let browser;
-let P; let F; let L;                       // the practice company and the field company on VYNTEX Command; the company of LBS Command
+let P; let F; let L;                       // the practice company and the field company on VYNTEX ERP; the company of LBS Command
 const who = {};                            // people by name: { email, password, secret, codes }
 const open = [];                           // browser contexts to close at the end
 

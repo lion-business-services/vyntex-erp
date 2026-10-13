@@ -1,7 +1,7 @@
 // Which workspace an address belongs to. Two deployments are built from this code (src/config/deployment.ts) and each has
 // its own layout of addresses:
 //
-//   VYNTEX Command (`vyntex`)
+//   VYNTEX ERP (`vyntex`)
 //     /demo/...             the public demo. Sample data, kept in the visitor's browser only. Never touches the database.
 //     /<company-slug>/...   a customer company. Sign-in required. Data comes from that company's rows in the database.
 //     anything else         the sales pages (/, /pricing, /request-demo), sign-in, and addresses the site keeps for itself.

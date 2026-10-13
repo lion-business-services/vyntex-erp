@@ -8,7 +8,7 @@ import { ProviderError } from './integrations/oauth.js';
 import { env } from './env.js';
 import { log } from './respond.js';
 
-export const productName = () => (deployId() === 'lbs' ? 'LBS Command' : 'VYNTEX Command');
+export const productName = () => (deployId() === 'lbs' ? 'LBS Command' : 'VYNTEX ERP');
 export const emailConfigured = () => has('RESEND_API_KEY') && has('SYSTEM_EMAIL_FROM');
 
 /** Sends one system email. `idem` makes a retry of the same send harmless. Never throws. */

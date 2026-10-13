@@ -1,4 +1,4 @@
-# REFERENCE ONLY. Not applied anywhere. VYNTEX Command (client companies).
+# REFERENCE ONLY. Not applied anywhere. VYNTEX ERP (client companies).
 # Everything of this deployment lives in its own namespace, with its own image, settings, secrets and network rules.
 # Nothing here refers to the other deployment, and the two are never applied to the same namespace.
 #
@@ -6,13 +6,13 @@
 # store (see secret.example.yaml for the names it must hold).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: vyntex-command
+namespace: vyntex-erp
 resources:
   - namespace.yaml
   - ../../base
 images:
   - name: REGISTRY/REPOSITORY
-    newName: REGISTRY.example.com/vyntex-command
+    newName: REGISTRY.example.com/vyntex-erp
     digest: sha256:REPLACE_WITH_THE_IMAGE_DIGEST
 configMapGenerator:
   - name: command-settings

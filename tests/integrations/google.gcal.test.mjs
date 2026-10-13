@@ -75,7 +75,7 @@ test('insert: a deterministic event id, the local id in private properties, a st
   const cursor = memCursor(), links = memLinks();
   let made = 0;
   const routes = [
-    ['POST', /\/calendar\/v3\/calendars$/, (u, init) => { made += 1; assert.equal(JSON.parse(init.body).summary, 'VYNTEX Command'); return reply(200, { id: CAL }); }],
+    ['POST', /\/calendar\/v3\/calendars$/, (u, init) => { made += 1; assert.equal(JSON.parse(init.body).summary, 'VYNTEX ERP'); return reply(200, { id: CAL }); }],
     ['POST', EVENTS, (u, init) => { const b = JSON.parse(init.body); assert.equal(u.searchParams.get('conferenceDataVersion'), '1'); assert.equal(u.searchParams.get('sendUpdates'), 'none'); return reply(200, gev({ id: b.id, extendedProperties: b.extendedProperties, etag: '"e1"' })); }],
     calOk,
   ];

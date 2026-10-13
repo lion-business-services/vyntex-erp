@@ -2,7 +2,7 @@
 
 Written for the owner and for the person who operates Supabase and Vercel. The owner's rule (brief, section 61): do not claim backups work unless a restore has been tested. This page says exactly what has been tested and what has not.
 
-There are two deployments and two databases. Everything on this page is done twice, separately: once for **VYNTEX Command** (client companies) and once for **LBS Command** (Lion Business Services). Their backups never share a folder, a key or a storage location.
+There are two deployments and two databases. Everything on this page is done twice, separately: once for **VYNTEX ERP** (client companies) and once for **LBS Command** (Lion Business Services). Their backups never share a folder, a key or a storage location.
 
 ## What exists, in one table
 
@@ -53,7 +53,7 @@ Each deployment has its **own** key pair. Making one (once per deployment):
 3. IN: your password manager. Create an entry "LBS Command, backup key". Paste the whole content of `lbs-backup-key.txt` (it contains the private key, a line starting with `AGE-SECRET-KEY-1`).
 4. IN: your password manager. Add the public key (`age1...`) to the same entry as a second field.
 5. Delete the file `lbs-backup-key.txt` from the computer and empty the recycle bin. The private key now exists in the password manager only.
-6. Repeat steps 2 to 5 for VYNTEX Command, with its own entry and its own pair.
+6. Repeat steps 2 to 5 for VYNTEX ERP, with its own entry and its own pair.
 
 | Key | Can do | Lives | Who holds it |
 | --- | --- | --- | --- |
@@ -248,7 +248,7 @@ Whatever is chosen, monitoring is: the newest `.manifest.json` in the off-platfo
 
 Nothing in this table is invented. Blanks are for the owner (and, where it says so, her counsel).
 
-| | VYNTEX Command | LBS Command |
+| | VYNTEX ERP | LBS Command |
 | --- | --- | --- |
 | Supabase plan, and date checked | ______ | ______ |
 | Supabase scheduled backups: yes or no, days kept (from the dashboard) | ______ | ______ |

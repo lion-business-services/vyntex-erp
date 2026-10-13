@@ -1,6 +1,6 @@
 // Brand pieces shared by the sales pages and the workspace: the V mark (flat and dimensional), the product lockup,
 // circuit traces, the product window frame and the scroll-reveal helpers. `BrandMark` and `BrandLockup` give the mark and
-// lockup of the deployment being built (VYNTEX Command or LBS Command); the LBS pieces themselves are in ./lbs.
+// lockup of the deployment being built (VYNTEX ERP or LBS Command); the LBS pieces themselves are in ./lbs.
 // Motion here follows the tokens in ui/styles.css and switches itself off for visitors who ask for reduced motion,
 // on touch devices and while off screen.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -122,7 +122,7 @@ export function Lockup({ size = 'md', tagline, mark = true }: { size?: 'sm' | 'm
 
 /* ---------- the brand of this deployment ---------- */
 /**
- * The mark of whichever product this bundle is: the V for VYNTEX Command, the lion for LBS Command. Same props as `VMark`.
+ * The mark of whichever product this bundle is: the V for VYNTEX ERP, the lion for LBS Command. Same props as `VMark`.
  * `size` is the width of the V; the lion is taller than wide, so it is drawn a little taller to carry the same weight.
  */
 export function BrandMark({ size = 28, className }: { size?: number; className?: string }) {

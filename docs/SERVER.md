@@ -258,7 +258,7 @@ Error codes raised by the guards: `VX401` session revoked, `VX402` second step r
 
 ## 10. Environment variables
 
-`.env.example` lists every name with an explanation and no value. VYNTEX Command and LBS Command are separate
+`.env.example` lists every name with an explanation and no value. VYNTEX ERP and LBS Command are separate
 Vercel projects pointing at separate Supabase projects. **Each variable is set separately in each project, with
 its own value. Nothing is shared.**
 

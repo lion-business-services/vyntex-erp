@@ -21,7 +21,7 @@ const css = html.match(/\/assets\/(app-[A-Z0-9]+\.css)/)[1];
 const js = html.match(/\/assets\/(app-[A-Z0-9]+\.js)/)[1];
 const lbs = deploy === 'lbs';
 const fonts = lbs ? 'family=Playfair+Display:wght@700&family=Poppins:wght@400;500;600&display=swap' : 'family=Manrope:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap';
-fs.writeFileSync(path.join(out, 'preview.html'), `<title>${lbs ? 'LBS Command Preview' : 'VYNTEX Command Demo'}</title>
+fs.writeFileSync(path.join(out, 'preview.html'), `<title>${lbs ? 'LBS Command Preview' : 'VYNTEX ERP Demo'}</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fonts}">
 <link rel="stylesheet" href="assets/${css}">
 <style>${lbs ? ':root{color-scheme:dark}body{background:#06160E}' : 'body{background:var(--bg,#EEF3F9)}'}</style>

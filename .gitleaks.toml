@@ -4,7 +4,7 @@
 #
 # Not verified here: no gitleaks program was available where this file was written. The first run in GitHub Actions
 # is the test of this file.
-title = "VYNTEX Command"
+title = "VYNTEX ERP"
 
 [extend]
 useDefault = true

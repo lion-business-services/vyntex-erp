@@ -117,7 +117,7 @@ export class Browser {
  *   company()    makes a company and signs its first owner in through the real invitation flow
  */
 export async function startStack({ jwtExp = 3600 } = {}) {
-  setTestEnv({ RESEND_API_KEY: 're_test_' + randomBytes(16).toString('hex'), SYSTEM_EMAIL_FROM: 'VYNTEX Command <system@mail.example.com>' });
+  setTestEnv({ RESEND_API_KEY: 're_test_' + randomBytes(16).toString('hex'), SYSTEM_EMAIL_FROM: 'VYNTEX ERP <system@mail.example.com>' });
   startPostgres();
   const { startDevSupabase, totp } = await import('../../scripts/dev-supabase.mjs');
   const { startMockProvider } = await import('./mock_provider.mjs');

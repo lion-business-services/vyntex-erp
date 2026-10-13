@@ -353,7 +353,7 @@ test('the signed copy keeps the pages, adds a certificate with both fingerprints
   m.signEnvelope(w.d, w.ctx(), e.id, b.id, answer({ typedName: 'Person u1' }));
   assert.equal(e.status, 'completed');
   const source = await sourcePdf();
-  const out = await m.buildSignedPdf(source, e, { docTitle: 'Test document', docNumber: 'VP-DOC-1001', company: 'Sample Test Co', sentBy: 'Person u1', product: 'VYNTEX Command' });
+  const out = await m.buildSignedPdf(source, e, { docTitle: 'Test document', docNumber: 'VP-DOC-1001', company: 'Sample Test Co', sentBy: 'Person u1', product: 'VYNTEX ERP' });
   const sha = (x) => crypto.createHash('sha256').update(Buffer.from(x)).digest('hex');
   assert.equal(out.hashes.original, sha(source), 'the original fingerprint is the SHA-256 of the file that was sent');
   assert.equal(out.hashes.final, sha(out.bytes), 'the final fingerprint is the SHA-256 of the finished file');
@@ -367,7 +367,7 @@ test('the signed copy keeps the pages, adds a certificate with both fingerprints
   assert.equal((text.match(/Sample: not a legally binding signature/g) || []).length, 3, 'the sample line is on every page, certificate included');
   assert.equal(/complian|legally valid|ESIGN|UETA|certified/i.test(text), false, 'no claim about any law');
   // the certificate model itself: facts, both fingerprints, every signer with the three moments and the consent
-  const model = m.certificateModel({ env: e, docTitle: 'Test document', company: 'Sample Test Co', product: 'VYNTEX Command', hashes: out.hashes, lang: 'en', sample: true });
+  const model = m.certificateModel({ env: e, docTitle: 'Test document', company: 'Sample Test Co', product: 'VYNTEX ERP', hashes: out.hashes, lang: 'en', sample: true });
   assert.deepEqual(model.rows.filter((r) => r.mono).map((r) => r.value), [out.hashes.original, out.hashes.signed]);
   assert.equal(model.signers.length, 2);
   for (const s of model.signers) assert.deepEqual(s.rows.map((r) => r.label).filter((l) => ['Link made available', 'Opened', 'Signed', 'Consent'].includes(l)), ['Link made available', 'Opened', 'Signed', 'Consent']);

@@ -210,7 +210,7 @@ async function mfaEnroll(request) {
   // One authenticator per person. With one in place, a password alone must never be enough to add another.
   if (verified) return fail(409, 'already_enrolled');
   for (const f of all) if (f.status !== 'verified') await auth.unenroll(session.at, f.id);
-  const r = await auth.enrollTotp(session.at, 'Authenticator ' + randomToken(4), deployId() === 'lbs' ? 'LBS Command' : 'VYNTEX Command');
+  const r = await auth.enrollTotp(session.at, 'Authenticator ' + randomToken(4), deployId() === 'lbs' ? 'LBS Command' : 'VYNTEX ERP');
   if (!r.ok) throw upstreamError(r);
   await securityEvent({ user: session.uid, kind: 'mfa.enroll_started', outcome: 'info', request });
   return ok({ factorId: r.data.id, secret: r.data.totp?.secret || '', uri: r.data.totp?.uri || '', qr: r.data.totp?.qr_code || '' }, { cookies: cookiesFor(session) });

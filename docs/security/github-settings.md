@@ -1,6 +1,6 @@
 # GitHub settings to switch on
 
-The files in this repository (`.github/CODEOWNERS`, `.github/dependabot.yml`, the workflows in `.github/workflows`) do nothing for security until the settings below are switched on by a person. This page is the list, in the order to do them. Repository: `lion-business-services/VYNTEX-COMMAND`.
+The files in this repository (`.github/CODEOWNERS`, `.github/dependabot.yml`, the workflows in `.github/workflows`) do nothing for security until the settings below are switched on by a person. This page is the list, in the order to do them. Repository: `lion-business-services/vyntex-erp`.
 
 Each step names the software it happens in. Menu names on GitHub change from time to time: if a name is not exactly what you see, look for the closest one.
 
@@ -182,7 +182,7 @@ Production must only ever receive code that passed the checks and that a person 
 
 **Option B: approval on the Vercel side** (works on any GitHub plan)
 
-1. IN: Vercel, Project (VYNTEX Command), Settings, Git. Check that **Production Branch** is `main`. Because of step 4, `main` only ever receives reviewed, checked pull requests.
+1. IN: Vercel, Project (VYNTEX ERP), Settings, Git. Check that **Production Branch** is `main`. Because of step 4, `main` only ever receives reviewed, checked pull requests.
 2. IN: Vercel, Project, Settings, Environments, Production. Turn off **Auto-assign Custom Production Domains**. From now on a merge to `main` builds a new version but does not put it on the public address.
 3. To release: IN: Vercel, Project, Deployments. Open the new deployment, look at it on its own address, then press **Promote**. That click is the explicit approval, and Vercel records who made it.
 4. IN: Vercel, Team Settings, Members. Only the people who may release have a role that can promote. Everyone else is Viewer or is not a member.

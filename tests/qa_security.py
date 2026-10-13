@@ -1,5 +1,5 @@
 # End-to-end flows of the security center, the secure tax ID tab, the audit trail, Settings and the office team, in the
-# professional-services edition's sample workspace: /demo?industry=practice (VYNTEX Command) or /preview (LBS Command).
+# professional-services edition's sample workspace: /demo?industry=practice (VYNTEX ERP) or /preview (LBS Command).
 # Checks, as a reviewer would meet them: the two-person rule and the single viewing of a tax ID, that no number is ever
 # kept in the browser, invitations and roles, the last owner, access to a client of another office with an end date, the
 # role matrix taking effect, the audit trail being read only, the Settings sections saving, and what each role cannot do.

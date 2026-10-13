@@ -25,7 +25,7 @@ function LbsPanel() {
     </div>
   );
 }
-/** The V mark above the VYNTEX Command lockup. */
+/** The V mark above the VYNTEX ERP lockup. */
 function VyntexPanel() {
   return (
     <div className="auth-id">

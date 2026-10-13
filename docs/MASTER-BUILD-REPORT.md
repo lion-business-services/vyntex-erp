@@ -1,16 +1,16 @@
-# VYNTEX Command master build: completion report
+# VYNTEX ERP master build: completion report
 
 Date: October 5, 2026. Scope: the first integrated build ordered in the 111-section master brief.
 
-**Bottom line.** One codebase now builds two separate products: VYNTEX Command (nine editions, for client companies) and LBS Command (standalone, Lion Business Services brand). Every screen works with sample records, the database and server are built and pass their tests on a local stand-in, and thirteen provider adapters are written and tested with mocked responses. Nothing has been deployed, pushed, or connected to a live provider, and no real client data has been touched. The three security gaps in the live NOVA database are still open and need your approval to close.
+**Bottom line.** One codebase now builds two separate products: VYNTEX ERP (nine editions, for client companies) and LBS Command (standalone, Lion Business Services brand). Every screen works with sample records, the database and server are built and pass their tests on a local stand-in, and thirteen provider adapters are written and tested with mocked responses. Nothing has been deployed, pushed, or connected to a live provider, and no real client data has been touched. The three security gaps in the live NOVA database are still open and need your approval to close.
 
 ## 1. Architecture
 
 | Item | What was built |
 |---|---|
-| Codebase | One repository, VYNTEX Command. NOVA is not embedded; its rules were ported as configuration and domain logic. |
+| Codebase | One repository, VYNTEX ERP. NOVA is not embedded; its rules were ported as configuration and domain logic. |
 | Deployments | A build switch (`VX_DEPLOY`) produces two bundles. Neither contains the other's brand, product name or routes (79 automated checks). |
-| VYNTEX Command | Sales pages, public demo, live workspace per company at `/<company>`. Example address: command.vyntexusa.com. |
+| VYNTEX ERP | Sales pages, public demo, live workspace per company at `/<company>`. Example address: command.vyntexusa.com. |
 | LBS Command | Sign-in at `/`, workspace at `/app`, no sales pages, no demo, no plans, edition locked to professional services. Example address: lbscommand.vyntexusa.com. |
 | Databases | Same schema, two Supabase projects: one for VYNTEX client companies, one dedicated to LBS with its own secrets, storage, logs and backups. Neither project has been created yet (cost and your approval). |
 | Tenancy | Every row carries its company. 55 tables, 175 row level security policies, all forced. Office scope inside a company (ported from NOVA). |

@@ -1,7 +1,7 @@
 // The one place that names the platform. Change `platformName` here to rebrand every screen.
 export const BRAND = {
   /** Umbrella name shown on the sales pages. Industry editions keep their own product names (VYNTEX BUILD, VYNTEX CLEAN…). */
-  platformName: 'VYNTEX Command',
+  platformName: 'VYNTEX ERP',
   /** What the platform is, in one line. Shown under the lockup. */
   descriptor: { en: 'AI-Powered Business Operating Platform', es: 'Plataforma operativa de negocios con IA' },
   company: 'VYNTEX USA',

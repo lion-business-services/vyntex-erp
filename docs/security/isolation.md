@@ -1,12 +1,12 @@
 # How LBS is kept separate from VYNTEX client companies
 
-Lion Business Services holds tax and financial records of its clients. The owner's brief (sections 3 and 53) requires that it does not share an address, a database, storage, secrets, logs or backups with the companies that use VYNTEX Command. This page lists each boundary, what creates it, and how to verify it. Verification is something a person does and writes down; a boundary nobody checked is an assumption.
+Lion Business Services holds tax and financial records of its clients. The owner's brief (sections 3 and 53) requires that it does not share an address, a database, storage, secrets, logs or backups with the companies that use VYNTEX ERP. This page lists each boundary, what creates it, and how to verify it. Verification is something a person does and writes down; a boundary nobody checked is an assumption.
 
 **State today.** No Supabase project and no production Vercel project exists for either deployment. The boundaries that live in the code are built and tested. The boundaries that live in accounts and settings are created when `docs/DEPLOYMENT.md` is followed, and verified with the "how to verify" column afterwards.
 
 ## The two deployments
 
-| | VYNTEX Command | LBS Command |
+| | VYNTEX ERP | LBS Command |
 | --- | --- | --- |
 | Who uses it | Client companies of Vyntex LLC, each a row set in one shared database | Lion Business Services only |
 | Address (planned) | `command.vyntexusa.com` | `lbscommand.vyntexusa.com` |
@@ -20,10 +20,10 @@ Both come from the same repository. That is the one thing they share, and sectio
 
 | # | Boundary | What creates it | Kind | How to verify |
 | --- | --- | --- | --- | --- |
-| 1 | Address | Two Vercel projects, each with its own domain. LBS is not a path under the VYNTEX address. | Configuration | IN: Vercel, Project (LBS Command), Settings, Domains: only `lbscommand.vyntexusa.com`. IN: Vercel, Project (VYNTEX Command), Settings, Domains: no LBS address. |
+| 1 | Address | Two Vercel projects, each with its own domain. LBS is not a path under the VYNTEX address. | Configuration | IN: Vercel, Project (LBS Command), Settings, Domains: only `lbscommand.vyntexusa.com`. IN: Vercel, Project (VYNTEX ERP), Settings, Domains: no LBS address. |
 | 2 | Application build | The deployment is chosen when the pages are built (`VX_DEPLOY`), never at run time, so one cannot be switched into the other from a browser (`src/config/deployment.ts`). The LBS build has no sales pages, no public demo and its own brand files. | Code | `node scripts/security/scan-bundle.mjs dist-lbs --deploy lbs` and the same for `dist` with `--deploy vyntex`: neither build carries the other's product name or brand files. Tested in `tests/security/scan-bundle.test.mjs`. Runs on every pull request (`.github/workflows/ci.yml`). |
-| 3 | Sign-in | Each Supabase project has its own user list. An account in one does not exist in the other. The session cookie is bound to its own address (the `__Host-` prefix, `api/_lib/session.js`), so a browser never sends one deployment's cookie to the other. | Configuration and code | IN: Supabase Dashboard (LBS project), Authentication, Users: only LBS staff. Then IN: a browser: sign in to VYNTEX Command, open `lbscommand.vyntexusa.com` in the same browser: it asks for a sign-in. |
-| 4 | Database | Two Supabase projects: two PostgreSQL servers, two sets of keys. There is no connection string, key or network path from one to the other. | Configuration | IN: Vercel, Project (LBS Command), Settings, Environment Variables: `SUPABASE_URL` shows the LBS project's address. IN: Vercel, Project (VYNTEX Command), the same screen: a different address. The two project references (the first part of the address) must differ. |
+| 3 | Sign-in | Each Supabase project has its own user list. An account in one does not exist in the other. The session cookie is bound to its own address (the `__Host-` prefix, `api/_lib/session.js`), so a browser never sends one deployment's cookie to the other. | Configuration and code | IN: Supabase Dashboard (LBS project), Authentication, Users: only LBS staff. Then IN: a browser: sign in to VYNTEX ERP, open `lbscommand.vyntexusa.com` in the same browser: it asks for a sign-in. |
+| 4 | Database | Two Supabase projects: two PostgreSQL servers, two sets of keys. There is no connection string, key or network path from one to the other. | Configuration | IN: Vercel, Project (LBS Command), Settings, Environment Variables: `SUPABASE_URL` shows the LBS project's address. IN: Vercel, Project (VYNTEX ERP), the same screen: a different address. The two project references (the first part of the address) must differ. |
 | 5 | Company isolation inside each database | Row level security, forced, on every table, with company id on every row. In the LBS database there is one company; the rules still apply, so a second one could never read the first. | Code | `bash supabase/tests/run_local.sh` (test: "every table in public has row level security enabled and forced" in `supabase/tests/rls_isolation.sql`). After deployment: `supabase/tests/verify_remote.sql` IN: Supabase Dashboard, SQL Editor, on each project. |
 | 6 | Storage | Buckets belong to a Supabase project. Each deployment's files are in its own project's buckets, which are private. | Configuration and code | IN: Supabase Dashboard (each project), Storage: every bucket shows **Private**. test: "the worker documents bucket is private" in `supabase/tests/rls_isolation.sql`. |
 | 7 | Secrets | Every secret exists twice with different values, one per Vercel project: database keys, session secret, token encryption key, address hash salt, cron secret, every provider key. The tax ID encryption key is in each project's own Vault. | Configuration | Follow "Check that no secret is shared" below. The server refuses to start the workspace in production when two of its own secrets are equal (`problems()` in `api/_lib/env.js`); it cannot compare across deployments, so that check is manual. |
@@ -36,7 +36,7 @@ Both come from the same repository. That is the one thing they share, and sectio
 
 Values cannot be read back from Vercel once marked Sensitive, and they must not be pasted anywhere to compare them. Compare where they came from instead:
 
-1. IN: your password manager. Open the folder for VYNTEX Command and the folder for LBS Command side by side.
+1. IN: your password manager. Open the folder for VYNTEX ERP and the folder for LBS Command side by side.
 2. For each name in `docs/security/secrets-and-environments.md`, both folders have an entry, and each was generated separately. If an entry in one folder says "same as the other", it is wrong: generate a new value and replace it (the rotation steps are in that document).
 3. IN: Supabase Dashboard (each project), Project Settings, API. The project reference in the address differs between the two.
 4. IN: Vercel (each project), Settings, Environment Variables. Each name exists, and "Updated" shows when it was last set. No variable in the LBS project is linked from a shared (team level) variable: the column "Shared" must be empty.

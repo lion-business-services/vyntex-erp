@@ -1,6 +1,6 @@
 # Security
 
-VYNTEX Command and LBS Command are built from this repository. LBS Command holds tax and financial records of the clients of Lion Business Services, so security problems here are treated as urgent.
+VYNTEX ERP and LBS Command are built from this repository. LBS Command holds tax and financial records of the clients of Lion Business Services, so security problems here are treated as urgent.
 
 ## Reporting a problem
 

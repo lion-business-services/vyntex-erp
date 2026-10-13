@@ -8,7 +8,7 @@ A secret is anything that lets its holder act as the platform or read protected 
 
 1. A secret lives in exactly three kinds of place: the provider that issued it, the environment variables of one Vercel project (marked Sensitive) or the Vault of one Supabase project, and the company password manager. Nowhere else.
 2. Never in the repository, in the browser bundle, in browser storage, in a log line, in an error message, in a chat, an email or a ticket.
-3. Every secret exists separately for each deployment (VYNTEX Command, LBS Command) and for each environment. No value is used twice.
+3. Every secret exists separately for each deployment (VYNTEX ERP, LBS Command) and for each environment. No value is used twice.
 4. If a secret was seen anywhere outside rule 1, it is treated as known to others and replaced. Replace first, investigate second.
 
 What enforces the rules in code:

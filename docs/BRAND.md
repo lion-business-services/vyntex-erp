@@ -3,7 +3,7 @@
 One codebase carries two brands. The bundle decides which one (`DEPLOY.theme`, set when it is built), `main.tsx` writes it
 on the page as `data-brand="vyntex"` or `data-brand="lbs"`, and the stylesheet of that brand takes over.
 
-| | VYNTEX Command | LBS Command |
+| | VYNTEX ERP | LBS Command |
 | --- | --- | --- |
 | Tokens | `src/ui/styles.css` (`:root`, `:root[data-theme="light"]`) | `src/ui/theme-lbs.css` (`:root[data-brand="lbs"]`, plus `[data-theme="light"]`) |
 | Mark and lockup | `VMark`, `VMark3D`, `Lockup` in `src/brand/index.tsx` | `LionMark`, `LbsWordmark`, `LbsLockup` in `src/brand/lbs.tsx` |
@@ -43,7 +43,7 @@ Proved on the built bundles: the VYNTEX bundle contains no `brand-lbs/` address.
 
 The product name in the LBS lockup is `DEPLOY.productName`. There is no LBS tagline: none was supplied and none is invented.
 
-## VYNTEX Command: "Metallic Intelligence"
+## VYNTEX ERP: "Metallic Intelligence"
 
 Graphite and navy surfaces, brushed chrome for the identity, one blue spectrum (cobalt, VYNTEX blue, electric cyan, ice).
 Cyan marks the one thing to act on. Chamfered corners, circuit traces and controlled glow are the signatures.

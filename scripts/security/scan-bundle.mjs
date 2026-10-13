@@ -14,7 +14,7 @@
 //   3. source maps. They would publish the readable source code.
 //   4. any address of the database service. The pages talk to this site only (Content-Security-Policy connect-src 'self').
 //   5. scripts written inside the page. The Content-Security-Policy blocks them, so one would be a bug or an injection.
-//   6. the other deployment's brand: LBS Command must not carry VYNTEX Command's name and logo files, and the reverse.
+//   6. the other deployment's brand: LBS Command must not carry VYNTEX ERP's name and logo files, and the reverse.
 //
 // Everything in the build folder is public by definition, so this scan reads every file in it.
 import fs from 'node:fs';
@@ -33,7 +33,7 @@ const SECRET_LOOKING = /(SECRET|SERVICE_ROLE|_KEY$|TOKEN|PASSWORD|SALT)/;
 // What each deployment must not contain: words in any text file, and folders of the other brand's files.
 export const OTHER_BRAND = {
   vyntex: { label: 'LBS Command', text: ['LBS Command', 'brand-lbs', 'lbscommand'], folders: ['brand-lbs/'] },
-  lbs: { label: 'VYNTEX Command', text: ['VYNTEX Command', 'vyntex-logo', 'vyntex-mark', 'vyntex-wordmark', 'vyntex-v.webp', 'vyntex-v-sm', 'vyntex-v-xs'], folders: ['brand/'] },
+  lbs: { label: 'VYNTEX ERP', text: ['VYNTEX ERP', 'vyntex-logo', 'vyntex-mark', 'vyntex-wordmark', 'vyntex-v.webp', 'vyntex-v-sm', 'vyntex-v-xs'], folders: ['brand/'] },
 };
 
 /** Names of server-only settings: the fixed list plus every secret-looking name in .env.example. */

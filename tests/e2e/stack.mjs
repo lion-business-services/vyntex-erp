@@ -6,7 +6,7 @@
 //   the site          scripts/serve.mjs serving a build of the app and running the real handlers of api/
 //
 // Two deployments are started, each with its own database, its own double, its own secrets and its own build, the
-// way the two products are deployed: VYNTEX Command (companies under /<slug>) and LBS Command (one company under /app).
+// way the two products are deployed: VYNTEX ERP (companies under /<slug>) and LBS Command (one company under /app).
 // A third site has no Supabase settings at all: the state of any preview build.
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -117,7 +117,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const a = await st.vyntex.company({ industry: 'build', name: 'Sample Builders', slug: 'sample-builders', plan });
   const b = await st.lbs.company({ industry: 'practice', name: 'Sample Practice', slug: 'sample-practice' });
   console.log('LOCAL STAND-INS ONLY. This is not Supabase and not Vercel.');
-  console.log('VYNTEX Command  ' + st.vyntex.origin + '   first owner: ' + a.inviteLink);
+  console.log('VYNTEX ERP  ' + st.vyntex.origin + '   first owner: ' + a.inviteLink);
   console.log('LBS Command     ' + st.lbs.origin + '   first owner: ' + b.inviteLink);
   console.log('not configured  ' + st.bare.origin);
   const stop = async () => { await st.stop(); process.exit(0); };

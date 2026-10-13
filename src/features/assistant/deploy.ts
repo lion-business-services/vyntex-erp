@@ -1,5 +1,5 @@
 // What the assistant is called and whether it starts switched on, per deployment.
-//   VYNTEX Command   "VYNTEX AI", on where the edition lists the module.
+//   VYNTEX ERP   "VYNTEX AI", on where the edition lists the module.
 //   LBS Command      "Assistant", off until the firm switches it on: the owner decided to keep it away from client data
 //                    by default. It is never called "VYNTEX AI" there.
 // A company's own choice (Settings, `config.modules.assistant`) always wins over the default.

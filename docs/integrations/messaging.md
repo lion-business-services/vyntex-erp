@@ -83,7 +83,7 @@ stamp, so a repeat is stopped by the event id only. In all cases a repeated even
 8. IN: Meta for Developers, App Review: request advanced access for each permission in section 4 with a screen
    recording of the feature. Until approved, only people with a role on the app can connect.
 9. IN: Vercel: when Meta has approved, set `META_APPROVED=true`. Until then the screen shows "Pending provider approval".
-10. IN: VYNTEX Command, Integrations: Connect, sign in to Facebook, choose the Page. With more than one Page,
+10. IN: VYNTEX ERP, Integrations: Connect, sign in to Facebook, choose the Page. With more than one Page,
     choose the Page in the settings of the connection.
 
 ### WhatsApp Business
@@ -100,7 +100,7 @@ stamp, so a repeat is stopped by the event id only. In all cases a repeated even
 6. IN: WhatsApp Manager, Message templates: create each template and wait for its approval. Only approved templates
    can be sent outside the 24 hour window.
 7. IN: Vercel: set `WHATSAPP_APPROVED=true` once the business is verified and the number is live.
-8. IN: VYNTEX Command, Integrations: Connect. The server checks the number with Meta and records the result.
+8. IN: VYNTEX ERP, Integrations: Connect. The server checks the number with Meta and records the result.
 
 ### Dialpad
 
@@ -115,7 +115,7 @@ stamp, so a repeat is stopped by the event id only. In all cases a repeated even
    create a key. IN: Vercel: set `DIALPAD_AUTH_MODE=api_key`, `DIALPAD_API_KEY`, `DIALPAD_WEBHOOK_SECRET`.
 4. Text messages through Dialpad: IN: Vercel: set `DIALPAD_SMS_ENABLED=true`. The content of text events is a
    separate permission that Dialpad grants.
-5. IN: VYNTEX Command, Integrations: Connect. Then "Subscribe to call events" (the adapter's `subscribeEvents`),
+5. IN: VYNTEX ERP, Integrations: Connect. Then "Subscribe to call events" (the adapter's `subscribeEvents`),
    which creates the webhook and the subscription at Dialpad for this company.
 6. Test first against Dialpad's sandbox with `DIALPAD_ENVIRONMENT=sandbox`.
 
@@ -128,13 +128,13 @@ stamp, so a repeat is stopped by the event id only. In all cases a repeated even
    comes in" to `https://<site>/api/webhooks/sms`, method POST.
 3. Dialpad: connect Dialpad first (above). The sending number must be one of the account's numbers.
 4. IN: Vercel: set `SMS_APPROVED=true` once the sender registration is approved.
-5. IN: VYNTEX Command, Integrations: Connect.
+5. IN: VYNTEX ERP, Integrations: Connect.
 
 ### VYNTEX AI
 
 1. IN: Anthropic Console, create an API key for this deployment.
 2. IN: Vercel: set `ANTHROPIC_API_KEY`, and `ASSISTANT_MODEL` to the model id to use.
-3. IN: VYNTEX Command, Integrations: Connect. The server asks the provider for that model; a key that may not use
+3. IN: VYNTEX ERP, Integrations: Connect. The server asks the provider for that model; a key that may not use
    it shows as `model_not_found`.
 
 ## 4. What needs the provider's review
@@ -213,7 +213,7 @@ Click to call: `dialpad.actions.clickToCall(ctx, { to, userId })` answers `{ pla
 * Key connections (`whatsapp`, `sms`, `dialpad` in API key mode, `ai`) read their credentials from the deployment's
   settings, because the framework's connect step takes no credentials from a person. One deployment therefore has
   one WhatsApp number, one text sender and (in API key mode) one Dialpad account. That fits LBS Command. For several
-  companies on VYNTEX Command, the connect step must accept and seal per-company credentials; the WhatsApp adapter
+  companies on VYNTEX ERP, the connect step must accept and seal per-company credentials; the WhatsApp adapter
   already reads them from the connection when they are there.
 * Incoming WhatsApp, Twilio and Dialpad text messages are stored only when `api/webhooks.js` calls `ingestInbound`
   (three lines, in the report). Without that call the signature is checked and the event is logged, but the text

@@ -1,10 +1,10 @@
-# VYNTEX Command
+# VYNTEX ERP
 
 ## Master build (October 2026): start here
 
 This repository now builds two separate products from one codebase:
 
-* `npm run build` builds **VYNTEX Command** into `dist/` (sales pages, public demo, nine editions, a live workspace per company).
+* `npm run build` builds **VYNTEX ERP** into `dist/` (sales pages, public demo, nine editions, a live workspace per company).
 * `npm run build:lbs` builds **LBS Command** into `dist-lbs/` (standalone Lion Business Services deployment, professional-services edition only).
 
 Read in this order: `docs/MASTER-BUILD-REPORT.md` (what was built, what is proved, what is still needed), `docs/MASTER-BUILD-SPEC.md`
@@ -15,7 +15,7 @@ Tests: `npm run check`, `npm run test:unit`, `npm run test:integrations`, `npm r
 `npm run test:db`, `npm run test:e2e`, `npm run test:migrate`, and the browser suites under `tests/qa_*.py`.
 Nothing here is deployed by running a build: production deployment waits for the owner's explicit go-ahead.
 
-The platform's name is VYNTEX Command, "the AI-Powered Business Operating Platform" (one setting: `src/config/brand.ts`).
+The platform's name is VYNTEX ERP, "the AI-Powered Business Operating Platform" (one setting: `src/config/brand.ts`).
 
 One business operations platform for small service companies: leads, clients, jobs, tasks, crews, calendar, documents, payments, reports and 1099 compliance. It is sold as eight industry editions (VYNTEX BUILD, CLEAN, LANDSCAPE, WASH, HAUL, SNOW, TURNOVER, EVENTS). All eight run on one codebase; an edition is a configuration folder, not a copy of the app.
 
@@ -29,7 +29,7 @@ One business operations platform for small service companies: leads, clients, jo
 | Customer database (`supabase/`) | Written and tested locally. Not created on Supabase yet. |
 | Customer workspaces (`/<company-slug>`) | Prepared (address rules, database, access rules). The sign-in screens and the connection between the pages and the database are not built yet. |
 
-**State of hosting.** The code is in the GitHub repository `lion-business-services/VYNTEX-COMMAND` and a test copy runs on Vercel at https://vyntex-command.vercel.app/ (demo only: no database, no keys). No Supabase project, sending domain or DNS record exists yet. `docs/DEPLOYMENT.md` lists the remaining steps for when the owner decides to go ahead.
+**State of hosting.** The code is in the GitHub repository `lion-business-services/vyntex-erp` and a test copy runs on Vercel at https://vyntex-erp.vercel.app/ (demo only: no database, no keys). No Supabase project, sending domain or DNS record exists yet. `docs/DEPLOYMENT.md` lists the remaining steps for when the owner decides to go ahead.
 
 ## Run it on your computer
 

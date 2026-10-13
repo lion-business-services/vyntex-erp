@@ -2,7 +2,7 @@
   "product": "VYNTEX BUILD",
   "owner": "VYNTEX, LLC",
   "version": "2026-09-26h",
-  "notes": "Single source of truth for VYNTEX BUILD plans. Use for Stripe (test mode first), the VYNTEX Command Center and the catalog page. Do not change prices without Daysi's approval.",
+  "notes": "Single source of truth for VYNTEX BUILD plans. Use for Stripe (test mode first), the VYNTEX ERP Center and the catalog page. Do not change prices without Daysi's approval.",
   "plans": [
     {
       "id": "foundation",

@@ -7,7 +7,7 @@
 # never been built or started. The server it runs (deploy/container/server.mjs) was run and tested without Docker.
 #
 # One image per deployment. The deployment is chosen at build time, as on Vercel:
-#   docker build --build-arg VX_DEPLOY=vyntex -t vyntex-command .
+#   docker build --build-arg VX_DEPLOY=vyntex -t vyntex-erp .
 #   docker build --build-arg VX_DEPLOY=lbs    -t lbs-command .
 # The two images go to separate registries or repositories and run in separate namespaces with separate secrets.
 #

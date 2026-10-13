@@ -48,7 +48,7 @@ One copy per deployment. "Kept for" starts at the event in the second column. Fi
 | Backups made by Supabase | Date of the backup | Set by the plan: read it from the dashboard and write it here ______ | Removed by Supabase | |
 | The extra encrypted backups | Date of the backup | ______ | Destroyed (section 3) | |
 | Server and platform logs (Vercel, Supabase) | Date of the line | Set by the plan: ______ | Removed by the vendor | |
-| Demo requests (VYNTEX Command only) | Date of the request | ______ | ______ | |
+| Demo requests (VYNTEX ERP only) | Date of the request | ______ | ______ | |
 
 Two things to settle with counsel while filling this in:
 
@@ -82,7 +82,7 @@ Two things to settle with counsel while filling this in:
 2. Because every backup is encrypted, destroying the last copy of a retired backup key also makes every backup made with it unreadable. Do that only when all of them are past their period.
 3. Write the date and the file names in the security log.
 
-**Closing a company** (VYNTEX Command, a client company that stops using the product):
+**Closing a company** (VYNTEX ERP, a client company that stops using the product):
 
 1. Agree with the company in writing what happens to its data: handed over, kept for a period, deleted.
 2. Hand over the export (section 4).

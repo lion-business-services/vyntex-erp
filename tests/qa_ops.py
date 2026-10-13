@@ -4,7 +4,7 @@
 # petty cash (entry, close, lock, approval), deadlines (add, complete and roll forward, import, month view), and the
 # payroll, bookkeeping and licensing screens.
 # Usage: python3 tests/qa_ops.py [demo|preview]      PORT selects the preview server.
-#   demo      a VYNTEX Command build: /demo?industry=practice (default)
+#   demo      a VYNTEX ERP build: /demo?industry=practice (default)
 #   preview   an LBS Command build made with VX_SAMPLE_PREVIEW=1: /preview
 import asyncio, json, os, sys, tempfile
 from playwright.async_api import async_playwright

@@ -1634,6 +1634,32 @@ var appDict = {
 // src/features/dashboard/i18n.ts
 var dict = {
   en: {
+    "setup.title": "Get {company} ready",
+    "setup.allDone": "{company} is all set",
+    "setup.sub": "A few steps make this workspace yours. Each one ticks itself off when it is done.",
+    "setup.progress": "{done} of {n} steps done",
+    "setup.hide": "Hide the setup steps",
+    "setup.business.title": "Add your business details",
+    "setup.business.body": "Name, logo, colour, phone, email and address. They appear on every screen and document.",
+    "setup.business.go": "Add details",
+    "setup.security.title": "Protect your sign-in",
+    "setup.security.body": "Your account uses an authenticator app. Keep your recovery codes somewhere safe.",
+    "setup.security.go": "Review",
+    "setup.team.title": "Invite your team",
+    "setup.team.body": "Each person gets their own sign-in and a role that decides what they see.",
+    "setup.team.go": "Invite people",
+    "setup.services.title": "Add your services and prices",
+    "setup.services.body": "What you sell, at which prices. Leads, estimates and invoices pick them up.",
+    "setup.services.go": "Add services",
+    "setup.clients.title": "Bring in your clients",
+    "setup.clients.body": "Add them one by one or import a spreadsheet.",
+    "setup.clients.go": "Add clients",
+    "setup.apps.title": "Connect your email and calendar",
+    "setup.apps.body": "Gmail, Google Calendar and the other apps you use.",
+    "setup.apps.go": "Connect apps",
+    "setup.rules.title": "Check your automations",
+    "setup.rules.body": "The rules that assign leads, create tasks and prepare emails for you.",
+    "setup.rules.go": "Open rules",
     "dash.hi.morning": "Good morning",
     "dash.hi.afternoon": "Good afternoon",
     "dash.hi.evening": "Good evening",
@@ -1904,6 +1930,32 @@ var dict = {
     "dash.links.badUrl": "That is not a web address. It should look like https://example.com/page."
   },
   es: {
+    "setup.title": "Prepare {company}",
+    "setup.allDone": "{company} est\xE1 listo",
+    "setup.sub": "Unos pocos pasos hacen suyo este espacio. Cada uno se marca solo cuando est\xE1 hecho.",
+    "setup.progress": "{done} de {n} pasos hechos",
+    "setup.hide": "Ocultar los pasos de configuraci\xF3n",
+    "setup.business.title": "Agregue los datos de su negocio",
+    "setup.business.body": "Nombre, logo, color, tel\xE9fono, correo y direcci\xF3n. Aparecen en cada pantalla y documento.",
+    "setup.business.go": "Agregar datos",
+    "setup.security.title": "Proteja su acceso",
+    "setup.security.body": "Su cuenta usa una aplicaci\xF3n de autenticaci\xF3n. Guarde sus c\xF3digos de recuperaci\xF3n en un lugar seguro.",
+    "setup.security.go": "Revisar",
+    "setup.team.title": "Invite a su equipo",
+    "setup.team.body": "Cada persona tiene su propio acceso y un rol que decide lo que ve.",
+    "setup.team.go": "Invitar personas",
+    "setup.services.title": "Agregue sus servicios y precios",
+    "setup.services.body": "Lo que vende y a qu\xE9 precios. Los prospectos, presupuestos y facturas los usan.",
+    "setup.services.go": "Agregar servicios",
+    "setup.clients.title": "Traiga a sus clientes",
+    "setup.clients.body": "Agr\xE9guelos uno por uno o importe una hoja de c\xE1lculo.",
+    "setup.clients.go": "Agregar clientes",
+    "setup.apps.title": "Conecte su correo y su calendario",
+    "setup.apps.body": "Gmail, Google Calendar y las dem\xE1s aplicaciones que usa.",
+    "setup.apps.go": "Conectar aplicaciones",
+    "setup.rules.title": "Revise sus automatizaciones",
+    "setup.rules.body": "Las reglas que asignan prospectos, crean tareas y le preparan correos.",
+    "setup.rules.go": "Abrir reglas",
     "dash.hi.morning": "Buenos d\xEDas",
     "dash.hi.afternoon": "Buenas tardes",
     "dash.hi.evening": "Buenas noches",
@@ -4111,6 +4163,8 @@ var dict7 = {
     "calendar.conn.reauth": "Sign in again",
     "calendar.conn.error": "Not working",
     "calendar.conn.pending_approval": "Waiting for approval",
+    "calendar.conn.demo": "Connected \xB7 demo",
+    "calendar.conn.demoBody": "Connected in this demo as a simulation: the connected-app rules put new work on Google Calendar. In your workspace the calendar is kept matched in both directions.",
     "calendar.conn.offBody": `Two-way sync starts once Google Calendar is connected, with each person's own Google account. Until then nothing is copied by itself: use "Add to Google" on any item.`,
     "calendar.conn.onBody": 'Appointments and Google Calendar are kept matched in both directions. "Add to Google" still works for a calendar that is not connected.',
     "calendar.conn.meetBody": "A video link shows on an appointment only when Google Meet created one. None is ever made up.",
@@ -4174,6 +4228,8 @@ var dict7 = {
     "calendar.conn.reauth": "Vuelva a iniciar sesi\xF3n",
     "calendar.conn.error": "No funciona",
     "calendar.conn.pending_approval": "Esperando aprobaci\xF3n",
+    "calendar.conn.demo": "Conectado \xB7 demo",
+    "calendar.conn.demoBody": "Conectado en esta demo como simulaci\xF3n: las reglas de aplicaciones conectadas ponen el trabajo nuevo en Google Calendar. En su espacio el calendario se mantiene igual en ambos sentidos.",
     "calendar.conn.offBody": 'La sincronizaci\xF3n en ambos sentidos empieza cuando se conecta Google Calendar, con la cuenta de Google de cada persona. Mientras tanto nada se copia solo: use "Agregar a Google" en cualquier elemento.',
     "calendar.conn.onBody": 'Las citas y Google Calendar se mantienen iguales en ambos sentidos. "Agregar a Google" sigue sirviendo para un calendario que no est\xE9 conectado.',
     "calendar.conn.meetBody": "Una cita muestra un enlace de video solo cuando Google Meet lo cre\xF3. Nunca se inventa uno.",
@@ -5863,23 +5919,82 @@ var dict11 = {
   }
 };
 
-// src/packs/practice/rules.ts
+// src/packs/connected-rules.ts
 var l = (en, es) => ({ en, es });
+var app = (id) => ({ do: "connector", params: { app: id } });
+var rule = (id, name, about, event2, then) => ({ id, name, about, active: true, when: { event: event2 }, if: [], then, shipped: true });
+var CONNECTED_RULES = [
+  rule(
+    "connected-won",
+    l("Google Workspace: new client set up", "Google Workspace: alta del cliente nuevo"),
+    l(
+      "When a lead is won, the person goes into Google Contacts, a Google Drive folder is opened for their documents, the tracker sheet gets a row, the work goes on Google Calendar and the team hears about it on Slack.",
+      "Cuando se gana un prospecto, la persona entra en Google Contacts, se abre una carpeta de Google Drive para sus documentos, la hoja de seguimiento recibe una fila, el trabajo va a Google Calendar y el equipo se entera por Slack."
+    ),
+    "lead.won",
+    [app("gcontacts"), app("gdrive"), app("gsheets"), app("gcal"), app("slack")]
+  ),
+  rule(
+    "connected-scheduled",
+    l("Google Calendar and Slack: new work scheduled", "Google Calendar y Slack: trabajo nuevo agendado"),
+    l(
+      "When new work is created, its dates go on Google Calendar and the team hears about it on Slack.",
+      "Cuando se crea un trabajo nuevo, sus fechas van a Google Calendar y el equipo se entera por Slack."
+    ),
+    "job.created",
+    [app("gcal"), app("slack")]
+  ),
+  rule(
+    "connected-paid",
+    l("QuickBooks and Slack: payment received", "QuickBooks y Slack: pago recibido"),
+    l(
+      "When a payment is recorded, it goes to QuickBooks Online and the team sees it on Slack.",
+      "Cuando se registra un pago, pasa a QuickBooks Online y el equipo lo ve en Slack."
+    ),
+    "payment.received",
+    [app("quickbooks"), app("slack")]
+  ),
+  rule(
+    "connected-sent",
+    l("Google Drive: file every document sent", "Google Drive: guardar cada documento enviado"),
+    l(
+      "When a document is sent, a copy is filed in the client's Google Drive folder.",
+      "Cuando se env\xEDa un documento, se guarda una copia en la carpeta de Google Drive del cliente."
+    ),
+    "doc.sent",
+    [app("gdrive")]
+  )
+];
+var CONNECTED_APPT_RULES = [
+  rule(
+    "connected-booked",
+    l("Google Calendar and Meet: appointment booked", "Google Calendar y Meet: cita agendada"),
+    l(
+      "When an appointment is booked, it goes on Google Calendar and a Google Meet link is created for it.",
+      "Cuando se agenda una cita, va a Google Calendar y se crea un enlace de Google Meet para ella."
+    ),
+    "appointment.booked",
+    [app("gcal"), app("gmeet")]
+  )
+];
+
+// src/packs/practice/rules.ts
+var l2 = (en, es) => ({ en, es });
 var extra = (e) => e;
 var task = (title, titleEs, who, dueIn = 0, pri = "medium", type) => ({ do: "task", params: { title, titleEs, for: who, dueIn, pri, ...type ? { type } : {} } });
 var draft = (subject, subjectEs, body, bodyEs, channel = "email") => ({ do: "message", params: { channel, mode: "draft", subject, subjectEs, body, bodyEs } });
 var notify = (who, text, textEs) => ({ do: "notify", params: { who, text, textEs } });
 var builtin = (id, event2, name) => ({ id, name, active: true, when: { event: event2 }, if: [], then: [{ do: "builtin", params: { rule: id } }], shipped: true });
-var rule = (id, name, about, event2, then, more3 = {}) => ({ id, name, about, active: !more3.off, when: { event: event2, ...more3.days !== void 0 ? { days: more3.days } : {} }, if: more3.if ?? [], then, shipped: true });
+var rule2 = (id, name, about, event2, then, more3 = {}) => ({ id, name, about, active: !more3.off, when: { event: event2, ...more3.days !== void 0 ? { days: more3.days } : {} }, if: more3.if ?? [], then, shipped: true });
 var SIGN = "\n\n{{company}}";
 var SIGN_ES = "\n\n{{company}}";
 var practiceRules = [
   // ---- leads
-  builtin("lead-intake", "lead.created", l("New lead intake", "Entrada de prospectos")),
-  rule(
+  builtin("lead-intake", "lead.created", l2("New lead intake", "Entrada de prospectos")),
+  rule2(
     "p-lead-ack",
-    l("New lead acknowledgement", "Acuse de recibo al prospecto"),
-    l("Prepares a short email telling a new lead their request arrived.", "Prepara un correo breve para avisar al prospecto que su solicitud lleg\xF3."),
+    l2("New lead acknowledgement", "Acuse de recibo al prospecto"),
+    l2("Prepares a short email telling a new lead their request arrived.", "Prepara un correo breve para avisar al prospecto que su solicitud lleg\xF3."),
     "lead.created",
     [draft(
       "We received your request",
@@ -5889,29 +6004,29 @@ var practiceRules = [
     )],
     { if: [{ field: "lead.email", op: "not_empty" }] }
   ),
-  rule(
+  rule2(
     "p-lead-idle",
-    l("Idle lead nudge", "Aviso de prospecto sin contacto"),
-    l("Creates a task for the lead owner when nobody has been in touch for a few days.", "Crea una tarea para el responsable cuando nadie ha contactado al prospecto en varios d\xEDas."),
+    l2("Idle lead nudge", "Aviso de prospecto sin contacto"),
+    l2("Creates a task for the lead owner when nobody has been in touch for a few days.", "Crea una tarea para el responsable cuando nadie ha contactado al prospecto en varios d\xEDas."),
     "lead.idle",
     [task("Follow up with {{lead.name}}: no contact for {{days}} days", "Dar seguimiento a {{lead.name}}: {{days}} d\xEDas sin contacto", "record_owner", 0, "medium", "call")],
     { days: 3 }
   ),
-  builtin("visit-prep", "lead.stage", l("Appointment preparation", "Preparaci\xF3n de la cita")),
-  builtin("estimate-follow-up", "lead.stage", l("Proposal follow-up", "Seguimiento de la propuesta")),
-  builtin("lead-won", "lead.won", l("Won lead to engagement", "De prospecto ganado a encargo")),
-  rule(
+  builtin("visit-prep", "lead.stage", l2("Appointment preparation", "Preparaci\xF3n de la cita")),
+  builtin("estimate-follow-up", "lead.stage", l2("Proposal follow-up", "Seguimiento de la propuesta")),
+  builtin("lead-won", "lead.won", l2("Won lead to engagement", "De prospecto ganado a encargo")),
+  rule2(
     "p-lead-won-notify",
-    l("Won lead notice", "Aviso de prospecto ganado"),
-    l("Tells the senior associate when a lead becomes a client.", "Avisa al asociado s\xE9nior cuando un prospecto se convierte en cliente."),
+    l2("Won lead notice", "Aviso de prospecto ganado"),
+    l2("Tells the senior associate when a lead becomes a client.", "Avisa al asociado s\xE9nior cuando un prospecto se convierte en cliente."),
     "lead.won",
     [notify("manager", '{{lead.name}} is now a client. The engagement "{{job.name}}" is open.', '{{lead.name}} ya es cliente. El encargo "{{job.name}}" est\xE1 abierto.')]
   ),
   // ---- appointments
-  rule(
+  rule2(
     "p-appt-confirm",
-    l("Appointment confirmation", "Confirmaci\xF3n de cita"),
-    l("Prepares a confirmation when an appointment is booked or moved.", "Prepara una confirmaci\xF3n cuando se programa o se cambia una cita."),
+    l2("Appointment confirmation", "Confirmaci\xF3n de cita"),
+    l2("Prepares a confirmation when an appointment is booked or moved.", "Prepara una confirmaci\xF3n cuando se programa o se cambia una cita."),
     "appointment.booked",
     [draft(
       "Your appointment on {{appointment.date}}",
@@ -5920,10 +6035,10 @@ var practiceRules = [
       "Hola {{first_name}}:\n\nSu cita con {{company}} qued\xF3 para el {{appointment.date}} a las {{appointment.time}}.\n\nSi necesita cambiarla, responda a este mensaje o ll\xE1menos." + SIGN_ES
     )]
   ),
-  rule(
+  rule2(
     "p-appt-reminder",
-    l("Appointment reminder", "Recordatorio de cita"),
-    l("Prepares a reminder the day before an appointment.", "Prepara un recordatorio el d\xEDa anterior a la cita."),
+    l2("Appointment reminder", "Recordatorio de cita"),
+    l2("Prepares a reminder the day before an appointment.", "Prepara un recordatorio el d\xEDa anterior a la cita."),
     extra("appointment.soon"),
     [draft(
       "Reminder: your appointment on {{appointment.date}}",
@@ -5933,10 +6048,10 @@ var practiceRules = [
     )],
     { days: 1 }
   ),
-  rule(
+  rule2(
     "p-appt-pay-reminder",
-    l("Unpaid appointment reminder", "Recordatorio de cita sin pagar"),
-    l("Prepares a reminder when a prepaid appointment is still unpaid a day before its deadline.", "Prepara un recordatorio cuando una cita con pago anticipado sigue sin pagar un d\xEDa antes del plazo."),
+    l2("Unpaid appointment reminder", "Recordatorio de cita sin pagar"),
+    l2("Prepares a reminder when a prepaid appointment is still unpaid a day before its deadline.", "Prepara un recordatorio cuando una cita con pago anticipado sigue sin pagar un d\xEDa antes del plazo."),
     extra("appointment.pay_soon"),
     [draft(
       "Payment needed to keep your appointment",
@@ -5945,10 +6060,10 @@ var practiceRules = [
       "Hola {{first_name}}:\n\nSu cita del {{appointment.date}} a las {{appointment.time}} queda apartada hasta que recibamos el pago. Por favor pague antes del plazo para conservar el horario." + SIGN_ES
     )]
   ),
-  rule(
+  rule2(
     "p-appt-released",
-    l("Unpaid appointment released", "Cita sin pagar liberada"),
-    l("Prepares a notice when an unpaid appointment is released, and a task to call the person.", "Prepara un aviso cuando se libera una cita sin pagar y una tarea para llamar a la persona."),
+    l2("Unpaid appointment released", "Cita sin pagar liberada"),
+    l2("Prepares a notice when an unpaid appointment is released, and a task to call the person.", "Prepara un aviso cuando se libera una cita sin pagar y una tarea para llamar a la persona."),
     "appointment.unpaid",
     [
       draft(
@@ -5960,10 +6075,10 @@ var practiceRules = [
       task("Call {{name}}: the unpaid appointment was released", "Llamar a {{name}}: se liber\xF3 la cita sin pagar", "record_owner", 1, "medium", "call")
     ]
   ),
-  rule(
+  rule2(
     "p-appt-paid",
-    l("Appointment payment confirmation", "Confirmaci\xF3n de pago de cita"),
-    l("Prepares a confirmation when an appointment is paid.", "Prepara una confirmaci\xF3n cuando se paga una cita."),
+    l2("Appointment payment confirmation", "Confirmaci\xF3n de pago de cita"),
+    l2("Prepares a confirmation when an appointment is paid.", "Prepara una confirmaci\xF3n cuando se paga una cita."),
     "appointment.paid",
     [draft(
       "Payment received, your appointment is confirmed",
@@ -5972,10 +6087,10 @@ var practiceRules = [
       "Hola {{first_name}}:\n\nRecibimos su pago. Su cita del {{appointment.date}} a las {{appointment.time}} est\xE1 confirmada." + SIGN_ES
     )]
   ),
-  rule(
+  rule2(
     "p-appt-cancelled",
-    l("Appointment cancellation notice", "Aviso de cita cancelada"),
-    l("Prepares a notice when an appointment is cancelled.", "Prepara un aviso cuando se cancela una cita."),
+    l2("Appointment cancellation notice", "Aviso de cita cancelada"),
+    l2("Prepares a notice when an appointment is cancelled.", "Prepara un aviso cuando se cancela una cita."),
     "appointment.cancelled",
     [draft(
       "Your appointment was cancelled",
@@ -5985,10 +6100,10 @@ var practiceRules = [
     )],
     { off: true }
   ),
-  rule(
+  rule2(
     "p-appt-noshow",
-    l("No-show follow-up", "Seguimiento de inasistencia"),
-    l("Creates a task to call the person and prepares a message when someone misses an appointment.", "Crea una tarea para llamar a la persona y prepara un mensaje cuando alguien falta a su cita."),
+    l2("No-show follow-up", "Seguimiento de inasistencia"),
+    l2("Creates a task to call the person and prepares a message when someone misses an appointment.", "Crea una tarea para llamar a la persona y prepara un mensaje cuando alguien falta a su cita."),
     "appointment.no_show",
     [
       task("Call {{name}} about the missed appointment", "Llamar a {{name}} por la cita a la que no asisti\xF3", "record_owner", 0, "high", "call"),
@@ -6000,25 +6115,25 @@ var practiceRules = [
       )
     ]
   ),
-  rule(
+  rule2(
     "p-appt-noshow-repeat",
-    l("Repeated no-show notice", "Aviso de inasistencia repetida"),
-    l("Tells the senior associate when the same person misses a second appointment.", "Avisa al asociado s\xE9nior cuando la misma persona falta a una segunda cita."),
+    l2("Repeated no-show notice", "Aviso de inasistencia repetida"),
+    l2("Tells the senior associate when the same person misses a second appointment.", "Avisa al asociado s\xE9nior cuando la misma persona falta a una segunda cita."),
     "appointment.no_show",
     [notify("manager", "{{name}} missed another appointment, on {{appointment.date}}.", "{{name}} volvi\xF3 a faltar a una cita, el {{appointment.date}}.")],
     { if: [{ field: "extra.noShows", op: "gt", value: 1 }] }
   ),
-  rule(
+  rule2(
     "p-appt-followup",
-    l("After-appointment follow-up", "Seguimiento despu\xE9s de la cita"),
-    l("Creates a task to write down what was agreed once an appointment is completed.", "Crea una tarea para anotar lo acordado cuando se completa una cita."),
+    l2("After-appointment follow-up", "Seguimiento despu\xE9s de la cita"),
+    l2("Creates a task to write down what was agreed once an appointment is completed.", "Crea una tarea para anotar lo acordado cuando se completa una cita."),
     "appointment.completed",
     [task("Write down what was agreed with {{name}} and the next step", "Anotar lo acordado con {{name}} y el siguiente paso", "record_owner", 1)]
   ),
-  rule(
+  rule2(
     "p-credit-expiring",
-    l("Credit about to expire", "Cr\xE9dito por vencer"),
-    l("Prepares a reminder when a client credit is two weeks from running out.", "Prepara un recordatorio cuando a un cr\xE9dito del cliente le quedan dos semanas."),
+    l2("Credit about to expire", "Cr\xE9dito por vencer"),
+    l2("Prepares a reminder when a client credit is two weeks from running out.", "Prepara un recordatorio cuando a un cr\xE9dito del cliente le quedan dos semanas."),
     extra("credit.expiring"),
     [draft(
       "Your credit with us expires soon",
@@ -6029,28 +6144,28 @@ var practiceRules = [
     { days: 14 }
   ),
   // ---- engagements
-  builtin("job-started", "job.status", l("Engagement started", "Inicio del encargo")),
-  builtin("job-completed", "job.status", l("Engagement completed", "Cierre del encargo")),
-  rule(
+  builtin("job-started", "job.status", l2("Engagement started", "Inicio del encargo")),
+  builtin("job-completed", "job.status", l2("Engagement completed", "Cierre del encargo")),
+  rule2(
     "p-review-request",
-    l("Review request after completed work", "Solicitud de rese\xF1a al terminar"),
-    l("Prepares a review request a few days after an engagement is completed. The number of days is set on the Reviews screen.", "Prepara una solicitud de rese\xF1a unos d\xEDas despu\xE9s de completar un encargo. Los d\xEDas se configuran en la pantalla de Rese\xF1as."),
+    l2("Review request after completed work", "Solicitud de rese\xF1a al terminar"),
+    l2("Prepares a review request a few days after an engagement is completed. The number of days is set on the Reviews screen.", "Prepara una solicitud de rese\xF1a unos d\xEDas despu\xE9s de completar un encargo. Los d\xEDas se configuran en la pantalla de Rese\xF1as."),
     "review.due",
     [{ do: "review", params: { channel: "email" } }]
   ),
-  rule(
+  rule2(
     "p-cross-sell",
-    l("Opportunity follow-up", "Seguimiento de oportunidad"),
-    l("Creates a task to talk to the client when a new opportunity is opened for them.", "Crea una tarea para hablar con el cliente cuando se abre una oportunidad nueva."),
+    l2("Opportunity follow-up", "Seguimiento de oportunidad"),
+    l2("Creates a task to talk to the client when a new opportunity is opened for them.", "Crea una tarea para hablar con el cliente cuando se abre una oportunidad nueva."),
     extra("opportunity.created"),
     [task("Talk to {{client.name}} about {{service}}", "Hablar con {{client.name}} sobre {{service}}", "record_owner", 3)]
   ),
   // ---- billing
-  builtin("payment-posted", "payment.received", l("Payment posted", "Pago registrado")),
-  rule(
+  builtin("payment-posted", "payment.received", l2("Payment posted", "Pago registrado")),
+  rule2(
     "p-payment-thanks",
-    l("Payment thank-you", "Agradecimiento por el pago"),
-    l("Prepares a short thank-you when a payment is recorded.", "Prepara un agradecimiento breve cuando se registra un pago."),
+    l2("Payment thank-you", "Agradecimiento por el pago"),
+    l2("Prepares a short thank-you when a payment is recorded.", "Prepara un agradecimiento breve cuando se registra un pago."),
     "payment.received",
     [draft(
       "Thank you for your payment",
@@ -6061,48 +6176,48 @@ var practiceRules = [
     { off: true }
   ),
   // ---- documents and signatures
-  rule(
+  rule2(
     "p-doc-sent",
-    l("Document sent check", "Verificaci\xF3n de documento enviado"),
-    l("Creates a task to check that the client received a document that was sent.", "Crea una tarea para verificar que el cliente recibi\xF3 un documento enviado."),
+    l2("Document sent check", "Verificaci\xF3n de documento enviado"),
+    l2("Creates a task to check that the client received a document that was sent.", "Crea una tarea para verificar que el cliente recibi\xF3 un documento enviado."),
     "doc.sent",
     [task("Check that {{client.name}} received {{doc.title}}", "Verificar que {{client.name}} recibi\xF3 {{doc.title}}", "record_owner", 2, "low", "document")]
   ),
-  rule(
+  rule2(
     "p-envelope-idle",
-    l("Unsigned document follow-up", "Seguimiento de documento sin firmar"),
-    l("Creates a task to call the client when a signature request has been reminded and is still not signed.", "Crea una tarea para llamar al cliente cuando una solicitud de firma ya se record\xF3 y sigue sin firmarse."),
+    l2("Unsigned document follow-up", "Seguimiento de documento sin firmar"),
+    l2("Creates a task to call the client when a signature request has been reminded and is still not signed.", "Crea una tarea para llamar al cliente cuando una solicitud de firma ya se record\xF3 y sigue sin firmarse."),
     "envelope.idle",
     [task("Call {{client.name}}: {{doc.title}} is still not signed", "Llamar a {{client.name}}: {{doc.title}} sigue sin firmarse", "record_owner", 0, "medium", "call")]
   ),
-  rule(
+  rule2(
     "p-envelope-completed",
-    l("Signed document filing", "Archivo de documento firmado"),
-    l("Creates a task to file the signed copy when everyone has signed.", "Crea una tarea para archivar la copia firmada cuando todos firmaron."),
+    l2("Signed document filing", "Archivo de documento firmado"),
+    l2("Creates a task to file the signed copy when everyone has signed.", "Crea una tarea para archivar la copia firmada cuando todos firmaron."),
     "envelope.completed",
     [task("File the signed copy of {{doc.title}}", "Archivar la copia firmada de {{doc.title}}", "record_owner", 1, "medium", "document")]
   ),
   // ---- tasks, deadlines and clients
-  rule(
+  rule2(
     "p-task-overdue",
-    l("Overdue task escalation", "Escalamiento de tarea atrasada"),
-    l("Tells the senior associate when a task is two days past its date.", "Avisa al asociado s\xE9nior cuando una tarea lleva dos d\xEDas de atraso."),
+    l2("Overdue task escalation", "Escalamiento de tarea atrasada"),
+    l2("Tells the senior associate when a task is two days past its date.", "Avisa al asociado s\xE9nior cuando una tarea lleva dos d\xEDas de atraso."),
     "task.overdue",
     [notify("manager", "Overdue by {{days}} days: {{task.title}} ({{owner}})", "Atrasada {{days}} d\xEDas: {{task.title}} ({{owner}})")],
     { days: 2 }
   ),
-  rule(
+  rule2(
     "p-deadline-near",
-    l("Deadline approaching", "Fecha l\xEDmite pr\xF3xima"),
-    l("Creates a task two weeks before a filing, renewal or other deadline.", "Crea una tarea dos semanas antes de una presentaci\xF3n, renovaci\xF3n u otra fecha l\xEDmite."),
+    l2("Deadline approaching", "Fecha l\xEDmite pr\xF3xima"),
+    l2("Creates a task two weeks before a filing, renewal or other deadline.", "Crea una tarea dos semanas antes de una presentaci\xF3n, renovaci\xF3n u otra fecha l\xEDmite."),
     "deadline.near",
     [task("Due in {{days}} days: {{title}}", "Vence en {{days}} d\xEDas: {{title}}", "record_owner", 0, "high")],
     { days: 14 }
   ),
-  rule(
+  rule2(
     "p-birthday",
-    l("Birthday greeting", "Felicitaci\xF3n de cumplea\xF1os"),
-    l("Prepares a greeting on a client's birthday.", "Prepara una felicitaci\xF3n el d\xEDa del cumplea\xF1os del cliente."),
+    l2("Birthday greeting", "Felicitaci\xF3n de cumplea\xF1os"),
+    l2("Prepares a greeting on a client's birthday.", "Prepara una felicitaci\xF3n el d\xEDa del cumplea\xF1os del cliente."),
     "client.birthday",
     [draft(
       "Happy birthday, {{first_name}}",
@@ -6111,7 +6226,9 @@ var practiceRules = [
       "Hola {{first_name}}:\n\nTodos en {{company}} le deseamos un feliz cumplea\xF1os." + SIGN_ES
     )],
     { days: 0, off: true }
-  )
+  ),
+  ...CONNECTED_RULES,
+  ...CONNECTED_APPT_RULES
 ];
 
 // src/features/automations/i18n-builder.ts
@@ -6514,7 +6631,27 @@ var more = {
     "auto.m.service": "service",
     "auto.m.today": "today",
     "auto.m.insert": "Add to the text: {field}",
-    "act.auto.notify": "{who} was told by an automation: {text}"
+    "act.auto.notify": "{who} was told by an automation: {text}",
+    // ---- the connector step: hand the record to a connected app (October 2026)
+    "auto.stepName.connector": "Send to a connected app",
+    "auto.p.app": "App",
+    "auto.do.connector.gcal": "put it on Google Calendar",
+    "auto.do.connector.gmeet": "create a Google Meet link",
+    "auto.do.connector.gdrive": "file the documents in the {client}'s Google Drive folder",
+    "auto.do.connector.gsheets": "add a row to the Google Sheets tracker",
+    "auto.do.connector.gcontacts": "save the person in Google Contacts",
+    "auto.do.connector.quickbooks": "send it to QuickBooks Online",
+    "auto.do.connector.slack": "post it to the Slack channel",
+    "auto.do.connector.zapier": "send the event to Zapier",
+    "auto.step.connector.gcal": "On Google Calendar: {what}",
+    "auto.step.connector.gmeet": "Google Meet link created for {what}",
+    "auto.step.connector.gdrive": "Filed in Google Drive: folder of {what}",
+    "auto.step.connector.gsheets": "Row added to the Google Sheets tracker: {what}",
+    "auto.step.connector.gcontacts": "Saved in Google Contacts: {what}",
+    "auto.step.connector.quickbooks": "Sent to QuickBooks Online: {what}",
+    "auto.step.connector.slack": "Posted to Slack #operations: {what}",
+    "auto.step.connector.zapier": "Event sent to Zapier: {what}",
+    "auto.skip.connector": "{app} is not connected, so nothing was sent. Connect it in Integrations."
   },
   es: {
     "auto.tab.rules": "Reglas",
@@ -6905,7 +7042,27 @@ var more = {
     "auto.m.service": "servicio",
     "auto.m.today": "hoy",
     "auto.m.insert": "Agregar al texto: {field}",
-    "act.auto.notify": "Una automatizaci\xF3n avis\xF3 a {who}: {text}"
+    "act.auto.notify": "Una automatizaci\xF3n avis\xF3 a {who}: {text}",
+    // ---- el paso de conexión: entregar el registro a una aplicación conectada (octubre de 2026)
+    "auto.stepName.connector": "Enviar a una aplicaci\xF3n conectada",
+    "auto.p.app": "Aplicaci\xF3n",
+    "auto.do.connector.gcal": "ponerlo en Google Calendar",
+    "auto.do.connector.gmeet": "crear un enlace de Google Meet",
+    "auto.do.connector.gdrive": "guardar los documentos en la carpeta de Google Drive del {client}",
+    "auto.do.connector.gsheets": "agregar una fila a la hoja de seguimiento de Google Sheets",
+    "auto.do.connector.gcontacts": "guardar a la persona en Google Contacts",
+    "auto.do.connector.quickbooks": "enviarlo a QuickBooks Online",
+    "auto.do.connector.slack": "publicarlo en el canal de Slack",
+    "auto.do.connector.zapier": "enviar el evento a Zapier",
+    "auto.step.connector.gcal": "En Google Calendar: {what}",
+    "auto.step.connector.gmeet": "Enlace de Google Meet creado para {what}",
+    "auto.step.connector.gdrive": "Guardado en Google Drive: carpeta de {what}",
+    "auto.step.connector.gsheets": "Fila agregada a la hoja de seguimiento: {what}",
+    "auto.step.connector.gcontacts": "Guardado en Google Contacts: {what}",
+    "auto.step.connector.quickbooks": "Enviado a QuickBooks Online: {what}",
+    "auto.step.connector.slack": "Publicado en Slack #operaciones: {what}",
+    "auto.step.connector.zapier": "Evento enviado a Zapier: {what}",
+    "auto.skip.connector": "{app} no est\xE1 conectado, as\xED que no se envi\xF3 nada. Con\xE9ctelo en Integraciones."
   }
 };
 
@@ -7010,6 +7167,18 @@ var base = {
     "auto.turnedOff": "Off: {name}. It will not run until you turn it back on.",
     "auto.try.done": "{lead} was added as a sample lead. See what the intake rule did.",
     "auto.try.off": "{lead} was added, but the lead intake rule is off, so nothing ran.",
+    "auto.try.win": "Win {lead} now",
+    "auto.try.wonDone": "{lead} was won. Watch the won-lead rules and the connected apps run.",
+    "auto.try.appsOff": "Connect the apps to watch the Google, QuickBooks and Slack rules run.",
+    "auto.try.appsLink": "Connect apps",
+    "auto.try.appsOn": "{n} apps connected in this demo: the connected-app rules run with them.",
+    "auto.connected-won.name": "Google Workspace: new client set up",
+    "auto.connected-won.when": "A lead is marked as won",
+    "auto.connected-won.then1": "Save the person in Google Contacts",
+    "auto.connected-won.then2": "Open their Google Drive folder",
+    "auto.connected-won.then3": "Add a row to the Google Sheets tracker",
+    "auto.connected-won.then4": "Put the work on Google Calendar",
+    "auto.connected-won.then5": "Tell the team on Slack",
     "auto.try.note": "Asked for an estimate: {service}. Sample lead added from the Automations page.",
     "auto.try.open": "Open {lead}",
     "auto.try.again": "Add another",
@@ -7118,6 +7287,18 @@ var base = {
     "auto.turnedOff": "Apagada: {name}. No se ejecutar\xE1 hasta que la active de nuevo.",
     "auto.try.done": "Se agreg\xF3 a {lead} como prospecto de ejemplo. Vea lo que hizo la regla de entrada.",
     "auto.try.off": "Se agreg\xF3 a {lead}, pero la regla de entrada de prospectos est\xE1 apagada, as\xED que no se ejecut\xF3 nada.",
+    "auto.try.win": "Ganar a {lead} ahora",
+    "auto.try.wonDone": "Se gan\xF3 a {lead}. Vea trabajar las reglas del prospecto ganado y las aplicaciones conectadas.",
+    "auto.try.appsOff": "Conecte las aplicaciones para ver trabajar las reglas de Google, QuickBooks y Slack.",
+    "auto.try.appsLink": "Conectar aplicaciones",
+    "auto.try.appsOn": "{n} aplicaciones conectadas en esta demo: las reglas de aplicaciones conectadas trabajan con ellas.",
+    "auto.connected-won.name": "Google Workspace: alta del cliente nuevo",
+    "auto.connected-won.when": "Se marca un prospecto como ganado",
+    "auto.connected-won.then1": "Guardar a la persona en Google Contacts",
+    "auto.connected-won.then2": "Abrir su carpeta de Google Drive",
+    "auto.connected-won.then3": "Agregar una fila a la hoja de seguimiento de Google Sheets",
+    "auto.connected-won.then4": "Poner el trabajo en Google Calendar",
+    "auto.connected-won.then5": "Avisar al equipo por Slack",
     "auto.try.note": "Pidi\xF3 un presupuesto: {service}. Prospecto de ejemplo agregado desde la p\xE1gina de Automatizaciones.",
     "auto.try.open": "Abrir a {lead}",
     "auto.try.again": "Agregar otro",
@@ -8380,13 +8561,14 @@ var dict15 = {
 // src/features/marketing/i18n.ts
 var dict16 = {
   en: {
-    "mk.title.home": "Run your entire business from one command center",
+    "mk.title.home": "The AI-powered ERP that runs your entire business",
     "mk.title.pricing": "Plans and prices",
     "mk.title.request": "Request a demo",
     "mk.nav.label": "Main",
     "mk.nav.home": "Overview",
     "mk.nav.product": "Product",
     "mk.nav.industries": "Industries",
+    "mk.nav.integrations": "Integrations",
     "mk.nav.pricing": "Pricing",
     "mk.nav.how": "How it works",
     "mk.nav.request": "Request a demo",
@@ -8398,8 +8580,8 @@ var dict16 = {
     "mk.tok.worker": "{worker}",
     "mk.tok.jobs": "{jobs}",
     "mk.tok.workers": "{workers}",
-    "mk.hero.h1a": "Run your entire business from one intelligent",
-    "mk.hero.h1b": "command\xA0center.",
+    "mk.hero.h1a": "Run your entire business from one",
+    "mk.hero.h1b": "AI-powered\xA0ERP.",
     "mk.hero.lede": "Bring your leads, clients, {jobs}, {workers}, tasks, documents, scheduling, communications, payments and workflows into one place, and let the repetitive work run by itself.",
     "mk.cta.demo": "Explore live demo",
     "mk.cta.pricing": "See pricing",
@@ -8582,13 +8764,14 @@ var dict16 = {
     "mk.rd.aside.lookP": "The demo is open. There is nothing to fill in."
   },
   es: {
-    "mk.title.home": "Dirija todo su negocio desde un solo centro de mando",
+    "mk.title.home": "El ERP con IA que dirige todo su negocio",
     "mk.title.pricing": "Planes y precios",
     "mk.title.request": "Solicite una demo",
     "mk.nav.label": "Principal",
     "mk.nav.home": "Inicio",
     "mk.nav.product": "Producto",
     "mk.nav.industries": "Industrias",
+    "mk.nav.integrations": "Integraciones",
     "mk.nav.pricing": "Precios",
     "mk.nav.how": "C\xF3mo funciona",
     "mk.nav.request": "Solicitar una demo",
@@ -8601,7 +8784,7 @@ var dict16 = {
     "mk.tok.jobs": "{jobs}",
     "mk.tok.workers": "{workers}",
     "mk.hero.h1a": "Dirija todo su negocio desde un solo",
-    "mk.hero.h1b": "centro de mando inteligente.",
+    "mk.hero.h1b": "ERP con inteligencia\xA0artificial.",
     "mk.hero.lede": "Re\xFAna prospectos, clientes, {jobs}, {workers}, tareas, documentos, agenda, comunicaciones, pagos y flujos de trabajo en un solo lugar, y deje que el trabajo repetitivo se haga solo.",
     "mk.cta.demo": "Explorar la demo en vivo",
     "mk.cta.pricing": "Ver precios",
@@ -8808,6 +8991,8 @@ var dict17 = {
     "tour.docs.body": "Estimates, agreements and invoices are drafted from the {job}. Edit, print, download as PDF, and try the signing page as the {client} would see it.",
     "tour.pay.title": "Money in, money out",
     "tour.pay.body": "Record what {clients} pay and what you pay your {workers}. Balances and the 1099 totals keep themselves up to date.",
+    "tour.apps.title": "Connected to the apps you use",
+    "tour.apps.body": "Gmail, Google Calendar, Drive, Sheets, QuickBooks, Slack and more. Connect Google Workspace here and the connected-app rules start working with it.",
     "tour.auto.title": "The routine work runs by itself",
     "tour.auto.body": 'These rules assign new leads, prepare emails, create tasks and invoices. Press "Try it" and watch one work.',
     "tour.plan.title": "See exactly what each plan includes",
@@ -8841,6 +9026,8 @@ var dict17 = {
     "tour.docs.body": "Los presupuestos, acuerdos y facturas se redactan con los datos del {job}. Edite, imprima, descargue en PDF y pruebe la p\xE1gina de firma como la ver\xEDa el {client}.",
     "tour.pay.title": "Lo que entra y lo que sale",
     "tour.pay.body": "Registre lo que pagan sus {clients} y lo que usted paga a sus {workers}. Los saldos y los totales del 1099 se mantienen al d\xEDa solos.",
+    "tour.apps.title": "Conectado a las aplicaciones que usa",
+    "tour.apps.body": "Gmail, Google Calendar, Drive, Sheets, QuickBooks, Slack y m\xE1s. Conecte Google Workspace aqu\xED y las reglas de aplicaciones conectadas empiezan a trabajar con \xE9l.",
     "tour.auto.title": "El trabajo de rutina se hace solo",
     "tour.auto.body": 'Estas reglas asignan los prospectos nuevos, preparan correos, crean tareas y facturas. Presione "Pru\xE9bela" y vea una en acci\xF3n.',
     "tour.plan.title": "Vea exactamente qu\xE9 incluye cada plan",
@@ -9744,11 +9931,18 @@ var dict21 = {
     "mk.s.ai.q2": "Prepare the follow-ups",
     "mk.s.ai.q2b": "Create a task for tomorrow: follow up with {name}",
     /* automation */
+    "mk.s.in.h": "Works with the tools you already use.",
+    "mk.s.in.sub": "Gmail, Google Calendar, Drive, Sheets and the rest of Google Workspace, plus payments, books, messaging and social. Rules hand the work to each app, so nobody copies anything twice.",
+    "mk.s.in.ready": "Ready to connect",
+    "mk.s.in.count": "{n} connections ready to set up for your company, {m} more on the roadmap.",
+    "mk.s.in.demo": "In the demo, connect any of them and watch the rules use it.",
+    "mk.s.in.link": "Connect them in the live demo",
     "mk.s.au.h": "The routine work runs by itself.",
     "mk.s.au.sub": "Rules react to what happens in the business: a new lead, a won lead, a finished {job}. Choose a rule and watch what it does.",
     "mk.s.au.pick": "Automation rule",
     "mk.s.au.everyPlan": "Included in every plan",
     "mk.s.au.honest": "Emails are prepared for your review. Nothing is sent without you.",
+    "mk.s.au.honestApps": "Each step runs once its app is connected. In the demo, connect them in Integrations and watch it work.",
     "mk.s.au.count": "Showing {shown} of the {n} rules that come with this edition.",
     "mk.s.au.link": "See every rule in the demo",
     /* everything connected */
@@ -9899,11 +10093,18 @@ var dict21 = {
     "mk.s.ai.q2": "Prepare los seguimientos",
     "mk.s.ai.q2b": "Crear una tarea para ma\xF1ana: dar seguimiento a {name}",
     /* automation */
+    "mk.s.in.h": "Funciona con las herramientas que ya usa.",
+    "mk.s.in.sub": "Gmail, Google Calendar, Drive, Sheets y el resto de Google Workspace, adem\xE1s de pagos, contabilidad, mensajer\xEDa y redes sociales. Las reglas le pasan el trabajo a cada aplicaci\xF3n, as\xED nadie copia nada dos veces.",
+    "mk.s.in.ready": "Lista para conectar",
+    "mk.s.in.count": "{n} conexiones listas para configurar en su empresa y {m} m\xE1s en desarrollo.",
+    "mk.s.in.demo": "En la demo, conecte cualquiera y vea c\xF3mo la usan las reglas.",
+    "mk.s.in.link": "Con\xE9ctelas en la demo en vivo",
     "mk.s.au.h": "El trabajo de rutina se hace solo.",
     "mk.s.au.sub": "Las reglas reaccionan a lo que pasa en el negocio: llega un prospecto, se gana un prospecto, se termina un {job}. Elija una regla y vea lo que hace.",
     "mk.s.au.pick": "Regla de automatizaci\xF3n",
     "mk.s.au.everyPlan": "Incluido en todos los planes",
     "mk.s.au.honest": "Los correos quedan preparados para su revisi\xF3n. No se env\xEDa nada sin usted.",
+    "mk.s.au.honestApps": "Cada paso funciona en cuanto su aplicaci\xF3n est\xE1 conectada. En la demo, con\xE9ctelas en Integraciones y v\xE9alo trabajar.",
     "mk.s.au.count": "Se muestran {shown} de las {n} reglas que trae esta edici\xF3n.",
     "mk.s.au.link": "Ver todas las reglas en la demo",
     /* everything connected */
@@ -12232,7 +12433,6 @@ var dict28 = {
     "integrations.group.money": "Payments and accounting",
     "integrations.group.messaging": "Messaging and phone",
     "integrations.group.social": "Social, reviews and location",
-    "integrations.group.ai": "AI",
     "integrations.name.sms": "Text messages",
     "integrations.name.meta": "Facebook and Instagram",
     "integrations.state.not_connected": "Not connected",
@@ -12367,7 +12567,102 @@ var dict28 = {
     "integrations.need.gmaps.1": "A Google Maps Platform key, with billing set up in the Google Cloud project.",
     "integrations.need.gmaps.2": "The key limited to this site's address.",
     "integrations.need.ai.1": "An account with the AI model provider. Its key is kept on the server only.",
-    "integrations.need.ai.2": "Usage is billed by that provider. Every action the assistant proposes still waits for a person to confirm it."
+    "integrations.need.ai.2": "Usage is billed by that provider. Every action the assistant proposes still waits for a person to confirm it.",
+    // ---- roadmap connections and the demo simulation (October 2026)
+    "integrations.group.files": "Files, sheets and contacts",
+    "integrations.group.ai": "AI and automation",
+    "integrations.name.zapier": "Zapier and webhooks",
+    "integrations.state.demo": "Connected \xB7 demo",
+    "integrations.planned": "On the roadmap",
+    "integrations.reason.planned": "This connection is on the roadmap and not connectable in this release yet. Ask us about timing for your company.",
+    "integrations.what.outlook": "Send and receive email from a Microsoft 365 or Outlook address. Replies land in Messages, next to the {client} they belong to.",
+    "integrations.what.gdrive": "Every estimate, agreement, invoice and signed copy is filed in a Google Drive folder for each {client}.",
+    "integrations.what.gsheets": "Leads, {jobs} and payments kept in a Google Sheet that refreshes by itself, for anyone who lives in spreadsheets.",
+    "integrations.what.gcontacts": "Each {client} and lead is kept in Google Contacts, so their name shows on your phone when they call.",
+    "integrations.what.gforms": "Answers to your Google Form arrive as new leads, and the lead intake rule runs on them right away.",
+    "integrations.what.galerts": "Google Alerts for your business name and your trade arrive as tasks, so a mention or a review never goes unseen.",
+    "integrations.what.stripe": "Take card and bank payments through Stripe, matched to invoices, with payment links in your emails.",
+    "integrations.what.slack": "Rules post to a Slack channel: a new lead, a won {job}, a payment received, an overdue task.",
+    "integrations.what.zapier": "Send any rule's event to Zapier or your own webhook, to reach the thousands of apps they connect.",
+    "integrations.need.outlook.1": "A Microsoft 365 business account for the company.",
+    "integrations.need.outlook.2": "An app registered in Microsoft Entra ID with mail permissions.",
+    "integrations.need.outlook.3": "An administrator's consent for the company's mailboxes.",
+    "integrations.need.gdrive.1": "The same Google Cloud project as Gmail, with the Drive service switched on.",
+    "integrations.need.gdrive.2": "Google's verification of the app for Drive access.",
+    "integrations.need.gdrive.3": "A shared folder chosen during setup, where the client folders are created.",
+    "integrations.need.gsheets.1": "The same Google Cloud project, with the Sheets service switched on.",
+    "integrations.need.gsheets.2": "A spreadsheet chosen during setup.",
+    "integrations.need.gcontacts.1": "The same Google Cloud project, with the People service switched on.",
+    "integrations.need.gcontacts.2": "Google's verification of the app for contacts access.",
+    "integrations.need.gforms.1": "A Google Form owned by the business.",
+    "integrations.need.gforms.2": "The form's answers linked during setup, field by field.",
+    "integrations.need.galerts.1": "Google Alerts created for the business, delivered as an RSS feed.",
+    "integrations.need.galerts.2": "The feed address added during setup.",
+    "integrations.need.stripe.1": "A Stripe account for the business.",
+    "integrations.need.stripe.2": "Production keys, after Stripe's own review of the account. Until then only test mode works.",
+    "integrations.need.stripe.3": "The signing secret Stripe gives for the notices it sends.",
+    "integrations.need.slack.1": "A Slack workspace and permission to add apps to it.",
+    "integrations.need.slack.2": "The channel the rules post to.",
+    "integrations.need.zapier.1": "A Zapier account, or an address of your own that accepts webhooks.",
+    "integrations.need.zapier.2": "A signing secret, so the receiver can check each call came from your workspace.",
+    "integrations.demo.title": "Live demo: connect any app and watch it work.",
+    "integrations.demo.body": "In your own workspace, Connect opens the provider's sign-in page and the account owner approves access. Here the connection is simulated with this sample company's records, so you can see exactly what each one does, and the rules that use it start working. Nothing leaves your browser.",
+    "integrations.demo.count": "{n} apps connected in this demo",
+    "integrations.demo.google": "Connect Google Workspace",
+    "integrations.demo.googleOn": "Google Workspace connected",
+    "integrations.demo.googleDone": "{n} Google apps connected in the demo. The Google rules in Automations now run with them.",
+    "integrations.demo.done": "{name} connected in the demo. The rules that use it now run with it.",
+    "integrations.demo.syncDone": "Synced with the sample records just now.",
+    "integrations.demo.testDone": "Working: the simulated connection answered just now.",
+    "integrations.demo.disconnectAsk": "Disconnect {name} from this demo? The rules that use it will say it is not connected.",
+    "integrations.demo.doing": "What it is doing in this demo",
+    "integrations.demo.recent": "Latest activity",
+    "integrations.demo.synced": "Synced with the sample records",
+    "integrations.demo.gmail.emails": "{n} emails filed on the timeline of the {client} they belong to",
+    "integrations.demo.outlook.emails": "{n} emails filed on the timeline of the {client} they belong to",
+    "integrations.demo.mail.reply": "Replies come back into Messages, next to the {client}",
+    "integrations.demo.resend.drafts": "{n} emails prepared by rules, waiting for review",
+    "integrations.demo.resend.system": "Invitations, reminders and notices go out from your own domain",
+    "integrations.demo.gcal.items": "{n} visits, start dates and appointments on Google Calendar",
+    "integrations.demo.gcal.busy": "Busy times on Google Calendar are respected when booking",
+    "integrations.demo.gmeet.appts": "{n} video appointments with a Meet link",
+    "integrations.demo.gmeet.link": "Every video appointment gets its own Meet link",
+    "integrations.demo.gdrive.docs": "{n} documents filed in Google Drive",
+    "integrations.demo.gdrive.folders": "One folder for each of the {n} {clients}",
+    "integrations.demo.gsheets.rows": "{n} leads and {jobs} in the tracker sheet",
+    "integrations.demo.gsheets.refresh": "The sheet refreshes when a record changes",
+    "integrations.demo.gcontacts.contacts": "{n} {clients} in Google Contacts",
+    "integrations.demo.gcontacts.both": "A change on either side shows on the other",
+    "integrations.demo.gforms.leads": "{n} leads that came from the website form",
+    "integrations.demo.gforms.rule": "Each answer runs the lead intake rule at once",
+    "integrations.demo.galerts.watch": 'Watching the web for "{company}"',
+    "integrations.demo.galerts.task": "A mention becomes a task for the owner to look at",
+    "integrations.demo.square.payments": "{n} payments matched to invoices",
+    "integrations.demo.stripe.payments": "{n} payments matched to invoices",
+    "integrations.demo.pay.link": "Invoices carry a pay online link",
+    "integrations.demo.quickbooks.invoices": "{n} invoices kept in step with QuickBooks Online",
+    "integrations.demo.quickbooks.clients": "{n} {clients} matched to QuickBooks customers",
+    "integrations.demo.whatsapp.optin": "{n} {clients} agreed to be written to",
+    "integrations.demo.sms.optin": "{n} {clients} agreed to be written to",
+    "integrations.demo.msg.stop": "Anyone can reply STOP, and the record is updated",
+    "integrations.demo.dialpad.phones": "{n} {clients} with a phone number, one click to call",
+    "integrations.demo.dialpad.log": "Each call is logged on the record of the {client}",
+    "integrations.demo.slack.channel": "Rules post to the #operations channel",
+    "integrations.demo.slack.rules": "{n} rules can post there",
+    "integrations.demo.meta.posts": "{n} posts in Social media",
+    "integrations.demo.meta.inbox": "Page and Instagram messages arrive in Messages",
+    "integrations.demo.gbp.reviews": "{n} review requests linked to your profile",
+    "integrations.demo.gbp.reply": "Reply to reviews without leaving the workspace",
+    "integrations.demo.gmaps.addresses": "{n} addresses checked and placed on the map",
+    "integrations.demo.gmaps.route": "Directions from the office to each visit",
+    "integrations.demo.ai.answers": "Answers questions from your own records; every action waits for a person",
+    "integrations.demo.zapier.rules": "{n} rules can send their event out",
+    "integrations.demo.zapier.hook": "Each call is signed so the receiver can trust it",
+    "integrations.consent.title": "Connect {name}",
+    "integrations.consent.titleMany": "Connect {n} Google apps",
+    "integrations.consent.text": "In your workspace this step opens the provider's own sign-in page, where the account owner approves what the platform may do for {company}. In this demo the connection is simulated:",
+    "integrations.consent.note": "Demo simulation: no account is used, no provider is called and nothing leaves your browser. Reset the demo to remove it.",
+    "integrations.consent.ok": "Simulate the connection"
   },
   es: {
     "integrations.sub": "Los servicios externos que conecta su empresa. Cada tarjeta muestra su estado real y, cuando no est\xE1 conectada, el motivo.",
@@ -12381,7 +12676,6 @@ var dict28 = {
     "integrations.group.money": "Pagos y contabilidad",
     "integrations.group.messaging": "Mensajer\xEDa y tel\xE9fono",
     "integrations.group.social": "Redes sociales, rese\xF1as y ubicaci\xF3n",
-    "integrations.group.ai": "IA",
     "integrations.name.sms": "Mensajes de texto",
     "integrations.name.meta": "Facebook e Instagram",
     "integrations.state.not_connected": "Sin conectar",
@@ -12516,7 +12810,102 @@ var dict28 = {
     "integrations.need.gmaps.1": "Una clave de Google Maps Platform, con la facturaci\xF3n configurada en el proyecto de Google Cloud.",
     "integrations.need.gmaps.2": "La clave limitada a la direcci\xF3n de este sitio.",
     "integrations.need.ai.1": "Una cuenta con el proveedor del modelo de IA. Su clave se guarda solo en el servidor.",
-    "integrations.need.ai.2": "El uso lo cobra ese proveedor. Cada acci\xF3n que propone el asistente sigue esperando a que una persona la confirme."
+    "integrations.need.ai.2": "El uso lo cobra ese proveedor. Cada acci\xF3n que propone el asistente sigue esperando a que una persona la confirme.",
+    // ---- conexiones en el plan de trabajo y la simulación de la demo (octubre de 2026)
+    "integrations.group.files": "Archivos, hojas y contactos",
+    "integrations.group.ai": "IA y automatizaci\xF3n",
+    "integrations.name.zapier": "Zapier y webhooks",
+    "integrations.state.demo": "Conectado \xB7 demo",
+    "integrations.planned": "En desarrollo",
+    "integrations.reason.planned": "Esta conexi\xF3n est\xE1 en desarrollo y todav\xEDa no se puede conectar en esta versi\xF3n. Preg\xFAntenos por las fechas para su empresa.",
+    "integrations.what.outlook": "Env\xEDe y reciba correo desde una direcci\xF3n de Microsoft 365 u Outlook. Las respuestas llegan a Mensajes, junto al {client} al que corresponden.",
+    "integrations.what.gdrive": "Cada presupuesto, acuerdo, factura y copia firmada se guarda en una carpeta de Google Drive por cada {client}.",
+    "integrations.what.gsheets": "Prospectos, {jobs} y pagos en una hoja de Google Sheets que se actualiza sola, para quien trabaja en hojas de c\xE1lculo.",
+    "integrations.what.gcontacts": "Cada {client} y prospecto queda en Google Contacts, as\xED su nombre aparece en su tel\xE9fono cuando llama.",
+    "integrations.what.gforms": "Las respuestas de su formulario de Google llegan como prospectos nuevos y la regla de entrada se ejecuta de inmediato.",
+    "integrations.what.galerts": "Las alertas de Google sobre el nombre de su negocio y su oficio llegan como tareas, para que ninguna menci\xF3n ni rese\xF1a pase desapercibida.",
+    "integrations.what.stripe": "Cobre con tarjeta y transferencia bancaria a trav\xE9s de Stripe, ligado a las facturas, con enlaces de pago en sus correos.",
+    "integrations.what.slack": "Las reglas publican en un canal de Slack: un prospecto nuevo, un {job} ganado, un pago recibido, una tarea vencida.",
+    "integrations.what.zapier": "Env\xEDe el evento de cualquier regla a Zapier o a su propio webhook, para llegar a las miles de aplicaciones que conectan.",
+    "integrations.need.outlook.1": "Una cuenta empresarial de Microsoft 365 para la empresa.",
+    "integrations.need.outlook.2": "Una aplicaci\xF3n registrada en Microsoft Entra ID con permisos de correo.",
+    "integrations.need.outlook.3": "El consentimiento de un administrador para los buzones de la empresa.",
+    "integrations.need.gdrive.1": "El mismo proyecto de Google Cloud que Gmail, con el servicio de Drive activado.",
+    "integrations.need.gdrive.2": "La verificaci\xF3n de Google de la aplicaci\xF3n para acceder a Drive.",
+    "integrations.need.gdrive.3": "Una carpeta compartida elegida en la instalaci\xF3n, donde se crean las carpetas de los clientes.",
+    "integrations.need.gsheets.1": "El mismo proyecto de Google Cloud, con el servicio de Sheets activado.",
+    "integrations.need.gsheets.2": "Una hoja de c\xE1lculo elegida en la instalaci\xF3n.",
+    "integrations.need.gcontacts.1": "El mismo proyecto de Google Cloud, con el servicio People activado.",
+    "integrations.need.gcontacts.2": "La verificaci\xF3n de Google de la aplicaci\xF3n para acceder a los contactos.",
+    "integrations.need.gforms.1": "Un formulario de Google propiedad del negocio.",
+    "integrations.need.gforms.2": "Las respuestas del formulario vinculadas campo por campo en la instalaci\xF3n.",
+    "integrations.need.galerts.1": "Alertas de Google creadas para el negocio, entregadas como fuente RSS.",
+    "integrations.need.galerts.2": "La direcci\xF3n de la fuente agregada en la instalaci\xF3n.",
+    "integrations.need.stripe.1": "Una cuenta de Stripe para el negocio.",
+    "integrations.need.stripe.2": "Claves de producci\xF3n, despu\xE9s de la revisi\xF3n de la cuenta por parte de Stripe. Hasta entonces solo funciona el modo de prueba.",
+    "integrations.need.stripe.3": "El secreto de firma que Stripe entrega para los avisos que env\xEDa.",
+    "integrations.need.slack.1": "Un espacio de Slack y permiso para agregarle aplicaciones.",
+    "integrations.need.slack.2": "El canal donde publican las reglas.",
+    "integrations.need.zapier.1": "Una cuenta de Zapier, o una direcci\xF3n propia que reciba webhooks.",
+    "integrations.need.zapier.2": "Un secreto de firma, para que quien recibe compruebe que cada llamada viene de su espacio.",
+    "integrations.demo.title": "Demo en vivo: conecte cualquier aplicaci\xF3n y v\xE9ala trabajar.",
+    "integrations.demo.body": "En su propio espacio, Conectar abre la p\xE1gina de acceso del proveedor y el due\xF1o de la cuenta aprueba el acceso. Aqu\xED la conexi\xF3n se simula con los registros de esta empresa de muestra, para que vea exactamente qu\xE9 hace cada una, y las reglas que la usan empiezan a funcionar. Nada sale de su navegador.",
+    "integrations.demo.count": "{n} aplicaciones conectadas en esta demo",
+    "integrations.demo.google": "Conectar Google Workspace",
+    "integrations.demo.googleOn": "Google Workspace conectado",
+    "integrations.demo.googleDone": "{n} aplicaciones de Google conectadas en la demo. Las reglas de Google en Automatizaciones ya funcionan con ellas.",
+    "integrations.demo.done": "{name} conectado en la demo. Las reglas que lo usan ya funcionan con \xE9l.",
+    "integrations.demo.syncDone": "Sincronizado con los registros de muestra ahora mismo.",
+    "integrations.demo.testDone": "Funciona: la conexi\xF3n simulada respondi\xF3 ahora mismo.",
+    "integrations.demo.disconnectAsk": "\xBFDesconectar {name} de esta demo? Las reglas que lo usan dir\xE1n que no est\xE1 conectado.",
+    "integrations.demo.doing": "Lo que hace en esta demo",
+    "integrations.demo.recent": "Actividad reciente",
+    "integrations.demo.synced": "Sincronizado con los registros de muestra",
+    "integrations.demo.gmail.emails": "{n} correos guardados en el historial del {client} al que corresponden",
+    "integrations.demo.outlook.emails": "{n} correos guardados en el historial del {client} al que corresponden",
+    "integrations.demo.mail.reply": "Las respuestas vuelven a Mensajes, junto al {client}",
+    "integrations.demo.resend.drafts": "{n} correos preparados por reglas, esperando revisi\xF3n",
+    "integrations.demo.resend.system": "Invitaciones, recordatorios y avisos salen desde su propio dominio",
+    "integrations.demo.gcal.items": "{n} visitas, fechas de inicio y citas en Google Calendar",
+    "integrations.demo.gcal.busy": "Al agendar se respetan los horarios ocupados en Google Calendar",
+    "integrations.demo.gmeet.appts": "{n} citas por video con enlace de Meet",
+    "integrations.demo.gmeet.link": "Cada cita por video recibe su propio enlace de Meet",
+    "integrations.demo.gdrive.docs": "{n} documentos guardados en Google Drive",
+    "integrations.demo.gdrive.folders": "Una carpeta para cada uno de los {n} {clients}",
+    "integrations.demo.gsheets.rows": "{n} prospectos y {jobs} en la hoja de seguimiento",
+    "integrations.demo.gsheets.refresh": "La hoja se actualiza cuando cambia un registro",
+    "integrations.demo.gcontacts.contacts": "{n} {clients} en Google Contacts",
+    "integrations.demo.gcontacts.both": "Un cambio en un lado aparece en el otro",
+    "integrations.demo.gforms.leads": "{n} prospectos que llegaron del formulario del sitio web",
+    "integrations.demo.gforms.rule": "Cada respuesta ejecuta la regla de entrada al instante",
+    "integrations.demo.galerts.watch": 'Vigilando la web para "{company}"',
+    "integrations.demo.galerts.task": "Una menci\xF3n se convierte en tarea para que el due\xF1o la revise",
+    "integrations.demo.square.payments": "{n} pagos ligados a sus facturas",
+    "integrations.demo.stripe.payments": "{n} pagos ligados a sus facturas",
+    "integrations.demo.pay.link": "Las facturas llevan un enlace para pagar en l\xEDnea",
+    "integrations.demo.quickbooks.invoices": "{n} facturas al d\xEDa con QuickBooks Online",
+    "integrations.demo.quickbooks.clients": "{n} {clients} vinculados a clientes de QuickBooks",
+    "integrations.demo.whatsapp.optin": "{n} {clients} aceptaron que se les escriba",
+    "integrations.demo.sms.optin": "{n} {clients} aceptaron que se les escriba",
+    "integrations.demo.msg.stop": "Cualquiera puede responder STOP y el registro se actualiza",
+    "integrations.demo.dialpad.phones": "{n} {clients} con tel\xE9fono, a un clic de llamar",
+    "integrations.demo.dialpad.log": "Cada llamada queda en el registro del {client}",
+    "integrations.demo.slack.channel": "Las reglas publican en el canal #operaciones",
+    "integrations.demo.slack.rules": "{n} reglas pueden publicar ah\xED",
+    "integrations.demo.meta.posts": "{n} publicaciones en Redes sociales",
+    "integrations.demo.meta.inbox": "Los mensajes de la p\xE1gina y de Instagram llegan a Mensajes",
+    "integrations.demo.gbp.reviews": "{n} solicitudes de rese\xF1a vinculadas a su perfil",
+    "integrations.demo.gbp.reply": "Responda rese\xF1as sin salir del espacio de trabajo",
+    "integrations.demo.gmaps.addresses": "{n} direcciones verificadas y ubicadas en el mapa",
+    "integrations.demo.gmaps.route": "Indicaciones desde la oficina hasta cada visita",
+    "integrations.demo.ai.answers": "Responde preguntas con sus propios registros; cada acci\xF3n espera a una persona",
+    "integrations.demo.zapier.rules": "{n} reglas pueden enviar su evento",
+    "integrations.demo.zapier.hook": "Cada llamada va firmada para que quien la recibe pueda confiar en ella",
+    "integrations.consent.title": "Conectar {name}",
+    "integrations.consent.titleMany": "Conectar {n} aplicaciones de Google",
+    "integrations.consent.text": "En su espacio, este paso abre la p\xE1gina de acceso del propio proveedor, donde el due\xF1o de la cuenta aprueba lo que la plataforma puede hacer para {company}. En esta demo la conexi\xF3n se simula:",
+    "integrations.consent.note": "Simulaci\xF3n de demo: no se usa ninguna cuenta, no se llama a ning\xFAn proveedor y nada sale de su navegador. Reinicie la demo para quitarla.",
+    "integrations.consent.ok": "Simular la conexi\xF3n"
   }
 };
 
@@ -13521,6 +13910,12 @@ var dict35 = {
     "security.reason.session": "Your session ended. Sign in again to continue.",
     "security.reason.offline": "The server could not be reached. Nothing was changed. Try again in a moment.",
     "security.reason.rate_limited": "Too many attempts. Wait a few minutes and try again.",
+    "security.invite.linkTitle": "Invitation link",
+    "security.invite.linkCopy": "Copy link",
+    "security.invite.linkCopied": "Copied",
+    "security.invite.linkBody": "Email sending is not set up yet, so send this link to {name} ({email}) yourself, by email, text or WhatsApp. It works once and expires in {hours} hours.",
+    "security.invite.linkFailed": "The invitation email could not be delivered. Send this link to {name} ({email}) yourself. It works once and expires in {hours} hours.",
+    "security.invite.linkNote": "This link is shown only now. Anyone who has it can accept the invitation, so send it only to that person.",
     "security.reason.email_not_configured": "Email sending is not set up for this workspace, so the invitation could not be sent and was withdrawn.",
     "security.reason.delivery_failed": "The invitation email could not be delivered, so the invitation was withdrawn. Check the address and try again.",
     "security.reason.other": "That could not be done. Nothing was changed.",
@@ -13832,6 +14227,12 @@ var dict35 = {
     "security.reason.session": "Su sesi\xF3n termin\xF3. Vuelva a entrar para continuar.",
     "security.reason.offline": "No se pudo contactar al servidor. No se cambi\xF3 nada. Intente de nuevo en un momento.",
     "security.reason.rate_limited": "Demasiados intentos. Espere unos minutos e intente de nuevo.",
+    "security.invite.linkTitle": "Enlace de invitaci\xF3n",
+    "security.invite.linkCopy": "Copiar enlace",
+    "security.invite.linkCopied": "Copiado",
+    "security.invite.linkBody": "El env\xEDo de correos a\xFAn no est\xE1 configurado, as\xED que env\xEDele este enlace a {name} ({email}) usted mismo, por correo, mensaje de texto o WhatsApp. Funciona una sola vez y vence en {hours} horas.",
+    "security.invite.linkFailed": "El correo de la invitaci\xF3n no se pudo entregar. Env\xEDele este enlace a {name} ({email}) usted mismo. Funciona una sola vez y vence en {hours} horas.",
+    "security.invite.linkNote": "Este enlace se muestra solo ahora. Quien lo tenga puede aceptar la invitaci\xF3n, as\xED que env\xEDelo solo a esa persona.",
     "security.reason.email_not_configured": "El env\xEDo de correos no est\xE1 configurado en este espacio de trabajo, as\xED que la invitaci\xF3n no se pudo enviar y se retir\xF3.",
     "security.reason.delivery_failed": "El correo de la invitaci\xF3n no se pudo entregar, as\xED que la invitaci\xF3n se retir\xF3. Revise la direcci\xF3n e intente de nuevo.",
     "security.reason.other": "No se pudo hacer. No se cambi\xF3 nada.",
@@ -14411,6 +14812,9 @@ var dict36 = {
 // src/features/auth/i18n.ts
 var dict37 = {
   en: {
+    "auth.paused.title": "Workspace paused",
+    "auth.paused.body": "The {company} workspace is paused. Your records are kept safe. Please contact VYNTEX USA at 609-780-3218 or info@vyntexusa.com to reactivate it.",
+    "auth.paused.other": "Sign in with another account",
     "auth.signin.title": "Sign in",
     "auth.invite.title": "Accept your invitation",
     "auth.reset.title": "Reset your password",
@@ -14549,6 +14953,9 @@ var dict37 = {
     "auth.password.failed": "The password could not be changed. Try again."
   },
   es: {
+    "auth.paused.title": "Espacio en pausa",
+    "auth.paused.body": "El espacio de {company} est\xE1 en pausa. Sus registros se conservan de forma segura. Comun\xEDquese con VYNTEX USA al 609-780-3218 o a info@vyntexusa.com para reactivarlo.",
+    "auth.paused.other": "Entrar con otra cuenta",
     "auth.signin.title": "Iniciar sesi\xF3n",
     "auth.invite.title": "Acepte su invitaci\xF3n",
     "auth.reset.title": "Restablezca su contrase\xF1a",
@@ -14687,6 +15094,9 @@ var dict37 = {
     "auth.password.failed": "No se pudo cambiar la contrase\xF1a. Int\xE9ntelo de nuevo."
   },
   zh: {
+    "auth.paused.title": "\u5DE5\u4F5C\u533A\u5DF2\u6682\u505C",
+    "auth.paused.body": "{company} \u7684\u5DE5\u4F5C\u533A\u5DF2\u6682\u505C\u3002\u60A8\u7684\u8BB0\u5F55\u4F1A\u88AB\u5B89\u5168\u4FDD\u5B58\u3002\u8BF7\u81F4\u7535 609-780-3218 \u6216\u53D1\u9001\u90AE\u4EF6\u81F3 info@vyntexusa.com \u8054\u7CFB VYNTEX USA \u91CD\u65B0\u542F\u7528\u3002",
+    "auth.paused.other": "\u4F7F\u7528\u5176\u4ED6\u8D26\u6237\u767B\u5F55",
     "auth.signin.title": "\u767B\u5F55",
     "auth.invite.title": "\u63A5\u53D7\u9080\u8BF7",
     "auth.reset.title": "\u91CD\u7F6E\u5BC6\u7801",
@@ -14911,8 +15321,188 @@ var dict39 = {
   }
 };
 
+// src/features/admin/i18n.ts
+var dict40 = {
+  en: {
+    "admin.title": "Client workspaces",
+    "admin.tag": "Operator console",
+    "admin.signout": "Sign out",
+    "admin.checking": "Checking\u2026",
+    "admin.offline": "The server could not be reached. Try again in a moment.",
+    "admin.retry": "Try again",
+    "admin.denied": "This account is not a VYNTEX operator. Client workspaces are opened only by VYNTEX staff.",
+    "admin.mfa": "The operator console needs the second sign-in step. Sign out, then sign in again with the code from your authenticator app.",
+    "admin.mfaAgain": "Sign in again",
+    "admin.h1": "Client workspaces",
+    "admin.sub": "Open a VYNTEX ERP workspace for a client who bought a plan, invite its owner and keep track of every company.",
+    "admin.refresh": "Refresh",
+    "admin.new": "New client workspace",
+    "admin.stat.total": "Companies",
+    "admin.stat.active": "Live with an owner",
+    "admin.stat.waiting": "Waiting for the owner",
+    "admin.stat.paused": "Paused",
+    "admin.list": "Every client company",
+    "admin.search": "Search by name, address or email",
+    "admin.loadFailed": "The list could not be loaded.",
+    "admin.empty.title": "No client workspaces yet",
+    "admin.empty.body": "When a client buys VYNTEX ERP, open their workspace here. It takes under a minute.",
+    "admin.col.company": "Company and address",
+    "admin.col.edition": "Edition and plan",
+    "admin.col.owner": "Owner",
+    "admin.col.status": "Status",
+    "admin.col.actions": "Actions",
+    "admin.members": "{n} people",
+    "admin.members1": "1 person",
+    "admin.inv.waiting": "Invitation open until {date}",
+    "admin.inv.expired": "Invitation expired on {date}",
+    "admin.inv.none": "No owner and no open invitation",
+    "admin.st.live": "Live",
+    "admin.st.waiting": "Waiting for owner",
+    "admin.st.paused": "Paused",
+    "admin.since": "Opened {date}",
+    "admin.reinvite": "Invite owner",
+    "admin.pause": "Pause",
+    "admin.resume": "Reactivate",
+    "admin.pauseAsk": "Pause the {name} workspace? Nobody in it can open it until you reactivate it. Every record is kept.",
+    "admin.paused": "{name} is paused.",
+    "admin.resumed": "{name} is active again.",
+    "admin.privacy": "Operators see company names, addresses, plans and owner emails. They never see a company's records. Every action here is written to the security log.",
+    "admin.form.intro": "This makes the company's own workspace at its address and a one-time invitation for its owner. The owner sets a password, adds an authenticator app and customizes the workspace.",
+    "admin.f.name": "Business name",
+    "admin.f.slug": "Workspace address",
+    "admin.f.industry": "Edition",
+    "admin.f.plan": "Plan",
+    "admin.f.ownerName": "Owner full name",
+    "admin.f.ownerEmail": "Owner email",
+    "admin.f.lang": "Language of the invitation",
+    "admin.slug.ok": "Lowercase letters, numbers and single hyphens. This is the address the client signs in at.",
+    "admin.slug.short": "Use 3 to 40 characters.",
+    "admin.slug.format": "Only lowercase letters, numbers and single hyphens, with no hyphen at either end.",
+    "admin.slug.reserved": "That word is used by the site itself. Choose another.",
+    "admin.slug.taken": "Another company already has that address.",
+    "admin.form.what1": "The workspace opens with the edition's menu, wording, stages and automation rules, and no records.",
+    "admin.form.what2": "The owner gets a link that works once and expires in 72 hours. You also get it here, to send by WhatsApp or text.",
+    "admin.form.what3": "Owners and managers must use an authenticator app to sign in.",
+    "admin.form.submit": "Create the workspace",
+    "admin.form.busy": "Creating\u2026",
+    "admin.err.bad_name": "Type the business name.",
+    "admin.err.bad_email": "Type a valid email address for the owner.",
+    "admin.err.ownerName": "Type the owner's full name.",
+    "admin.err.bad_slug": "That address cannot be used.",
+    "admin.err.slug_taken": "Another company already has that address.",
+    "admin.err.bad_industry": "Choose an edition.",
+    "admin.err.bad_plan": "Choose a plan.",
+    "admin.err.has_owner": "This company already has an owner. The owner invites everyone else from the workspace.",
+    "admin.err.generic": "That did not work. Nothing was changed. Try again.",
+    "admin.reinviteTitle": "Invite the owner of {name}",
+    "admin.reinviteBody": "A new one-time link replaces any invitation still open for this company.",
+    "admin.done.title": "{name} is ready",
+    "admin.done.titleAgain": "New invitation for {name}",
+    "admin.done.sent": "The invitation was emailed to {email}.",
+    "admin.done.manual": "Email sending is not set up yet, so nothing was emailed. Send the link to {email} yourself: copy the ready-made message below and paste it into WhatsApp, a text or an email.",
+    "admin.done.failed": "The email to {email} could not be delivered. Send the link yourself: copy the ready-made message below.",
+    "admin.done.address": "Workspace address",
+    "admin.done.link": "Owner invitation link",
+    "admin.done.linkHint": "Shown only now. It works once, for that owner, and expires in 72 hours.",
+    "admin.done.message": "Message",
+    "admin.done.copyMessage": "Copy the message for the client",
+    "admin.done.close": "Done",
+    "admin.copy": "Copy",
+    "admin.copied": "{what} copied.",
+    "admin.copyFailed": "Copying did not work here. Select the text and copy it."
+  },
+  es: {
+    "admin.title": "Espacios de clientes",
+    "admin.tag": "Consola de operador",
+    "admin.signout": "Salir",
+    "admin.checking": "Comprobando\u2026",
+    "admin.offline": "No se pudo contactar al servidor. Intente de nuevo en un momento.",
+    "admin.retry": "Intentar de nuevo",
+    "admin.denied": "Esta cuenta no es de un operador de VYNTEX. Los espacios de clientes solo los abre el personal de VYNTEX.",
+    "admin.mfa": "La consola de operador necesita el segundo paso de inicio de sesi\xF3n. Salga y vuelva a entrar con el c\xF3digo de su aplicaci\xF3n de autenticaci\xF3n.",
+    "admin.mfaAgain": "Entrar de nuevo",
+    "admin.h1": "Espacios de clientes",
+    "admin.sub": "Abra un espacio de VYNTEX ERP para un cliente que compr\xF3 un plan, invite a su due\xF1o y lleve el control de cada empresa.",
+    "admin.refresh": "Actualizar",
+    "admin.new": "Nuevo espacio de cliente",
+    "admin.stat.total": "Empresas",
+    "admin.stat.active": "Activas con due\xF1o",
+    "admin.stat.waiting": "Esperando al due\xF1o",
+    "admin.stat.paused": "En pausa",
+    "admin.list": "Todas las empresas cliente",
+    "admin.search": "Buscar por nombre, direcci\xF3n o correo",
+    "admin.loadFailed": "No se pudo cargar la lista.",
+    "admin.empty.title": "Todav\xEDa no hay espacios de clientes",
+    "admin.empty.body": "Cuando un cliente compre VYNTEX ERP, abra su espacio aqu\xED. Toma menos de un minuto.",
+    "admin.col.company": "Empresa y direcci\xF3n",
+    "admin.col.edition": "Edici\xF3n y plan",
+    "admin.col.owner": "Due\xF1o",
+    "admin.col.status": "Estado",
+    "admin.col.actions": "Acciones",
+    "admin.members": "{n} personas",
+    "admin.members1": "1 persona",
+    "admin.inv.waiting": "Invitaci\xF3n abierta hasta el {date}",
+    "admin.inv.expired": "La invitaci\xF3n venci\xF3 el {date}",
+    "admin.inv.none": "Sin due\xF1o y sin invitaci\xF3n abierta",
+    "admin.st.live": "Activo",
+    "admin.st.waiting": "Esperando al due\xF1o",
+    "admin.st.paused": "En pausa",
+    "admin.since": "Abierto el {date}",
+    "admin.reinvite": "Invitar al due\xF1o",
+    "admin.pause": "Pausar",
+    "admin.resume": "Reactivar",
+    "admin.pauseAsk": "\xBFPausar el espacio de {name}? Nadie podr\xE1 abrirlo hasta que lo reactive. Todos los registros se conservan.",
+    "admin.paused": "{name} qued\xF3 en pausa.",
+    "admin.resumed": "{name} est\xE1 activo de nuevo.",
+    "admin.privacy": "Los operadores ven nombres de empresas, direcciones, planes y correos de los due\xF1os. Nunca ven los registros de una empresa. Cada acci\xF3n aqu\xED queda en el registro de seguridad.",
+    "admin.form.intro": "Esto crea el espacio propio de la empresa en su direcci\xF3n y una invitaci\xF3n de un solo uso para su due\xF1o. El due\xF1o crea su contrase\xF1a, agrega una aplicaci\xF3n de autenticaci\xF3n y personaliza el espacio.",
+    "admin.f.name": "Nombre del negocio",
+    "admin.f.slug": "Direcci\xF3n del espacio",
+    "admin.f.industry": "Edici\xF3n",
+    "admin.f.plan": "Plan",
+    "admin.f.ownerName": "Nombre completo del due\xF1o",
+    "admin.f.ownerEmail": "Correo del due\xF1o",
+    "admin.f.lang": "Idioma de la invitaci\xF3n",
+    "admin.slug.ok": "Letras min\xFAsculas, n\xFAmeros y guiones sencillos. Es la direcci\xF3n donde entra el cliente.",
+    "admin.slug.short": "Use de 3 a 40 caracteres.",
+    "admin.slug.format": "Solo letras min\xFAsculas, n\xFAmeros y guiones sencillos, sin guion al principio ni al final.",
+    "admin.slug.reserved": "El sitio ya usa esa palabra. Elija otra.",
+    "admin.slug.taken": "Otra empresa ya tiene esa direcci\xF3n.",
+    "admin.form.what1": "El espacio abre con el men\xFA, el vocabulario, las etapas y las reglas de automatizaci\xF3n de la edici\xF3n, y sin registros.",
+    "admin.form.what2": "El due\xF1o recibe un enlace que funciona una sola vez y vence en 72 horas. Usted tambi\xE9n lo recibe aqu\xED, para enviarlo por WhatsApp o mensaje de texto.",
+    "admin.form.what3": "Los due\xF1os y gerentes deben usar una aplicaci\xF3n de autenticaci\xF3n para entrar.",
+    "admin.form.submit": "Crear el espacio",
+    "admin.form.busy": "Creando\u2026",
+    "admin.err.bad_name": "Escriba el nombre del negocio.",
+    "admin.err.bad_email": "Escriba un correo v\xE1lido para el due\xF1o.",
+    "admin.err.ownerName": "Escriba el nombre completo del due\xF1o.",
+    "admin.err.bad_slug": "Esa direcci\xF3n no se puede usar.",
+    "admin.err.slug_taken": "Otra empresa ya tiene esa direcci\xF3n.",
+    "admin.err.bad_industry": "Elija una edici\xF3n.",
+    "admin.err.bad_plan": "Elija un plan.",
+    "admin.err.has_owner": "Esta empresa ya tiene due\xF1o. El due\xF1o invita a los dem\xE1s desde el espacio.",
+    "admin.err.generic": "No funcion\xF3. No se cambi\xF3 nada. Intente de nuevo.",
+    "admin.reinviteTitle": "Invitar al due\xF1o de {name}",
+    "admin.reinviteBody": "Un nuevo enlace de un solo uso reemplaza cualquier invitaci\xF3n abierta de esta empresa.",
+    "admin.done.title": "{name} est\xE1 listo",
+    "admin.done.titleAgain": "Nueva invitaci\xF3n para {name}",
+    "admin.done.sent": "La invitaci\xF3n se envi\xF3 por correo a {email}.",
+    "admin.done.manual": "El env\xEDo de correos a\xFAn no est\xE1 configurado, as\xED que no se envi\xF3 nada. Env\xEDele el enlace a {email} usted mismo: copie el mensaje listo de abajo y p\xE9guelo en WhatsApp, un mensaje de texto o un correo.",
+    "admin.done.failed": "El correo a {email} no se pudo entregar. Env\xEDe el enlace usted mismo: copie el mensaje listo de abajo.",
+    "admin.done.address": "Direcci\xF3n del espacio",
+    "admin.done.link": "Enlace de invitaci\xF3n del due\xF1o",
+    "admin.done.linkHint": "Se muestra solo ahora. Funciona una sola vez, para ese due\xF1o, y vence en 72 horas.",
+    "admin.done.message": "Mensaje",
+    "admin.done.copyMessage": "Copiar el mensaje para el cliente",
+    "admin.done.close": "Listo",
+    "admin.copy": "Copiar",
+    "admin.copied": "{what} copiado.",
+    "admin.copyFailed": "No se pudo copiar aqu\xED. Seleccione el texto y c\xF3pielo."
+  }
+};
+
 // src/i18n/features.ts
-var sales = typeof __VX_DEPLOY__ !== "undefined" && __VX_DEPLOY__ === "lbs" ? [] : [dict16, dict17, dict20, dict21, dict22];
+var sales = typeof __VX_DEPLOY__ !== "undefined" && __VX_DEPLOY__ === "lbs" ? [] : [dict16, dict17, dict20, dict21, dict22, dict40];
 var lbsOnly = typeof __VX_DEPLOY__ !== "undefined" && __VX_DEPLOY__ === "lbs" ? [dict39] : [];
 var featureDicts = [
   dict,
@@ -14982,30 +15572,30 @@ function fmtDate(date, lang, opts = { month: "short", day: "numeric", year: "num
 }
 
 // src/domain/esign/merge.ts
-var l2 = (en, es) => ({ en, es });
+var l3 = (en, es) => ({ en, es });
 var MERGE_FIELDS = [
-  { id: "client.name", label: l2("Client name", "Nombre del cliente"), group: "client" },
-  { id: "client.business", label: l2("Business name", "Nombre del negocio"), group: "client" },
-  { id: "client.owners", label: l2("Owners", "Due\xF1os"), group: "client" },
-  { id: "client.address", label: l2("Client address", "Direcci\xF3n del cliente"), group: "client" },
-  { id: "client.email", label: l2("Client email", "Correo del cliente"), group: "client" },
-  { id: "client.phone", label: l2("Client phone", "Tel\xE9fono del cliente"), group: "client" },
-  { id: "service.name", label: l2("Service", "Servicio"), group: "service" },
-  { id: "service.tier", label: l2("Price tier", "Nivel de precio"), group: "service" },
-  { id: "service.price", label: l2("Price", "Precio"), group: "service" },
-  { id: "service.period", label: l2("Period", "Periodo"), group: "service" },
-  { id: "service.scope", label: l2("What the service covers", "Qu\xE9 cubre el servicio"), group: "service" },
-  { id: "service.terms", label: l2("Fee and billing notes", "Notas de honorarios y cobro"), group: "service" },
-  { id: "firm.name", label: l2("Firm name", "Nombre del despacho"), group: "firm" },
-  { id: "firm.address", label: l2("Firm address", "Direcci\xF3n del despacho"), group: "firm" },
-  { id: "firm.phone", label: l2("Firm phone", "Tel\xE9fono del despacho"), group: "firm" },
-  { id: "firm.email", label: l2("Firm email", "Correo del despacho"), group: "firm" },
-  { id: "date.today", label: l2("Today", "Fecha de hoy"), group: "dates" },
-  { id: "date.start", label: l2("Start date", "Fecha de inicio"), group: "dates" },
-  { id: "date.due", label: l2("Due date", "Fecha l\xEDmite"), group: "dates" }
+  { id: "client.name", label: l3("Client name", "Nombre del cliente"), group: "client" },
+  { id: "client.business", label: l3("Business name", "Nombre del negocio"), group: "client" },
+  { id: "client.owners", label: l3("Owners", "Due\xF1os"), group: "client" },
+  { id: "client.address", label: l3("Client address", "Direcci\xF3n del cliente"), group: "client" },
+  { id: "client.email", label: l3("Client email", "Correo del cliente"), group: "client" },
+  { id: "client.phone", label: l3("Client phone", "Tel\xE9fono del cliente"), group: "client" },
+  { id: "service.name", label: l3("Service", "Servicio"), group: "service" },
+  { id: "service.tier", label: l3("Price tier", "Nivel de precio"), group: "service" },
+  { id: "service.price", label: l3("Price", "Precio"), group: "service" },
+  { id: "service.period", label: l3("Period", "Periodo"), group: "service" },
+  { id: "service.scope", label: l3("What the service covers", "Qu\xE9 cubre el servicio"), group: "service" },
+  { id: "service.terms", label: l3("Fee and billing notes", "Notas de honorarios y cobro"), group: "service" },
+  { id: "firm.name", label: l3("Firm name", "Nombre del despacho"), group: "firm" },
+  { id: "firm.address", label: l3("Firm address", "Direcci\xF3n del despacho"), group: "firm" },
+  { id: "firm.phone", label: l3("Firm phone", "Tel\xE9fono del despacho"), group: "firm" },
+  { id: "firm.email", label: l3("Firm email", "Correo del despacho"), group: "firm" },
+  { id: "date.today", label: l3("Today", "Fecha de hoy"), group: "dates" },
+  { id: "date.start", label: l3("Start date", "Fecha de inicio"), group: "dates" },
+  { id: "date.due", label: l3("Due date", "Fecha l\xEDmite"), group: "dates" }
 ];
 var FIELD_BY_ID = new Map(MERGE_FIELDS.map((f) => [f.id, f]));
-var MISSING = l2("Missing", "Falta");
+var MISSING = l3("Missing", "Falta");
 var MARKER = /\{\{\s*([a-z]+\.[a-z]+)(\?)?\s*\}\}/gi;
 function mergeValues(d, _pack, s) {
   const { client, job, lead, lang } = s;
@@ -15462,7 +16052,7 @@ function layoutCertificate(model, m, size, lang) {
   const text = (s, x, yy, f, sz, c) => {
     if (s) ops.push({ t: "text", x, y: yy, s, f, size: sz, c });
   };
-  const rule2 = (yy, c, w = 0.7) => ops.push({ t: "line", x1: M, y1: yy, x2: W - M, y2: yy, w, c });
+  const rule3 = (yy, c, w = 0.7) => ops.push({ t: "line", x1: M, y1: yy, x2: W - M, y2: yy, w, c });
   const row = (r) => {
     const sz = r.mono ? Math.min(9, (CW - labelW) / 36) : 9.5;
     const lines = wrap(r.value, "regular", sz, CW - labelW);
@@ -15481,7 +16071,7 @@ function layoutCertificate(model, m, size, lang) {
   y -= 20;
   text(wrap(model.title, "bold", 17, CW)[0] ?? "", M, y, "bold", 17, HEAD);
   y -= 12;
-  rule2(y, HEAD, 1.4);
+  rule3(y, HEAD, 1.4);
   y -= 8;
   if (model.sample) {
     for (const s of wrap(model.sample, "bold", 9.5, CW)) {
@@ -15494,7 +16084,7 @@ function layoutCertificate(model, m, size, lang) {
   for (const s of model.signers) {
     need(13 * 4 + 30);
     y -= 8;
-    rule2(y, LINE);
+    rule3(y, LINE);
     y -= 18;
     text(s.heading, M, y, "bold", 11, HEAD);
     y -= 6;
@@ -15503,7 +16093,7 @@ function layoutCertificate(model, m, size, lang) {
   const note = wrap(model.note, "regular", 8.5, CW);
   need(note.length * 11.5 + 20);
   y -= 10;
-  rule2(y, LINE);
+  rule3(y, LINE);
   y -= 4;
   for (const s of note) {
     y -= 11.5;
@@ -15679,7 +16269,7 @@ function tinyPdf(lines) {
     const c = ch.charCodeAt(0);
     return ch === "(" || ch === ")" || ch === "\\" ? "\\" + ch : c > 126 ? c < 256 ? "\\" + c.toString(8).padStart(3, "0") : "?" : ch;
   }).join("");
-  const text = ["BT", "/F1 12 Tf", "72 708 Td", "16 TL", ...lines.map((l3) => `(${esc(l3)}) Tj T*`), "ET"].join("\n");
+  const text = ["BT", "/F1 12 Tf", "72 708 Td", "16 TL", ...lines.map((l4) => `(${esc(l4)}) Tj T*`), "ET"].join("\n");
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",

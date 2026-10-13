@@ -31,6 +31,7 @@ import { collectedByMonth, recommendations, type RecIcon } from './insights';
 import { glance, type GlanceId, type GlanceTile } from './glance';
 import { QuickLinks, quickLinks } from './links';
 import { Quiet, Swap } from './parts';
+import { SetupChecklist } from './setup';
 import './dashboard.css';
 
 const GLANCE_ICON: Record<GlanceId, ReactNode> = {
@@ -186,6 +187,7 @@ export default function PracticeDashboard() {
           {can('jobs') && on('jobs') && <CanWrite><A to="/jobs?new=1" className="btn primary" data-testid="dash-new-job"><LuBriefcase aria-hidden="true" />{t('newProject')}</A></CanWrite>}
         </div>
       </header>
+      <SetupChecklist />
 
       {/* 2. the links the team sends to clients: up front, because they are used every day */}
       {links.length > 0 && (

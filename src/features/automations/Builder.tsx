@@ -12,7 +12,7 @@ import type { RuleCond, RuleDef, RuleStep } from '@/domain/types';
 import { taskTypesOf, stagesOf } from '@/domain/config';
 import { cloneRule, effectiveRules, previewRule, ruleChanged, shippedRule } from '@/domain/rules/engine';
 import { NO_VALUE, OPERATORS, eventDef, eventsFor, fieldsFor, type EventDef, type EventGroup, type FieldDef, type SubjectKind } from '@/domain/rules/fields';
-import { STEPS, stepDef, stepsFor, type ParamDef, type StepKind } from '@/domain/rules/steps';
+import { APP_NAMES, CONNECTOR_APPS, STEPS, stepDef, stepsFor, type ParamDef, type StepKind } from '@/domain/rules/steps';
 import { deleteRule, duplicateRule, resetRule, saveRule, type RuleProblem } from '@/domain/rules/manage';
 import { ruleTitle } from './format';
 import { capFirst, eventText, ruleText, whoText, type Reader } from './sentence';
@@ -36,7 +36,7 @@ function mergeFields(event: EventDef | undefined): string[] {
 function newStep(kind: StepKind): RuleStep {
   const base: Record<StepKind, RuleStep['params']> = {
     task: { title: '', for: 'record_owner', dueIn: 1, pri: 'medium' }, message: { channel: 'email', mode: 'draft', subject: '', body: '' }, notify: { who: 'manager', text: '' },
-    assign: { to: 'owner' }, stage: {}, document: { kind: '' }, playbook: {}, opportunity: { serviceId: '' }, review: { channel: 'email' }, tag: { tag: '' }, builtin: {},
+    assign: { to: 'owner' }, stage: {}, document: { kind: '' }, playbook: {}, opportunity: { serviceId: '' }, review: { channel: 'email' }, tag: { tag: '' }, connector: { app: 'gcal' }, builtin: {},
   };
   return { do: kind, params: { ...base[kind] } };
 }
@@ -131,6 +131,7 @@ export function Builder({ ruleId }: { ruleId?: string }) {
       case 'status': return [['', t('auto.b.pick')], ...pack.jobStatuses.map((x): [string, string] => [x, t('st_' + x)])];
       case 'docKind': return [['', t('auto.b.pick')], ...pack.docKinds.filter((k) => k !== 'upload').map((k): [string, string] => [k, t('doc.kind.' + k)])];
       case 'service': return [['', t('auto.b.pick')], ...(data.catalog ?? []).filter((x) => x.active).map((x): [string, string] => [x.id, x.i18n?.[lang]?.name ?? x.name])];
+      case 'app': return CONNECTOR_APPS.map((x): [string, string] => [x, APP_NAMES[x] ?? x]);
       default: return [];
     }
   };

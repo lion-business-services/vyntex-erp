@@ -18,6 +18,7 @@ const STEPS: Step[] = [
   { id: 'docs', to: '/documents', target: '[data-testid="docs-table"]', perm: 'documents' },
   { id: 'pay', to: '/payments', target: '.kpis', perm: 'money' },
   { id: 'auto', to: '/automations', target: '[data-testid="auto-try"]', perm: 'automations' },
+  { id: 'apps', to: '/integrations', target: '[data-testid="integrations-google"]', perm: 'integrations' },
   { id: 'plan', to: '', target: '[data-testid="plan"]' },
   { id: 'end', to: '' },
 ];

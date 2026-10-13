@@ -39,12 +39,13 @@ import { dict as audit } from '@/features/audit/i18n';
 import { dict as auth } from '@/features/auth/i18n';
 import { dict as publicPages } from '@/features/public/i18n';
 import { dict as settingsLbs } from '@/features/settings/i18n-lbs';
+import { dict as admin } from '@/features/admin/i18n';
 
 // Read straight from the build constant so the bundler leaves the sales wording out of a deployment without sales pages.
 declare const __VX_DEPLOY__: string | undefined;
 
 /** Wording of the sales pages, the guided tour and the plans: only in a deployment that has them. */
-const sales: Dict[] = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? [] : [marketing, tour, pricingCopy, marketingSections, marketingPages];
+const sales: Dict[] = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? [] : [marketing, tour, pricingCopy, marketingSections, marketingPages, admin];
 
 /** Lines that read differently in LBS Command. They come last, so they replace the shared line of the same key. */
 const lbsOnly: Dict[] = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? [settingsLbs] : [];

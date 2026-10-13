@@ -7,7 +7,7 @@ export const BRAND = {
   company: 'VYNTEX USA',
   legalName: 'Vyntex LLC',
   tagline: { en: 'AI Automation | Web Development | Digital Technology', es: 'Automatización con IA | Desarrollo web | Tecnología digital' },
-  promise: { en: 'One intelligent command center. Built around your business.', es: 'Un centro de mando inteligente. Hecho a la medida de su negocio.' },
+  promise: { en: 'One intelligent ERP. Built around your business.', es: 'Un ERP inteligente. Hecho a la medida de su negocio.' },
   email: 'info@vyntexusa.com',
   phone: '609-780-3218',
   phoneHref: 'tel:+16097803218',

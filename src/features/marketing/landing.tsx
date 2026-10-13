@@ -21,6 +21,7 @@ import { Walkthrough } from './sections/walkthrough';
 import { AiSection } from './sections/ai';
 import { AutomationSection } from './sections/automation';
 import { ConnectedSection } from './sections/connected';
+import { IntegrationsSection } from './sections/integrations';
 import { EditionsSection } from './sections/editions';
 import { CustomizationSection } from './sections/customization';
 import { PlansOverview } from './sections/plans';
@@ -62,6 +63,7 @@ export function Landing({ notFound }: { notFound?: boolean }) {
       <div id="product" className="mk-anchor"><Walkthrough /></div>
       <AiSection />
       <AutomationSection />
+      <div id="integrations" className="mk-anchor"><IntegrationsSection /></div>
       <ConnectedSection />
       <div id="industries" className="mk-anchor"><EditionsSection /></div>
       <CustomizationSection />

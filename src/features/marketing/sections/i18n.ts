@@ -53,11 +53,16 @@ export const dict: Dict = {
     'mk.s.ai.q2': 'Prepare the follow-ups', 'mk.s.ai.q2b': 'Create a task for tomorrow: follow up with {name}',
 
     /* automation */
+    'mk.s.in.h': 'Works with the tools you already use.',
+    'mk.s.in.sub': 'Gmail, Google Calendar, Drive, Sheets and the rest of Google Workspace, plus payments, books, messaging and social. Rules hand the work to each app, so nobody copies anything twice.',
+    'mk.s.in.ready': 'Ready to connect', 'mk.s.in.count': '{n} connections ready to set up for your company, {m} more on the roadmap.',
+    'mk.s.in.demo': 'In the demo, connect any of them and watch the rules use it.', 'mk.s.in.link': 'Connect them in the live demo',
     'mk.s.au.h': 'The routine work runs by itself.',
     'mk.s.au.sub': 'Rules react to what happens in the business: a new lead, a won lead, a finished {job}. Choose a rule and watch what it does.',
     'mk.s.au.pick': 'Automation rule',
     'mk.s.au.everyPlan': 'Included in every plan',
     'mk.s.au.honest': 'Emails are prepared for your review. Nothing is sent without you.',
+    'mk.s.au.honestApps': 'Each step runs once its app is connected. In the demo, connect them in Integrations and watch it work.',
     'mk.s.au.count': 'Showing {shown} of the {n} rules that come with this edition.',
     'mk.s.au.link': 'See every rule in the demo',
 
@@ -172,11 +177,16 @@ export const dict: Dict = {
     'mk.s.ai.q2': 'Prepare los seguimientos', 'mk.s.ai.q2b': 'Crear una tarea para mañana: dar seguimiento a {name}',
 
     /* automation */
+    'mk.s.in.h': 'Funciona con las herramientas que ya usa.',
+    'mk.s.in.sub': 'Gmail, Google Calendar, Drive, Sheets y el resto de Google Workspace, además de pagos, contabilidad, mensajería y redes sociales. Las reglas le pasan el trabajo a cada aplicación, así nadie copia nada dos veces.',
+    'mk.s.in.ready': 'Lista para conectar', 'mk.s.in.count': '{n} conexiones listas para configurar en su empresa y {m} más en desarrollo.',
+    'mk.s.in.demo': 'En la demo, conecte cualquiera y vea cómo la usan las reglas.', 'mk.s.in.link': 'Conéctelas en la demo en vivo',
     'mk.s.au.h': 'El trabajo de rutina se hace solo.',
     'mk.s.au.sub': 'Las reglas reaccionan a lo que pasa en el negocio: llega un prospecto, se gana un prospecto, se termina un {job}. Elija una regla y vea lo que hace.',
     'mk.s.au.pick': 'Regla de automatización',
     'mk.s.au.everyPlan': 'Incluido en todos los planes',
     'mk.s.au.honest': 'Los correos quedan preparados para su revisión. No se envía nada sin usted.',
+    'mk.s.au.honestApps': 'Cada paso funciona en cuanto su aplicación está conectada. En la demo, conéctelas en Integraciones y véalo trabajar.',
     'mk.s.au.count': 'Se muestran {shown} de las {n} reglas que trae esta edición.',
     'mk.s.au.link': 'Ver todas las reglas en la demo',
 

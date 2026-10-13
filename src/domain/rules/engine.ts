@@ -159,6 +159,9 @@ function runRule(d: DemoState, ctx: Ctx, rule: RuleDef, event: string, s: RuleSu
     }
   }
   if (!lines.length) return;
+  // a rule made only of hand-offs to apps, none of them connected, has nothing to report: it is waiting for its apps,
+  // and it runs the first time the event comes again after one is connected
+  if (!did && !error && rule.then.every((x) => x.do === 'connector')) return;
   const status: AutomationRun['status'] = error ? 'failed' : did ? 'ok' : 'skipped';
   record(d, { id: uid('r'), at: nowIso(), ruleId: rule.id, steps: lines, ...(ref ? { ref } : {}), status, ...(error ? { error } : {}), dedupe: freeKey(d, error ? failMark : key) });
 }

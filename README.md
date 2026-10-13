@@ -7,7 +7,7 @@ This repository now builds two separate products from one codebase:
 * `npm run build` builds **VYNTEX ERP** into `dist/` (sales pages, public demo, nine editions, a live workspace per company).
 * `npm run build:lbs` builds **LBS Command** into `dist-lbs/` (standalone Lion Business Services deployment, professional-services edition only).
 
-Read in this order: `docs/MASTER-BUILD-REPORT.md` (what was built, what is proved, what is still needed), `docs/MASTER-BUILD-SPEC.md`
+Read in this order: `docs/GO-LIVE.md` (client workspaces and the operator console), `docs/FINAL-ROUND-REPORT.md` (October 13, 2026 final review round), `docs/MASTER-BUILD-REPORT.md` (what was built, what is proved, what is still needed), `docs/MASTER-BUILD-SPEC.md`
 (the engineering contract), `docs/DEPLOYMENT.md` (two deployments, step by step), `docs/DATABASE.md`, `docs/SERVER.md`,
 `docs/integrations/`, `docs/security/`, `docs/migration/nova-to-lbs.md`.
 

@@ -117,6 +117,15 @@ export const more: Dict = {
     'auto.m.doc.number': 'document number', 'auto.m.owner': 'person responsible', 'auto.m.days': 'days', 'auto.m.amount': 'amount', 'auto.m.balance': 'balance', 'auto.m.title': 'deadline', 'auto.m.service': 'service', 'auto.m.today': 'today',
     'auto.m.insert': 'Add to the text: {field}',
     'act.auto.notify': '{who} was told by an automation: {text}',
+    // ---- the connector step: hand the record to a connected app (October 2026)
+    'auto.stepName.connector': 'Send to a connected app', 'auto.p.app': 'App',
+    'auto.do.connector.gcal': 'put it on Google Calendar', 'auto.do.connector.gmeet': 'create a Google Meet link', 'auto.do.connector.gdrive': 'file the documents in the {client}\'s Google Drive folder',
+    'auto.do.connector.gsheets': 'add a row to the Google Sheets tracker', 'auto.do.connector.gcontacts': 'save the person in Google Contacts', 'auto.do.connector.quickbooks': 'send it to QuickBooks Online',
+    'auto.do.connector.slack': 'post it to the Slack channel', 'auto.do.connector.zapier': 'send the event to Zapier',
+    'auto.step.connector.gcal': 'On Google Calendar: {what}', 'auto.step.connector.gmeet': 'Google Meet link created for {what}', 'auto.step.connector.gdrive': 'Filed in Google Drive: folder of {what}',
+    'auto.step.connector.gsheets': 'Row added to the Google Sheets tracker: {what}', 'auto.step.connector.gcontacts': 'Saved in Google Contacts: {what}', 'auto.step.connector.quickbooks': 'Sent to QuickBooks Online: {what}',
+    'auto.step.connector.slack': 'Posted to Slack #operations: {what}', 'auto.step.connector.zapier': 'Event sent to Zapier: {what}',
+    'auto.skip.connector': '{app} is not connected, so nothing was sent. Connect it in Integrations.',
   },
   es: {
     'auto.tab.rules': 'Reglas', 'auto.tab.history': 'Historial', 'auto.new': 'Nueva regla', 'auto.back': 'Todas las reglas',
@@ -218,5 +227,14 @@ export const more: Dict = {
     'auto.m.doc.number': 'número del documento', 'auto.m.owner': 'persona responsable', 'auto.m.days': 'días', 'auto.m.amount': 'monto', 'auto.m.balance': 'saldo', 'auto.m.title': 'fecha límite', 'auto.m.service': 'servicio', 'auto.m.today': 'hoy',
     'auto.m.insert': 'Agregar al texto: {field}',
     'act.auto.notify': 'Una automatización avisó a {who}: {text}',
+    // ---- el paso de conexión: entregar el registro a una aplicación conectada (octubre de 2026)
+    'auto.stepName.connector': 'Enviar a una aplicación conectada', 'auto.p.app': 'Aplicación',
+    'auto.do.connector.gcal': 'ponerlo en Google Calendar', 'auto.do.connector.gmeet': 'crear un enlace de Google Meet', 'auto.do.connector.gdrive': 'guardar los documentos en la carpeta de Google Drive del {client}',
+    'auto.do.connector.gsheets': 'agregar una fila a la hoja de seguimiento de Google Sheets', 'auto.do.connector.gcontacts': 'guardar a la persona en Google Contacts', 'auto.do.connector.quickbooks': 'enviarlo a QuickBooks Online',
+    'auto.do.connector.slack': 'publicarlo en el canal de Slack', 'auto.do.connector.zapier': 'enviar el evento a Zapier',
+    'auto.step.connector.gcal': 'En Google Calendar: {what}', 'auto.step.connector.gmeet': 'Enlace de Google Meet creado para {what}', 'auto.step.connector.gdrive': 'Guardado en Google Drive: carpeta de {what}',
+    'auto.step.connector.gsheets': 'Fila agregada a la hoja de seguimiento: {what}', 'auto.step.connector.gcontacts': 'Guardado en Google Contacts: {what}', 'auto.step.connector.quickbooks': 'Enviado a QuickBooks Online: {what}',
+    'auto.step.connector.slack': 'Publicado en Slack #operaciones: {what}', 'auto.step.connector.zapier': 'Evento enviado a Zapier: {what}',
+    'auto.skip.connector': '{app} no está conectado, así que no se envió nada. Conéctelo en Integraciones.',
   },
 };

@@ -4,7 +4,7 @@
 // Connecting sends the person to the provider through the server (the browser never sees a token); connecting and
 // disconnecting ask them to confirm who they are first.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LuActivity, LuChevronDown, LuCircleAlert, LuCircleCheck, LuFlaskConical, LuPlug, LuRefreshCw, LuShieldCheck, LuUnplug } from 'react-icons/lu';
+import { LuActivity, LuChevronDown, LuCircleAlert, LuCircleCheck, LuFlaskConical, LuPlug, LuRefreshCw, LuShieldCheck, LuSparkles, LuUnplug, LuZap } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { appPath, navigate, useRoute } from '@/app/router';
 import type { PageProps } from '@/app/routes';
@@ -13,10 +13,11 @@ import { actorName } from '@/domain/selectors';
 import type { ConnState, ProviderId } from '@/domain/types';
 import { authGateway, gateway } from '@/platform/gateway';
 import { session } from '@/platform/session';
-import { GROUPS, PROVIDERS, modeOf, type ConnectionInfo, type ProviderInfo } from './catalog';
+import { GOOGLE_IDS, GROUPS, PROVIDERS, demoAccount, demoActivity, modeOf, type ConnectionInfo, type ProviderInfo } from './catalog';
+import { useDemoLinks } from '@/platform/demo-links';
 import './integrations.css';
 
-const TONE: Record<ConnState, Tone> = { not_connected: 'neutral', setup: 'accent', connected: 'ok', attention: 'warn', reauth: 'warn', error: 'bad', pending_approval: 'violet' };
+const TONE: Record<ConnState, Tone> = { demo: 'ok', not_connected: 'neutral', setup: 'accent', connected: 'ok', attention: 'warn', reauth: 'warn', error: 'bad', pending_approval: 'violet' };
 /** The server asks for a fresh identity check with this answer (docs/SERVER.md, section 6). */
 const STEP_UP = 'stepup_required';
 type Busy = { id: ProviderId; what: 'connect' | 'test' | 'sync' | 'disconnect' } | null;
@@ -35,12 +36,16 @@ export default function IntegrationsPage(_props: PageProps) {
   const [open, setOpen] = useState<string | null>(null);
   const stepUp = useRef<((ok: boolean) => void) | null>(null);
   const [asking, setAsking] = useState(false);
+  // the sample workspace: which simulated connections exist, and the consent screen of the one being simulated
+  const links = useDemoLinks();
+  const [consent, setConsent] = useState<{ ids: ProviderId[]; resolve: (ok: boolean) => void } | null>(null);
+  const askConsent = (ids: ProviderId[]) => new Promise<boolean>((resolve) => setConsent({ ids, resolve }));
 
   const load = useCallback(async () => {
     try { setRows(await gateway().integrations.list() as ConnectionInfo[]); setFailed(false); }
     catch { setFailed(true); }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); }, [load, links]);
 
   // back from the provider: /integrations?integration=<id>&result=<connected|error>&reason=<code>
   useEffect(() => {
@@ -72,10 +77,15 @@ export default function IntegrationsPage(_props: PageProps) {
   const run = async (p: ProviderInfo, what: NonNullable<Busy>['what']) => {
     if (busy) return;
     const g = gateway().integrations;
-    if (what === 'disconnect' && !(await confirmDialog(t('integrations.disconnectAsk', { name: nameOf(p) }), t('integrations.disconnect'), t('common.cancel')))) return;
+    if (what === 'disconnect' && !(await confirmDialog(t(live ? 'integrations.disconnectAsk' : 'integrations.demo.disconnectAsk', { name: nameOf(p) }), t('integrations.disconnect'), t('common.cancel')))) return;
     setBusy({ id: p.id, what });
     try {
-      if (what === 'connect') {
+      if (what === 'connect' && !live) {
+        // the sample workspace: show what the provider's own consent screen would ask, then simulate the connection
+        if (!(await askConsent([p.id]))) return;
+        const out = await g.connect(p.id);
+        if (out.ok) say(p.id, true, t('integrations.demo.done', { name: nameOf(p) }));
+      } else if (what === 'connect') {
         const out = await guarded(() => g.connect(p.id));
         if (out.ok && out.data.redirect) { window.location.assign(out.data.redirect); return; }
         if (out.ok) say(p.id, true, t('integrations.done.connect'));
@@ -85,10 +95,10 @@ export default function IntegrationsPage(_props: PageProps) {
         say(p.id, out.ok, out.ok ? t('integrations.done.disconnect') : out.sample ? t('integrations.sample.other') : reasonText(out.reason), out.sample);
       } else if (what === 'sync') {
         const out = await g.sync(p.id);
-        say(p.id, out.ok, out.ok ? t('integrations.done.sync') : out.sample ? t('integrations.sample.other') : reasonText(out.reason), out.sample);
+        say(p.id, out.ok, out.ok ? t(live ? 'integrations.done.sync' : 'integrations.demo.syncDone') : out.sample ? t('integrations.sample.other') : reasonText(out.reason), out.sample);
       } else {
         const out = await g.test(p.id);
-        if (out.ok) say(p.id, out.data.healthy, out.data.healthy ? t('integrations.done.test') : t('integrations.done.testBad', { reason: reasonText(out.data.detail) || t('integrations.reason.unknown') }));
+        if (out.ok) say(p.id, out.data.healthy, out.data.healthy ? t(live ? 'integrations.done.test' : 'integrations.demo.testDone') : t('integrations.done.testBad', { reason: reasonText(out.data.detail) || t('integrations.reason.unknown') }));
         else say(p.id, false, out.sample ? t('integrations.sample.other') : reasonText(out.reason), out.sample);
       }
       await load();
@@ -97,6 +107,16 @@ export default function IntegrationsPage(_props: PageProps) {
     } finally { setBusy(null); }
   };
 
+  const connectGoogle = async () => {
+    if (busy) return;
+    const ids = GOOGLE_IDS.filter((id) => !links[id]);
+    if (!ids.length || !(await askConsent(ids))) return;
+    for (const id of ids) await gateway().integrations.connect(id);
+    toast(t('integrations.demo.googleDone', { n: ids.length }));
+    await load();
+  };
+  const linkedCount = Object.keys(links).length;
+
   const backFor = back ? PROVIDERS.find((p) => p.id === back.id) : undefined;
   const byId = new Map((rows ?? []).map((r) => [r.id, r]));
 
@@ -104,7 +124,16 @@ export default function IntegrationsPage(_props: PageProps) {
     <>
       <PageHeader title={t('nav.integrations')} sub={t('integrations.sub')} actions={rows && live ? <Button icon={<LuRefreshCw />} onClick={() => void load()} data-testid="integrations-refresh">{t('integrations.refresh')}</Button> : undefined} />
 
-      {!live && <p className="note small integrations-sample" data-testid="integrations-sample"><b>{t('integrations.sample.title')}</b> {t('integrations.sample.body')}</p>}
+      {!live && (
+        <div className="card integrations-demo" data-testid="integrations-sample">
+          <div className="integrations-demo-text">
+            <p className="integrations-demo-h"><LuSparkles aria-hidden="true" /> {t('integrations.demo.title')}</p>
+            <p className="small muted">{t('integrations.demo.body')}</p>
+            {linkedCount > 0 && <p className="xs integrations-demo-count" data-testid="integrations-demo-count"><LuZap aria-hidden="true" /> {t('integrations.demo.count', { n: linkedCount })}</p>}
+          </div>
+          {write && <Button variant="primary" icon={<LuPlug />} disabled={!!busy || GOOGLE_IDS.every((id) => links[id])} onClick={() => void connectGoogle()} data-testid="integrations-google">{t(GOOGLE_IDS.every((id) => links[id]) ? 'integrations.demo.googleOn' : 'integrations.demo.google')}</Button>}
+        </div>
+      )}
       {back && (
         <div className={cx('note integrations-back', !back.ok && 'bad')} role="status" data-testid="integrations-back" data-result={back.ok ? 'ok' : 'error'}>
           {back.ok ? <LuCircleCheck aria-hidden="true" /> : <LuCircleAlert aria-hidden="true" />}
@@ -128,11 +157,13 @@ export default function IntegrationsPage(_props: PageProps) {
                   const Icon = p.icon; const mode = modeOf(c); const res = results[p.id]; const mine = busy?.id === p.id;
                   // a service the platform itself holds the key for (the server says so) has nothing for a company to connect or remove
                   const own = c.kind !== 'platform';
+                  const sim = c.state === 'demo';
+                  const planned = !!p.planned && live;
                   const row = own && byId.has(p.id) && c.state !== 'not_connected' && c.state !== 'setup' && c.state !== 'pending_approval';
-                  const canConnect = own && (c.state === 'setup' || c.state === 'error' || c.state === 'reauth' || c.state === 'attention' || (c.state === 'not_connected' && c.reason === 'sample'));
+                  const canConnect = own && !planned && (c.state === 'setup' || c.state === 'error' || c.state === 'reauth' || c.state === 'attention' || (c.state === 'not_connected' && c.reason === 'sample'));
                   // in a sample workspace the note at the top of the page gives the reason once, for every card
                   const why = c.reason ?? c.lastError;
-                  const reason = c.state === 'connected' || c.reason === 'sample' ? '' : reasonText(why);
+                  const reason = c.state === 'connected' || sim || c.reason === 'sample' ? '' : planned ? t('integrations.reason.planned') : reasonText(why);
                   // the last error is its own line only when it says something the reason above does not
                   const lastError = c.lastError && c.lastError !== why && c.state !== 'connected' ? c.lastError : '';
                   return (
@@ -142,13 +173,35 @@ export default function IntegrationsPage(_props: PageProps) {
                         <h3 className="grow">{nameOf(p)}</h3>
                         <Badge tone={TONE[c.state]}>{t('integrations.state.' + c.state)}</Badge>
                       </header>
+                      {p.planned && <p className="integrations-planned"><Badge tone="violet">{t('integrations.planned')}</Badge></p>}
                       <p className="small muted">{t(`integrations.what.${p.id}`)}</p>
 
                       {reason && <p className="small integrations-reason" data-testid="integrations-reason">{reason}</p>}
                       {!!c.missing?.length && <p className="xs dim integrations-missing">{t('integrations.missing')} {c.missing.map((m) => <code key={m}>{m}</code>)}</p>}
                       {c.state === 'pending_approval' && c.approval?.note && <p className="xs dim">{c.approval.note}</p>}
 
-                      {(c.account || c.connectedAt || !!c.scopes?.length || c.lastSyncAt || lastError) && (
+                      {sim && (
+                        <div className="integrations-sim" data-testid="integrations-sim">
+                          <dl className="kv integrations-kv">
+                            <dt>{t('integrations.account')}</dt><dd data-testid="integrations-account">{demoAccount(data, p.id)}</dd>
+                            {c.lastSyncAt && <><dt>{t('integrations.lastSync')}</dt><dd>{dateTime(c.lastSyncAt)}</dd></>}
+                          </dl>
+                          <p className="xs strong integrations-sim-h">{t('integrations.demo.doing')}</p>
+                          <ul className="integrations-sim-list">
+                            {demoActivity(data, p.id).map((line, i) => <li key={i}><LuCircleCheck aria-hidden="true" />{t(line.key, line.params)}</li>)}
+                          </ul>
+                          {!!links[p.id]?.log.length && (
+                            <>
+                              <p className="xs strong integrations-sim-h">{t('integrations.demo.recent')}</p>
+                              <ul className="integrations-sim-log" data-testid="integrations-sim-log">
+                                {links[p.id].log.slice(0, 4).map((line, i) => <li key={i}><LuZap aria-hidden="true" /><span className="grow">{t(line.key, line.params)}</span><span className="dim">{dateTime(line.at)}</span></li>)}
+                              </ul>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {!sim && (c.account || c.connectedAt || !!c.scopes?.length || c.lastSyncAt || lastError) && (
                         <dl className="kv integrations-kv">
                           {c.account && <><dt>{t('integrations.account')}</dt><dd data-testid="integrations-account">{c.account}</dd></>}
                           {c.connectedAt && <><dt>{t('integrations.connectedAt')}</dt><dd>{dateTime(c.connectedAt)}{c.by && actorName(data, c.by) ? ` · ${actorName(data, c.by)}` : ''}</dd></>}
@@ -169,9 +222,9 @@ export default function IntegrationsPage(_props: PageProps) {
 
                       <div className="integrations-actions">
                         {write && canConnect && <Button size="sm" variant={c.state === 'setup' || c.state === 'reauth' ? 'primary' : 'default'} icon={<LuPlug />} disabled={!!busy} onClick={() => run(p, 'connect')} data-testid="integrations-connect">{t(c.state === 'setup' || c.reason === 'sample' ? 'integrations.connect' : 'integrations.reconnect')}{mine && busy?.what === 'connect' ? '…' : ''}</Button>}
-                        {write && (c.state === 'connected' || c.state === 'attention' || c.state === 'error') && <Button size="sm" icon={<LuActivity />} disabled={!!busy} onClick={() => run(p, 'test')} data-testid="integrations-test">{t('integrations.test')}{mine && busy?.what === 'test' ? '…' : ''}</Button>}
-                        {write && own && (c.state === 'connected' || c.state === 'attention') && <Button size="sm" icon={<LuRefreshCw />} disabled={!!busy} onClick={() => run(p, 'sync')} data-testid="integrations-sync">{t('integrations.sync')}{mine && busy?.what === 'sync' ? '…' : ''}</Button>}
-                        {write && row && <Button size="sm" variant="ghost" icon={<LuUnplug />} disabled={!!busy} onClick={() => run(p, 'disconnect')} data-testid="integrations-disconnect">{t('integrations.disconnect')}</Button>}
+                        {write && (c.state === 'connected' || sim || c.state === 'attention' || c.state === 'error') && <Button size="sm" icon={<LuActivity />} disabled={!!busy} onClick={() => run(p, 'test')} data-testid="integrations-test">{t('integrations.test')}{mine && busy?.what === 'test' ? '…' : ''}</Button>}
+                        {write && own && (c.state === 'connected' || sim || c.state === 'attention') && <Button size="sm" icon={<LuRefreshCw />} disabled={!!busy} onClick={() => run(p, 'sync')} data-testid="integrations-sync">{t('integrations.sync')}{mine && busy?.what === 'sync' ? '…' : ''}</Button>}
+                        {write && (row || sim) && <Button size="sm" variant="ghost" icon={<LuUnplug />} disabled={!!busy} onClick={() => run(p, 'disconnect')} data-testid="integrations-disconnect">{t('integrations.disconnect')}</Button>}
                         <button type="button" className="linkbtn small integrations-more" aria-expanded={open === p.id} aria-controls={'need-' + p.id} onClick={() => setOpen(open === p.id ? null : p.id)} data-testid="integrations-needs">
                           {t('integrations.needs')}<LuChevronDown aria-hidden="true" className={open === p.id ? 'up' : undefined} />
                         </button>
@@ -196,7 +249,30 @@ export default function IntegrationsPage(_props: PageProps) {
       <Note><LuShieldCheck aria-hidden="true" className="integrations-shield" /> {t('integrations.security')}</Note>
 
       {asking && <IdentityCheck onDone={answered} />}
+      {consent && <DemoConsent ids={consent.ids} onDone={(ok) => { consent.resolve(ok); setConsent(null); }} />}
     </>
+  );
+}
+
+/* ---------- the sample workspace: what the provider's consent screen asks for, then a simulated connection ---------- */
+function DemoConsent({ ids, onDone }: { ids: ProviderId[]; onDone: (ok: boolean) => void }) {
+  const { t, data } = useApp();
+  const list = PROVIDERS.filter((p) => ids.includes(p.id));
+  const name = (p: ProviderInfo) => (p.nameKey ? t(p.nameKey) : p.name);
+  const one = list.length === 1 ? list[0] : undefined;
+  return (
+    <Modal title={one ? t('integrations.consent.title', { name: name(one) }) : t('integrations.consent.titleMany', { n: list.length })} onClose={() => onDone(false)} size="narrow" labelClose={t('common.cancel')}>
+      <div className="stack tight" data-testid="integrations-consent">
+        <p className="small">{t('integrations.consent.text', { company: data.company.name })}</p>
+        <ul className="integrations-consent-list">
+          {list.map((p) => { const Icon = p.icon; return (
+            <li key={p.id}><span className="integrations-ic" aria-hidden="true"><Icon /></span><span className="grow"><b>{name(p)}</b>{p.planned && <> <Badge tone="violet">{t('integrations.planned')}</Badge></>}<br /><span className="xs muted">{t('integrations.what.' + p.id)}</span></span></li>
+          ); })}
+        </ul>
+        <p className="xs dim">{t('integrations.consent.note')}</p>
+        <div className="row"><span className="grow" /><Button variant="ghost" onClick={() => onDone(false)}>{t('common.cancel')}</Button><Button variant="primary" icon={<LuPlug />} onClick={() => onDone(true)} data-testid="integrations-consent-ok" data-autofocus>{t('integrations.consent.ok')}</Button></div>
+      </div>
+    </Modal>
   );
 }
 

@@ -332,3 +332,21 @@ button.dash-more{margin-top:10px}
 .dash-firm-h h2{font-size:18px}
 .dash-pr-grid.one{grid-template-columns:minmax(0,1fr)}
 .dash-p .dash-day+.dash-day{margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+
+/* "Get your workspace ready" (./setup.tsx): a new client company's first steps */
+.dash-setup{border-color:var(--accent-line);background:linear-gradient(130deg,var(--accent-soft),transparent 55%),var(--surface);box-shadow:var(--glow-soft);display:grid;gap:12px}
+.dash-setup-head{display:flex;gap:12px;align-items:flex-start}
+.dash-setup-head h2{font-size:19px;margin:0 0 2px}
+.dash-setup-count{font-family:var(--font-display);font-weight:800;font-size:18px;color:var(--accent);padding-top:2px}
+.dash-setup-bar{height:6px;border-radius:999px;background:var(--surface-3);overflow:hidden}
+.dash-setup-bar i{display:block;height:100%;background:var(--grad-cta,var(--accent));border-radius:999px;transition:width var(--motion-cinematic) var(--ease-vyntex)}
+.dash-setup-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.dash-setup-list li{display:flex;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius-s);background:var(--surface)}
+.dash-setup-list li.next{border-color:var(--accent-line)}
+.dash-setup-list li.done{opacity:.72}
+.dash-setup-mark svg{width:18px;height:18px;color:var(--text-3)}
+.dash-setup-list li.done .dash-setup-mark svg{color:var(--ok)}
+.dash-setup-ico{display:grid;place-items:center;width:32px;height:32px;border-radius:var(--radius-s);background:var(--accent-soft);color:var(--accent);flex:none}
+.dash-setup-ico svg{width:16px;height:16px}
+@media (max-width:560px){.dash-setup-list li{flex-wrap:wrap}.dash-setup-list li .btn{margin-left:62px}}
+@media (prefers-reduced-motion:reduce){.dash-setup-bar i{transition:none}}

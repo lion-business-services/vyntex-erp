@@ -6,6 +6,8 @@
 //            are never written to browser storage, and every change is sent to the server right after it is made.
 //
 // The pages do not know which one is running: they use `useStore`, `act`, `mutate` and the selectors either way.
+import { addFieldExtras } from '@/packs/field-extras';
+import { demoClearLinks, demoCtxLinks } from '@/platform/demo-links';
 import { useSyncExternalStore } from 'react';
 import type { DemoState, IndustryId, Lang, ModuleCollection, ViewAs } from '@/domain/types';
 import type { PlanTier } from '@/lib/pricing';
@@ -135,6 +137,8 @@ export function freshData(id: IndustryId, lang: Lang): DemoState {
   // a sample that brings no appointment types or rules of its own still gets the edition's
   if (!d.apptTypes.length) d.apptTypes = starters(pack).apptTypes;
   if (!d.rules.length) d.rules = starters(pack).rules;
+  // the field editions' samples get catalog, signature, review, social and opportunity records built from their own work
+  addFieldExtras(d, pack, lang);
   primeDemo(d, { pack, lang, t: makeT(lang, pack, d.config), actor: d.users[0]?.id ?? 'u1' });
   return d;
 }
@@ -187,7 +191,7 @@ export function actorId(): string {
   if (isWorkerView(prefs.viewAs)) return workerIdOf(prefs.viewAs);
   return data.users.find((u) => u.role === prefs.viewAs && u.active !== false)?.id ?? data.users[0]?.id ?? 'u1';
 }
-export const ctx = (): Ctx => ({ pack: currentPack(), lang: prefs.lang, t: currentT(), actor: actorId() });
+export const ctx = (): Ctx => ({ pack: currentPack(), lang: prefs.lang, t: currentT(), actor: actorId(), ...(isLive() ? {} : { links: demoCtxLinks }) });
 
 /**
  * Whether whoever is looking may do something. Office roles are resolved through the company's configuration; a field
@@ -266,6 +270,7 @@ export function resetDemo() {
   const id = prefs.pack;
   if (!seedReady(id)) { void loadSeed(id).then(() => { if (prefs.pack === id) resetDemo(); }, () => undefined); return; }
   storage.del(dataKey(id));
+  demoClearLinks();
   prefs = { ...prefs, viewAs: 'owner' };
   data = freshData(id, prefs.lang);
   sampleLoaded = true;

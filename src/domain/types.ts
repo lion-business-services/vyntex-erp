@@ -680,9 +680,12 @@ export interface Envelope {
 }
 
 // ---- connections to outside services
-export type ProviderId = 'gmail' | 'resend' | 'gcal' | 'gmeet' | 'gbp' | 'gmaps' | 'square' | 'quickbooks' | 'whatsapp' | 'meta' | 'dialpad' | 'sms' | 'ai';
-/** `connected` is only ever set by the server after a real, verified connection. The demo never shows it. */
-export type ConnState = 'not_connected' | 'setup' | 'connected' | 'attention' | 'reauth' | 'error' | 'pending_approval';
+export type ProviderId = 'gmail' | 'resend' | 'gcal' | 'gmeet' | 'gbp' | 'gmaps' | 'square' | 'quickbooks' | 'whatsapp' | 'meta' | 'dialpad' | 'sms' | 'ai'
+  // on the roadmap: listed and demonstrated in the sample workspace, not yet connectable in a live workspace
+  | 'gdrive' | 'gsheets' | 'gcontacts' | 'gforms' | 'galerts' | 'outlook' | 'stripe' | 'slack' | 'zapier';
+/** `connected` is only ever set by the server after a real, verified connection. The demo never shows it: a simulated
+ * connection in the sample workspace is `demo`, and every screen labels it as a simulation. */
+export type ConnState = 'demo' | 'not_connected' | 'setup' | 'connected' | 'attention' | 'reauth' | 'error' | 'pending_approval';
 export interface Connection { id: ProviderId; state: ConnState; account?: string; scopes?: string[]; connectedAt?: ISODateTime; lastSyncAt?: ISODateTime; lastError?: string; settings?: Record<string, string | number | boolean>; by?: string }
 
 export interface SocialPost { id: string; text: string; media?: FileRef[]; channels: ('facebook' | 'instagram' | 'gbp')[]; status: 'draft' | 'needs_approval' | 'scheduled' | 'demo' | 'published' | 'failed'; scheduledFor?: ISODateTime; publishedAt?: ISODateTime; by: string; approvedBy?: string; error?: string; created: ISODateTime }
@@ -700,7 +703,7 @@ export type RuleEvent =
   | 'task.overdue' | 'doc.sent' | 'envelope.completed' | 'envelope.idle' | 'message.received' | 'review.due' | 'deadline.near' | 'client.birthday' | 'worker.document' | 'daily'
   | 'appointment.soon' | 'appointment.pay_soon' | 'opportunity.created' | 'credit.expiring';
 export interface RuleCond { field: string; op: 'is' | 'is_not' | 'in' | 'gt' | 'lt' | 'has' | 'empty' | 'not_empty'; value?: string | number | boolean | string[] }
-export interface RuleStep { do: 'task' | 'message' | 'notify' | 'assign' | 'stage' | 'document' | 'envelope' | 'appointment' | 'opportunity' | 'review' | 'tag' | 'playbook' | 'builtin'; params: Record<string, string | number | boolean | string[]> }
+export interface RuleStep { do: 'task' | 'message' | 'notify' | 'assign' | 'stage' | 'document' | 'envelope' | 'appointment' | 'opportunity' | 'review' | 'tag' | 'playbook' | 'connector' | 'builtin'; params: Record<string, string | number | boolean | string[]> }
 export interface RuleDef {
   id: string;
   name: L10n;

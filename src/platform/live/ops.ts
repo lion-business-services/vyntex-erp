@@ -66,10 +66,13 @@ export const liveProtected: ProtectedOperations = {
     // the server makes the link and emails it to the invited address; the inviter never sees it
     const a = await rpc<never>('member_invite', { email, role: input.role, name: input.name.trim(), lang: getSnapshot().prefs.lang }, { idem: newKey() });
     if (!a.ok) return no(a);
-    const inv = (a.data as unknown as { invitation?: { id: string; email: string; role: TeamUser['role']; expiresAt?: string } }).invitation;
+    const answer = a.data as unknown as { invitation?: { id: string; email: string; role: TeamUser['role']; expiresAt?: string }; delivery?: string; link?: string };
+    const inv = answer.invitation;
     if (!inv) return refuse('offline');
     // Not a member yet: the person appears in the team once they accept. This is the invitation, shaped for the screen.
-    return ok({ id: inv.id, name: input.name.trim(), email: inv.email, role: inv.role, title: input.title, officeIds: input.officeIds, active: false, invitedAt: new Date().toISOString() });
+    // When no email could go out, the server hands the one-time link back for the inviter to pass on (shown once).
+    const manual = (answer.delivery === 'manual' || answer.delivery === 'manual_failed') && typeof answer.link === 'string' ? { inviteLink: answer.link, inviteDelivery: answer.delivery } : {};
+    return ok({ id: inv.id, name: input.name.trim(), email: inv.email, role: inv.role, title: input.title, officeIds: input.officeIds, active: false, invitedAt: new Date().toISOString(), ...manual } as TeamUser);
   },
   memberSetRole: (userId, role) => run<TeamUser>('member_set_role', { p_member: userId, p_role: role }, (r) => one('users', r)),
   memberDisable: (userId) => run<TeamUser>('member_disable', { p_member: userId }, (r) => one('users', r)),

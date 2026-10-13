@@ -32,7 +32,7 @@ export interface StepInput { d: DemoState; ctx: Ctx; subject: RuleSubject; /** M
 /* ---------- the catalogue the builder reads ---------- */
 
 export type StepKind = Exclude<RuleStep['do'], 'envelope' | 'appointment'>;
-export type ParamType = 'text' | 'long' | 'days' | 'who' | 'assignTo' | 'pri' | 'taskType' | 'channel' | 'mode' | 'stage' | 'status' | 'docKind' | 'service' | 'tag';
+export type ParamType = 'text' | 'long' | 'days' | 'who' | 'assignTo' | 'pri' | 'taskType' | 'channel' | 'mode' | 'stage' | 'status' | 'docKind' | 'service' | 'tag' | 'app';
 export interface ParamDef { k: string; type: ParamType; req?: boolean; /** A second box for the Spanish wording, stored as `<k>Es`. */ es?: boolean }
 export interface StepDef {
   do: StepKind;
@@ -52,7 +52,11 @@ export const STEPS: StepDef[] = [
   { do: 'opportunity', needs: ['client'], params: [{ k: 'serviceId', type: 'service', req: true }, { k: 'note', type: 'text' }] },
   { do: 'review', needs: ['job', 'client'], params: [{ k: 'channel', type: 'channel', req: true }] },
   { do: 'tag', needs: ['client'], params: [{ k: 'tag', type: 'tag', req: true }] },
+  { do: 'connector', needs: [], params: [{ k: 'app', type: 'app', req: true }] },
 ];
+/** The apps a connector step can hand work to. The names are the providers' own (src/features/integrations/catalog.ts). */
+export const CONNECTOR_APPS = ['gcal', 'gmeet', 'gdrive', 'gsheets', 'gcontacts', 'quickbooks', 'slack', 'zapier'] as const;
+export const APP_NAMES: Record<string, string> = { gcal: 'Google Calendar', gmeet: 'Google Meet', gdrive: 'Google Drive', gsheets: 'Google Sheets', gcontacts: 'Google Contacts', quickbooks: 'QuickBooks Online', slack: 'Slack', zapier: 'Zapier' };
 export const stepDef = (kind: string): StepDef | undefined => STEPS.find((s) => s.do === kind);
 /** The steps that make sense for an event, given the records it comes with. */
 export const stepsFor = (subjects: SubjectKind[]): StepDef[] => STEPS.filter((s) => !s.needs.length || s.needs.some((k) => subjects.includes(k)));
@@ -259,8 +263,27 @@ function tag(step: RuleStep, { subject: s }: StepInput): StepOutcome {
   return done('auto.step.tag', { tag: label });
 }
 
+/**
+ * Hands the record to a connected app: the visit or the dates onto Google Calendar, the documents into the client's
+ * Google Drive folder, a row into Google Sheets, the person into Google Contacts, the payment to QuickBooks, a note to
+ * Slack. In the sample workspace the apps are simulated connections (Ctx.links) and the line says so; where nothing is
+ * connected, or on the server today, the step does nothing and says which app is missing.
+ */
+function connector(step: RuleStep, { ctx, subject: s }: StepInput): StepOutcome {
+  const app = String(step.params.app ?? '');
+  if (!(CONNECTOR_APPS as readonly string[]).includes(app)) throw new Error('auto.err.unsupported');
+  const name = APP_NAMES[app] ?? app;
+  if (!ctx.links?.on(app)) return skipped('auto.skip.connector', { app: name });
+  // a person goes into contacts and gets the folder; the work is what goes on the calendar, the sheet, the books and the channel
+  const person = personOf(s)?.name; const work = s.job?.name ?? s.doc?.title ?? s.envelope?.title ?? s.task?.title;
+  const what = (app === 'gcontacts' || app === 'gdrive' ? person ?? work : app === 'quickbooks' && s.payment ? `${money2(s.payment.amount)}, ${work ?? person ?? ''}` : work ?? person) ?? '';
+  const line = { key: 'auto.step.connector.' + app, params: { what, app: name } };
+  ctx.links.record(app, line);
+  return { lines: [line], did: true };
+}
+
 const RUN: Record<StepKind, ((step: RuleStep, input: StepInput) => StepOutcome) | undefined> = {
-  task, message, notify, assign, stage, document: documentStep, playbook, opportunity, review, tag, builtin: undefined,
+  task, message, notify, assign, stage, document: documentStep, playbook, opportunity, review, tag, connector, builtin: undefined,
 };
 /** Carries out one step. `builtin` is run by the engine itself, because it needs the coded rules. */
 export function runStep(step: RuleStep, input: StepInput): StepOutcome {

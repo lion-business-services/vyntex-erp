@@ -9,6 +9,7 @@
 //
 // This file imports nothing but types, so the edition's pack, the wording and the engine can all read it.
 import type { L10n, MessageChannel, Priority, RuleCond, RuleDef, RuleEvent, RuleStep } from '@/domain/types';
+import { CONNECTED_APPT_RULES, CONNECTED_RULES } from '../connected-rules';
 
 const l = (en: string, es: string): L10n => ({ en, es });
 /** Events the engine knows that the data model's list does not name yet (see src/domain/rules/fields.ts). */
@@ -144,4 +145,6 @@ export const practiceRules: RuleDef[] = [
     'client.birthday', [draft('Happy birthday, {{first_name}}', 'Feliz cumpleaños, {{first_name}}',
       'Hello {{first_name}},\n\nEveryone at {{company}} wishes you a happy birthday.' + SIGN,
       'Hola {{first_name}}:\n\nTodos en {{company}} le deseamos un feliz cumpleaños.' + SIGN_ES)], { days: 0, off: true }),
+  ...CONNECTED_RULES,
+  ...CONNECTED_APPT_RULES,
 ];

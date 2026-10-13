@@ -155,13 +155,12 @@ async function invite(request, session, cookies, tenant, args, idem) {
   const mail = inviteEmail({ lang: args.lang === 'es' ? 'es' : 'en', company: inv.company || '', inviter: inv.inviter || '', link, hours: 72 });
   const sent = await sendSystemEmail({ to: email, subject: mail.subject, text: mail.text, tenant, idem: 'invite:' + inv.id });
   if (!sent.delivered) {
-    // No email went out, so nobody holds the link. An invitation nobody can accept is withdrawn rather than left open.
-    // A test run is the one place where the link is returned instead, so the flow can be exercised without email.
-    if (!isTest()) {
-      await userRpc(session.at, 'invite_revoke', { p_tenant: tenant, p_invitation: inv.id });
-      return finish(sent.reason === 'not_configured' ? 409 : 502, { ok: false, error: sent.reason === 'not_configured' ? 'email_not_configured' : 'delivery_failed' });
-    }
-    return finish(200, { ok: true, invitation: { id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expires_at }, delivery: 'test', testLink: link });
+    // A test run returns the link so the flow can be exercised without email.
+    if (isTest()) return finish(200, { ok: true, invitation: { id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expires_at }, delivery: 'test', testLink: link });
+    // No email went out. The inviter (who holds the "users" capability and passed a fresh identity check to get here) is
+    // handed the one-time link to pass on themselves, once; the database keeps only its hash. A provider that refused the
+    // message is said so, so the inviter knows the email did not arrive.
+    return finish(200, { ok: true, invitation: { id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expires_at }, delivery: sent.reason === 'not_configured' ? 'manual' : 'manual_failed', link });
   }
   return finish(200, { ok: true, invitation: { id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expires_at }, delivery: 'sent' });
 }

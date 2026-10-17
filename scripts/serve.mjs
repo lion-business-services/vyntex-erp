@@ -72,6 +72,8 @@ http.createServer(async (req, res) => {
   }
   let file = path.join(dist, decodeURIComponent(url.pathname));
   if (!file.startsWith(dist)) { res.writeHead(403); return res.end(); }
+  // the public pages have their own files (scripts/prerender.mjs), as vercel.json maps them: /pricing -> pricing.html
+  if (!fs.existsSync(file) && /^\/(pricing|request-demo|demo)$/.test(url.pathname) && fs.existsSync(file + '.html')) file += '.html';
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(dist, 'index.html');
   res.writeHead(200, { 'content-type': types[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store', ...extraHeaders(url.pathname) });
   fs.createReadStream(file).pipe(res);

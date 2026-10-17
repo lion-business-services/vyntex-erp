@@ -49,6 +49,20 @@ export const dict: Dict = {
     'mk.p2.rd.notSent': 'Not sent',
     'mk.p2.pr.quoted.lede': 'This edition is set up and quoted for each business.', 'mk.p2.pr.quoted.h': 'Quoted on request',
     'mk.p2.pr.quoted.p': '{product} has no published plan or price. Tell us about the business and what it needs, and we prepare a quote.', 'mk.p2.pr.quoted.cta': 'Request a quote',
+
+    // how to get started (pricing page, and the page text crawlers read: src/seo/pages.ts)
+    'mk.p2.gs.h': 'How to get started',
+    'mk.p2.gs.sub': 'From a first look to a workspace set up for your business.',
+    'mk.p2.gs.s1.h': 'Try the live demo',
+    'mk.p2.gs.s1.p': 'It opens right away, with no account and no appointment. You see a sample business of your industry with made-up records, and everything stays in your browser.',
+    'mk.p2.gs.s2.h': 'Compare the plans',
+    'mk.p2.gs.s2.p': 'The pricing page lists every plan with its one-time setup fee and its monthly and yearly price. Add-ons, usage and custom work are listed with their own prices.',
+    'mk.p2.gs.s3.h': 'Book a guided demo',
+    'mk.p2.gs.s3.p': 'We contact you the way you choose, in the language you choose, show you the edition for your industry and go over the plan and the setup with you.',
+    'mk.p2.gs.s4.h': 'Setup and training',
+    'mk.p2.gs.s4.p': 'Every plan starts with a one-time setup that we do together with you. If your team needs more training, extra sessions are available as an add-on.',
+    'mk.p2.gs.help': 'Questions about plans, setup or payment? Call or WhatsApp {phone}, or email {email}.',
+    'mk.p2.gs.demo': 'Try the live demo',
   },
   es: {
     'mk.p2.cta.request': 'Solicitar una demo',
@@ -93,5 +107,19 @@ export const dict: Dict = {
     'mk.p2.rd.notSent': 'No enviada',
     'mk.p2.pr.quoted.lede': 'Esta edición se configura y se cotiza para cada negocio.', 'mk.p2.pr.quoted.h': 'Se cotiza a pedido',
     'mk.p2.pr.quoted.p': '{product} no tiene un plan ni un precio publicado. Cuéntenos del negocio y de lo que necesita, y preparamos una cotización.', 'mk.p2.pr.quoted.cta': 'Solicitar una cotización',
+
+    // cómo empezar
+    'mk.p2.gs.h': 'Cómo empezar',
+    'mk.p2.gs.sub': 'Desde el primer vistazo hasta un espacio de trabajo configurado para su negocio.',
+    'mk.p2.gs.s1.h': 'Pruebe la demo en vivo',
+    'mk.p2.gs.s1.p': 'Se abre al instante, sin cuenta y sin cita. Verá un negocio de ejemplo de su industria con registros inventados, y todo se queda en su navegador.',
+    'mk.p2.gs.s2.h': 'Compare los planes',
+    'mk.p2.gs.s2.p': 'La página de precios muestra cada plan con su instalación, que se paga una sola vez, y su precio mensual y anual. Los complementos, el uso y el trabajo a la medida aparecen con sus propios precios.',
+    'mk.p2.gs.s3.h': 'Agende una demo guiada',
+    'mk.p2.gs.s3.p': 'Lo contactamos por el medio y en el idioma que usted elija, le mostramos la edición de su industria y revisamos con usted el plan y la instalación.',
+    'mk.p2.gs.s4.h': 'Instalación y capacitación',
+    'mk.p2.gs.s4.p': 'Cada plan empieza con una instalación que hacemos junto con usted. Si su equipo necesita más capacitación, hay sesiones adicionales como complemento.',
+    'mk.p2.gs.help': '¿Preguntas sobre planes, instalación o pagos? Llame o escriba por WhatsApp al {phone}, o por correo a {email}.',
+    'mk.p2.gs.demo': 'Probar la demo en vivo',
   },
 };

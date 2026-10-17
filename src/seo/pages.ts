@@ -151,7 +151,7 @@ ${steps()}${contact()}</main>`,
     body: `${nav()}<main><h1>${esc(t('mk.pr.h'))} ${esc(name)}</h1><p>${esc(t('mk.pr.sub'))}</p>
 ${groups.map((g) => `<section><h2>${esc(g.packs.map((p) => `${p.product} (${pick(p.label, 'en')})`).join(', '))}</h2>${planTable(g.plans, g.packs[0])}${planDetails(g.plans, g.packs[0])}</section>`).join('')}
 ${quoted.map((p) => `<section><h2>${esc(p.product)} (${esc(pick(p.label, 'en'))})</h2><p>${esc(tFor(p)('mk.p2.pr.quoted.p', { product: p.product }))} ${a('/request-demo', t('mk.p2.pr.quoted.cta'))}</p></section>`).join('')}
-<section><h2>${esc(t('mk.pr.addons.h'))}</h2>${ul(addOnViews('build', 'en', t).map((x) => `<strong>${esc(x.name)}</strong>: ${esc(x.price ?? (x.kind === 'usage' ? t('mk.p2.pr.varies') : t('mk.p2.pr.quoted')))}${x.billing ? ` (${esc(x.billing)})` : ''}${x.note ? `. ${esc(x.note)}` : ''}${x.notBuilt ? ` (${esc(t('mk.p2.pr.notBuilt'))})` : ''}`))}</section>
+<section><h2>${esc(t('mk.pr.addons.h'))}</h2>${ul(addOnViews('build', 'en', t).map((x) => `<strong>${esc(x.name)}</strong>: ${esc(x.price ?? (x.kind === 'usage' ? t('mk.p2.pr.varies') : t('mk.p2.pr.quoted')))}${x.billing ? ` (${esc(x.billing)})` : ''}${x.note ? `. ${esc(x.note)}` : ''}${x.notBuilt && !(x.note ?? '').includes(t('mk.p2.pr.notBuilt')) ? ` (${esc(t('mk.p2.pr.notBuilt'))})` : ''}`))}</section>
 <section><h2>${esc(t('mk.pr.rules.h'))}</h2>${ul(publicRules('build', 'en', t).map(esc))}</section>
 ${steps()}${contact()}<p>${esc(t('mk.pr.version', { v: PRICING_VERSION }))}</p></main>`,
     jsonLd: [softwareLd(true), crumbs([[name, '/'], [t('mk.nav.pricing'), '/pricing']])],

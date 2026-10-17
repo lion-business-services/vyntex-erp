@@ -14,7 +14,7 @@ const LOADERS: Partial<Record<IndustryId, Loader>> = (typeof __VX_DEPLOY__ !== '
   : {
     build: () => import('./build/seed'), clean: () => import('./clean/seed'), landscape: () => import('./landscape/seed'), wash: () => import('./wash/seed'),
     haul: () => import('./haul/seed'), snow: () => import('./snow/seed'), turnover: () => import('./turnover/seed'), events: () => import('./events/seed'),
-    practice: () => import('./practice/seed'),
+    practice: () => import('./practice/seed'), barber: () => import('./barber/seed'),
   };
 const cache: Partial<Record<IndustryId, SeedFn>> = {};
 const pending: Partial<Record<IndustryId, Promise<SeedFn>>> = {};

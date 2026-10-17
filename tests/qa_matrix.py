@@ -15,7 +15,7 @@ ONLY = sys.argv[1:]
 SIZES = [('desktop', 1440, 900), ('phone', 390, 844)]
 # screens added with the edition blueprint; an edition is checked on the ones its module list names
 STUB_MODULES = ['appointments', 'catalog', 'opportunities', 'reviews', 'esign', 'integrations', 'social', 'cash', 'payroll', 'bookkeeping', 'licensing', 'deadlines', 'security', 'audit']
-KEY_RE = re.compile(r'(?<![\w@./-])(nav|common|demo|role|ts|ent|act|notif|search|form|doc|pr|auto|dash|leads|clients|jobs|tasks|calendar|team|docs|messages|payments|reports|compliance|asst|settings|portal|mk|tour|price|empty|toast|app|auth|public|sync|lang|appointments|catalog|opportunities|reviews|esign|integrations|social|cash|payroll|bookkeeping|licensing|deadlines|security|audit)\.[a-zA-Z][a-zA-Z0-9_.-]*[a-zA-Z0-9]')
+KEY_RE = re.compile(r'(?<![\w@./-])(nav|common|demo|role|ts|ent|act|notif|search|form|doc|pr|auto|dash|leads|clients|jobs|tasks|calendar|team|docs|messages|payments|reports|compliance|asst|settings|portal|mk|tour|price|empty|toast|app|auth|public|sync|lang|appointments|catalog|opportunities|reviews|esign|integrations|social|cash|payroll|bookkeeping|licensing|deadlines|security|audit|floor|mem|pay)\.[a-zA-Z][a-zA-Z0-9_.-]*[a-zA-Z0-9]')
 TOKEN_RE = re.compile(r'\{[A-Za-z_]+\}')
 DASH_RE = re.compile(r'[A-Za-zÀ-ÿ0-9,.;:)] ?[—–] ?[A-Za-zÀ-ÿ(]')
 BANNED = {'en': ['project', 'subcontractor', 'contract'], 'es': ['proyecto', 'subcontratista', 'contrato']}
@@ -46,6 +46,8 @@ async def run(pack, lang, size_name, w, h, browser, results):
     await pg.wait_for_timeout(300)
 
     workers = pack.get('usesWorkers', True); priced = pack.get('priced', True); practice = pack.get('family') == 'practice'
+    # pages that open fixed records of the professional-services sample firm; the barbershop edition has its own (below)
+    firm = pack['id'] == 'practice'; shop = pack['id'] == 'barber'
     pages = ['/demo', '/demo/leads', '/demo/leads?view=board', '/demo/clients', '/demo/jobs', '/demo/jobs?view=board', '/demo/calendar', '/demo/calendar?view=agenda',
              '/demo/tasks', '/demo/tasks?view=list', '/demo/team', '/demo/documents', '/demo/messages', '/demo/payments', '/demo/reports', '/demo/reports/sales',
              '/demo/reports/money', '/demo/reports/work', '/demo/automations', '/demo/assistant', '/demo/settings', '/demo/settings/team']
@@ -55,25 +57,32 @@ async def run(pack, lang, size_name, w, h, browser, results):
     # the screens added with the edition blueprint, where the edition has them
     pages += ['/demo/' + m for m in STUB_MODULES if m in pack.get('modules', [])]
     # ---- communications center (begin): its settings section, and one conversation opened in the inbox
-    if practice: pages += ['/demo/settings/communications', '/demo/messages?c=c_pc1']
+    if practice: pages += ['/demo/settings/communications']
+    if firm: pages += ['/demo/messages?c=c_pc1']
     # ---- communications center (end)
     # --- appointments module (appended): its other views, where the edition has the screen. pa7 is a fixed id of the sample firm.
     if 'appointments' in pack.get('modules', []):
-        pages += ['/demo/appointments?tab=past', '/demo/appointments?view=agenda', '/demo/appointments/credits', '/demo/appointments/pa7', '/demo/settings/appointments']
+        pages += ['/demo/appointments?tab=past', '/demo/appointments?view=agenda', '/demo/appointments/credits', '/demo/settings/appointments']
+        pages += ['/demo/appointments/pa7'] if firm else ['/demo/appointments/ba1'] if shop else []
+    # --- the barbershop edition: the shop floor, memberships and barber pay (their tabs and dialogs: tests/qa_barber.py)
+    if shop: pages += ['/demo/floor', '/demo/memberships', '/demo/barber-pay', '/demo/clients/bc1', '/demo/clients/bc17', '/demo/leads/bl6', '/demo/jobs/bj1', '/demo/automations/rule/b-walkin-joined', '/demo/automations/rule/b-rebook']
     # --- end appointments module
     pages += ['/', '/pricing', '/request-demo']
     # ---- documents and signatures (appended by the documents and e-signature module): the sample records of the practice edition ----
-    if practice: pages += ['/demo/settings/documents', '/demo/documents/pd-con-pc1', '/demo/documents/pd-up-pc7', '/demo/esign/pv1', '/demo/esign/pv2', '/demo/esign/pv1/sign/pv1-s2', '/demo/esign?doc=pd-sa-pe3']
+    if practice: pages += ['/demo/settings/documents']
+    if firm: pages += ['/demo/documents/pd-con-pc1', '/demo/documents/pd-up-pc7', '/demo/esign/pv1', '/demo/esign/pv2', '/demo/esign/pv1/sign/pv1-s2', '/demo/esign?doc=pd-sa-pe3']
     # ---- end documents and signatures ----
     # ---- leads and clients (appended by the leads and clients module): the pipeline settings, a won lead (what it created),
     # a lost lead, a lead that needs attention, and a client page with owners, contacts and opt-outs. Fixed ids of the sample firm.
-    if practice: pages += ['/demo/settings/pipeline', '/demo/leads/pl8', '/demo/leads/pl10', '/demo/leads/pl12', '/demo/leads/pl6', '/demo/clients/pc6', '/demo/clients/pc8', '/demo/clients/pc13']
+    if practice: pages += ['/demo/settings/pipeline']
+    if firm: pages += ['/demo/leads/pl8', '/demo/leads/pl10', '/demo/leads/pl12', '/demo/leads/pl6', '/demo/clients/pc6', '/demo/clients/pc8', '/demo/clients/pc13']
     # ---- end leads and clients ----
     # ---- automations, reviews and the assistant (appended by the automation module): the rule builder empty and with a coded
     # rule open in it, and the full run history, in every edition; in the practice edition also a rule that is plain data, and
     # the page a client answers a review request on (rv3 is a fixed id of the sample firm).
     pages += ['/demo/automations/history', '/demo/automations/new', '/demo/automations/rule/lead-intake']
-    if practice: pages += ['/demo/automations/rule/p-appt-noshow', '/review/sample-rv3']
+    if firm: pages += ['/demo/automations/rule/p-appt-noshow', '/review/sample-rv3']
+    if shop: pages += ['/review/sample-brv3']
     # ---- end automations, reviews and the assistant ----
     # detail pages: follow the first record of each list
     details = [('/demo/leads', '/demo/leads/'), ('/demo/clients', '/demo/clients/'), ('/demo/jobs', '/demo/jobs/'), ('/demo/documents', '/demo/documents/')]

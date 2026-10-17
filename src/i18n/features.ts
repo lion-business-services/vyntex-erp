@@ -40,6 +40,9 @@ import { dict as auth } from '@/features/auth/i18n';
 import { dict as publicPages } from '@/features/public/i18n';
 import { dict as settingsLbs } from '@/features/settings/i18n-lbs';
 import { dict as admin } from '@/features/admin/i18n';
+import { dict as floor } from '@/features/floor/i18n';
+import { dict as memberships } from '@/features/memberships/i18n';
+import { dict as commissions } from '@/features/commissions/i18n';
 
 // Read straight from the build constant so the bundler leaves the sales wording out of a deployment without sales pages.
 declare const __VX_DEPLOY__: string | undefined;
@@ -53,6 +56,7 @@ const lbsOnly: Dict[] = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ =
 export const featureDicts: Dict[] = [
   dashboard, leads, clients, jobs, tasks, calendar, team, documents, payments, reports, automations, assistant, settings, portal, messages, compliance,
   appointments, catalog, opportunities, reviews, esign, integrations, social, cash, payroll, bookkeeping, licensing, deadlines, security, audit, auth, publicPages,
+  floor, memberships, commissions,
   ...sales,
   ...lbsOnly,
 ];

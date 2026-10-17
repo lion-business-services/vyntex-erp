@@ -107,7 +107,8 @@ function loadPrefs(): Prefs {
 }
 
 const MODULE_COLLECTIONS: ModuleCollection[] = ['offices', 'grants', 'accessRequests', 'catalog', 'playbooks', 'apptTypes', 'appointments', 'credits', 'crossSell', 'opportunities',
-  'reviews', 'templates', 'envelopes', 'connections', 'posts', 'cash', 'cashCloses', 'complianceItems', 'rules', 'reveals', 'secureLog', 'audit'];
+  'reviews', 'templates', 'envelopes', 'connections', 'posts', 'cash', 'cashCloses', 'complianceItems', 'rules', 'reveals', 'secureLog', 'audit',
+  'chairs', 'walkins', 'passPlans', 'passes', 'payouts'];
 /** Every list a workspace has, empty. An edition that does not use a module simply leaves its list this way. */
 function emptyCollections(): Pick<DemoState, ModuleCollection> {
   return Object.fromEntries(MODULE_COLLECTIONS.map((c) => [c, []])) as unknown as Pick<DemoState, ModuleCollection>;
@@ -155,7 +156,11 @@ function blankData(id: IndustryId, lang: Lang): DemoState {
 function savedData(id: IndustryId, lang: Lang): DemoState | null {
   try {
     const d = JSON.parse(storage.get(dataKey(id)) || 'null') as DemoState | null;
-    if (d && d.v === DATA_VERSION && d.pack === id && Array.isArray(d.jobs) && d.config && daysBetween(d.seededOn, today()) <= STALE_AFTER_DAYS && (d.touched || d.seedLang === lang)) return d;
+    if (d && d.v === DATA_VERSION && d.pack === id && Array.isArray(d.jobs) && d.config && daysBetween(d.seededOn, today()) <= STALE_AFTER_DAYS && (d.touched || d.seedLang === lang)) {
+      // a copy saved before a list existed (the shop floor lists, for one) gets it empty
+      for (const k of MODULE_COLLECTIONS) if (!Array.isArray((d as unknown as Record<string, unknown>)[k])) (d as unknown as Record<string, unknown>)[k] = [];
+      return d;
+    }
   } catch { /* fall through to a fresh copy */ }
   return null;
 }

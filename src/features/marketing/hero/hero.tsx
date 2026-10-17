@@ -3,7 +3,7 @@
 // the wording and the sample business to that industry.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  LuBriefcase, LuDroplets, LuHardHat, LuKeyRound, LuSnowflake, LuSparkles, LuTent, LuTrees, LuTruck,
+  LuBriefcase, LuDroplets, LuHardHat, LuKeyRound, LuScissors, LuSnowflake, LuSparkles, LuTent, LuTrees, LuTruck,
 } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Link } from '@/app/router';
@@ -20,6 +20,7 @@ import { ProductWindow } from './window';
 export const EDITION_ICON: Record<string, ReactNode> = {
   build: <LuHardHat aria-hidden="true" />, clean: <LuSparkles aria-hidden="true" />, landscape: <LuTrees aria-hidden="true" />, wash: <LuDroplets aria-hidden="true" />,
   haul: <LuTruck aria-hidden="true" />, snow: <LuSnowflake aria-hidden="true" />, turnover: <LuKeyRound aria-hidden="true" />, events: <LuTent aria-hidden="true" />,
+  barber: <LuScissors aria-hidden="true" />,
 };
 
 /** A sentence with the industry's own words set apart, so the visitor sees what the edition selector changes. */

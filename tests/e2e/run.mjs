@@ -2,6 +2,7 @@
 //   1. the QR encoder of the sign-in pages, read back by an independent decoder        tests/e2e/qr_check.mjs
 //   2. the live half of the store against a stand-in for the server, no browser        tests/e2e/store.sync.test.mjs
 //   3. the live client in a real browser against the local stack                       tests/e2e/live.e2e.test.mjs
+//   4. the operator console, then a barbershop's shop floor in a live workspace         tests/e2e/admin.e2e.test.mjs, barber.e2e.test.mjs
 // Local stand-ins only: a throwaway PostgreSQL with every migration, the test double of the Supabase addresses, and
 // scripts/serve.mjs running the handlers of api/. Nothing here runs on Supabase or on Vercel.
 //   E2E_SKIP_BUILD=1   use the builds already in /tmp/vx-live and /tmp/vx-live-lbs
@@ -26,6 +27,8 @@ const results = [
     ['--test', '--test-concurrency=1', '--test-timeout=900000', path.join(here, 'live.e2e.test.mjs')], { PGTEST_DIR: process.env.PGTEST_DIR || '/tmp/vx-pg-live' }),
   step('the operator console and a new client\'s first day, in a real browser, against local stand-ins',
     ['--test', '--test-concurrency=1', '--test-timeout=900000', path.join(here, 'admin.e2e.test.mjs')], { PGTEST_DIR: (process.env.PGTEST_DIR || '/tmp/vx-pg-live') + '-admin', E2E_SKIP_BUILD: '1' }),
+  step('a barbershop client\'s first day on the shop floor, in a real browser, against local stand-ins',
+    ['--test', '--test-concurrency=1', '--test-timeout=900000', path.join(here, 'barber.e2e.test.mjs')], { PGTEST_DIR: (process.env.PGTEST_DIR || '/tmp/vx-pg-live') + '-barber', E2E_SKIP_BUILD: '1' }),
 ];
 console.log(`== finished in ${((Date.now() - started) / 1000).toFixed(1)} s`);
 process.exit(results.every(Boolean) ? 0 : 1);

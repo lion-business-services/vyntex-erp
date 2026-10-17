@@ -5,7 +5,7 @@
 export type Lang = 'en' | 'es' | 'zh';
 /** Text an edition ships in several languages. English and Spanish are always present. Read it with `pick()` from '@/i18n'. */
 export type L10n<T = string> = { en: T; es: T; zh?: T };
-export type IndustryId = 'build' | 'clean' | 'landscape' | 'wash' | 'haul' | 'snow' | 'turnover' | 'events' | 'practice';
+export type IndustryId = 'build' | 'clean' | 'landscape' | 'wash' | 'haul' | 'snow' | 'turnover' | 'events' | 'practice' | 'barber';
 /** YYYY-MM-DD */
 export type ISODate = string;
 /** Full ISO timestamp */
@@ -473,6 +473,12 @@ export interface DemoState {
   reveals: RevealRequest[];
   secureLog: SecureAccessLog[];
   audit: AuditEntry[];
+  // ---- the shop floor (barbershop edition; empty everywhere else)
+  chairs: Chair[];
+  walkins: WalkIn[];
+  passPlans: PassPlan[];
+  passes: Pass[];
+  payouts: Payout[];
 }
 
 /** What a pack's seed returns: the sample business for that industry. The store fills in the rest. */
@@ -480,7 +486,8 @@ export type SeedData = Pick<DemoState, 'users' | 'leads' | 'clients' | 'jobs' | 
   & Partial<Pick<DemoState, ModuleCollection | 'config'>>;
 /** The collections a seed may leave out; the store starts them empty. */
 export type ModuleCollection = 'offices' | 'grants' | 'accessRequests' | 'catalog' | 'playbooks' | 'apptTypes' | 'appointments' | 'credits' | 'crossSell'
-  | 'opportunities' | 'reviews' | 'templates' | 'envelopes' | 'connections' | 'posts' | 'cash' | 'cashCloses' | 'complianceItems' | 'rules' | 'reveals' | 'secureLog' | 'audit';
+  | 'opportunities' | 'reviews' | 'templates' | 'envelopes' | 'connections' | 'posts' | 'cash' | 'cashCloses' | 'complianceItems' | 'rules' | 'reveals' | 'secureLog' | 'audit'
+  | 'chairs' | 'walkins' | 'passPlans' | 'passes' | 'payouts';
 
 // =====================================================================================================================
 // Edition blueprint data: configuration, offices, catalog, appointments, signatures, connections and the rest.
@@ -490,7 +497,9 @@ export type ModuleCollection = 'offices' | 'grants' | 'accessRequests' | 'catalo
 export type ModuleId =
   | 'leads' | 'clients' | 'jobs' | 'calendar' | 'appointments' | 'tasks' | 'team' | 'documents' | 'esign' | 'messages' | 'payments'
   | 'reports' | 'compliance' | 'automations' | 'assistant' | 'settings' | 'catalog' | 'opportunities' | 'reviews' | 'integrations'
-  | 'social' | 'cash' | 'payroll' | 'bookkeeping' | 'licensing' | 'deadlines' | 'security' | 'audit';
+  | 'social' | 'cash' | 'payroll' | 'bookkeeping' | 'licensing' | 'deadlines' | 'security' | 'audit'
+  // the barbershop edition: the live floor (chairs, walk-in queue, kiosk, display), memberships and gift cards, barber pay
+  | 'floor' | 'memberships' | 'commissions';
 
 /** A pipeline stage. `kind` is what the rest of the app reasons about; the id and label are free. */
 export interface StageDef {
@@ -642,6 +651,14 @@ export interface Appointment {
   cancelReason?: string;
   rescheduledFrom?: string;
   externalIds?: Record<string, string>;
+  /** Barbershop: the tip left at checkout. Always the barber's, never part of the commission base. */
+  tip?: number;
+  /** Barbershop: the barber brought this client (their own book), so the split for this visit is the barber's own-client rate. */
+  own?: boolean;
+  /** Barbershop: a membership, package or gift card paid for this visit (Pass id). */
+  passId?: string;
+  /** Barbershop: what was charged on top of the service (beard line-up, hot towel), already included in `fee`. */
+  addOns?: { name: string; price: number }[];
 }
 /** Money the business owes a client in service, e.g. a prepaid appointment the staff had to cancel. A ledger: entries are never edited. */
 export interface Credit { id: string; clientId: string; amount: number; reason: 'cancel_staff' | 'reschedule' | 'goodwill' | 'overpayment'; fromApptId?: string; at: ISODateTime; by: string; used?: { apptId: string; at: ISODateTime }; expires?: ISODate; void?: { at: ISODateTime; by: string; reason: string } }
@@ -696,12 +713,134 @@ export interface CashEntry { id: string; date: ISODate; officeId?: string; dir: 
 export interface CashClose { id: string; date: ISODate; officeId?: string; expected: number; counted: number; diff: number; by: string; at: ISODateTime; note?: string; approvedBy?: string }
 export interface ComplianceItem { id: string; title: string; kind: 'filing' | 'license' | 'renewal' | 'deadline' | 'insurance' | 'other'; clientId?: string; jobId?: string; due: ISODate; repeat?: Repeat; status: 'open' | 'done' | 'waived'; assignee?: string; authority?: string; note?: string; doneAt?: ISODate; /** Days before the due date to remind. */ remind?: number[] }
 
+// ---- the shop floor: chairs, walk-in queue, memberships, packages, gift cards, barber pay (barbershop edition)
+/** One chair and the barber working it. `split` is the barber's share, in percent, of what a shop client paid for the service. */
+export interface Chair {
+  id: string;
+  label: string;
+  /** TeamUser id of the barber. Empty: the chair is free for whoever is on shift. */
+  staffId?: string;
+  status: 'open' | 'busy' | 'break' | 'off';
+  /** Takes walk-ins from the queue. */
+  walkIns: boolean;
+  /** How the barber is paid: a share of each service, or a fixed weekly chair rent (keeps 100% of services). */
+  pay: 'commission' | 'rent';
+  /** Barber's share of a shop client's service, percent. */
+  split: number;
+  /** Barber's share of a client the barber brought, percent. */
+  ownSplit: number;
+  /** Weekly chair rent, for `pay: 'rent'`. */
+  rent?: number;
+  /** Service ids this chair does not offer (empty: everything on the menu). */
+  skipServiceIds?: string[];
+  officeId?: string;
+  /** When the status last changed. */
+  since?: ISODateTime;
+}
+export type WalkInStatus = 'waiting' | 'called' | 'in_service' | 'done' | 'left' | 'no_show';
+/** Someone in the walk-in queue. The ticket number is per day. Payment is recorded when the visit is finished. */
+export interface WalkIn {
+  id: string;
+  ticket: number;
+  name: string;
+  phone?: string;
+  clientId?: string;
+  serviceId?: string;
+  /** Asked for a barber (TeamUser id). Empty: first available. */
+  prefStaffId?: string;
+  joined: ISODateTime;
+  status: WalkInStatus;
+  /** The barber who took them. */
+  staffId?: string;
+  chairId?: string;
+  calledAt?: ISODateTime;
+  startedAt?: ISODateTime;
+  doneAt?: ISODateTime;
+  amount?: number;
+  tip?: number;
+  method?: PayMethod | 'pass';
+  passId?: string;
+  source: 'desk' | 'kiosk' | 'online' | 'phone';
+  /** Agreed to receive texts about their place in line. */
+  textOk?: boolean;
+  note?: string;
+  by: string;
+}
+/** Something a shop sells ahead of the visit: a monthly membership, a package of visits, or a gift card. */
+export interface PassPlan {
+  id: string;
+  kind: 'membership' | 'package' | 'gift_card';
+  name: string;
+  i18n?: Partial<Record<Lang, { name?: string; perks?: string }>>;
+  price: number;
+  /** Memberships: visits included each billing period (0 = unlimited). Packages: visits in the package. */
+  visits?: number;
+  /** Memberships renew every month. */
+  interval?: 'month';
+  /** Services a visit covers (empty: any service). */
+  serviceIds: string[];
+  /** Memberships: percent off what is not covered (products, add-ons). */
+  discount?: number;
+  /** Packages and gift cards: days until it runs out (0 or empty: never). */
+  validDays?: number;
+  perks?: string;
+  active: boolean;
+}
+export interface PassUse { id: string; at: ISODateTime; amount?: number; apptId?: string; walkinId?: string; by: string; note?: string }
+/** A membership, package or gift card a client holds. A ledger: uses are added, never edited. */
+export interface Pass {
+  id: string;
+  planId?: string;
+  kind: PassPlan['kind'];
+  clientId?: string;
+  /** Gift cards: who it is for, when that person is not a client yet. */
+  holder?: string;
+  /** Gift cards: the code printed on the card. */
+  code?: string;
+  status: 'active' | 'paused' | 'past_due' | 'cancelled' | 'used_up' | 'expired';
+  start: ISODate;
+  /** Memberships: the next billing date. */
+  renews?: ISODate;
+  /** Packages and memberships: visits left (this period for a membership). */
+  visitsLeft?: number;
+  /** Gift cards: money left. */
+  balance?: number;
+  expires?: ISODate;
+  sold: { at: ISODateTime; amount: number; method: PayMethod; by: string };
+  uses: PassUse[];
+  note?: string;
+}
+/** A weekly statement paid to a barber. The figures are frozen when it is paid. */
+export interface Payout {
+  id: string;
+  staffId: string;
+  /** Monday and Sunday of the week paid. */
+  from: ISODate;
+  to: ISODate;
+  /** Services the barber did that week. */
+  services: number;
+  /** The barber's share of the services. */
+  share: number;
+  tips: number;
+  /** Chair rent taken off, for a barber who rents. */
+  rent: number;
+  /** What was paid: share + tips - rent. */
+  amount: number;
+  visits: number;
+  paidAt: ISODateTime;
+  method: PayMethod;
+  by: string;
+  note?: string;
+}
+
 // ---- rule engine: WHEN something happens, IF conditions hold, THEN do steps
 export type RuleEvent =
   | 'lead.created' | 'lead.stage' | 'lead.won' | 'lead.lost' | 'lead.idle' | 'client.created' | 'job.created' | 'job.status' | 'job.completed'
   | 'payment.received' | 'appointment.booked' | 'appointment.paid' | 'appointment.unpaid' | 'appointment.completed' | 'appointment.no_show' | 'appointment.cancelled'
   | 'task.overdue' | 'doc.sent' | 'envelope.completed' | 'envelope.idle' | 'message.received' | 'review.due' | 'deadline.near' | 'client.birthday' | 'worker.document' | 'daily'
-  | 'appointment.soon' | 'appointment.pay_soon' | 'opportunity.created' | 'credit.expiring';
+  | 'appointment.soon' | 'appointment.pay_soon' | 'opportunity.created' | 'credit.expiring'
+  // the shop floor (barbershop edition)
+  | 'walkin.joined' | 'walkin.called' | 'walkin.done' | 'client.due' | 'pass.low' | 'pass.renews';
 export interface RuleCond { field: string; op: 'is' | 'is_not' | 'in' | 'gt' | 'lt' | 'has' | 'empty' | 'not_empty'; value?: string | number | boolean | string[] }
 export interface RuleStep { do: 'task' | 'message' | 'notify' | 'assign' | 'stage' | 'document' | 'envelope' | 'appointment' | 'opportunity' | 'review' | 'tag' | 'playbook' | 'connector' | 'builtin'; params: Record<string, string | number | boolean | string[]> }
 export interface RuleDef {

@@ -105,7 +105,10 @@ export function askProblem(d: DemoState, input: { clientId: string; jobId?: stri
     const job = d.jobs.find((j) => j.id === input.jobId && j.clientId === client.id); if (!job) return 'no_job';
     if (!reviewEligible(job)) return 'not_complete';
     if (askedAbout(d, job.id)) return 'already_asked';
-  } else if (!d.jobs.some((j) => j.clientId === client.id && reviewEligible(j))) return 'not_complete';
+  } else if (!d.jobs.some((j) => j.clientId === client.id && reviewEligible(j))
+    // a finished visit counts as work too: an appointment that took place, or a walk-in who was served (barbershop)
+    && !(d.appointments ?? []).some((a) => a.clientId === client.id && a.status === 'completed')
+    && !(d.walkins ?? []).some((w) => w.clientId === client.id && w.status === 'done')) return 'not_complete';
   if (mine.some((r) => daysBetween(r.at.slice(0, 10), today()) < COOL_OFF_DAYS)) return 'asked_recently';
   const where = addressFor(client, input.channel ?? 'email');
   return 'problem' in where ? where.problem : null;

@@ -119,6 +119,12 @@ export function mergeText(text: string, d: DemoState, s: RuleSubject, lang: Lang
     amount: s.payment ? money2(s.payment.amount) : typeof x.amount === 'number' ? money2(x.amount) : '', balance: typeof x.balance === 'number' ? money2(x.balance) : '',
     title: typeof x.title === 'string' ? x.title : '', service: typeof x.service === 'string' ? x.service : '', today: fmtDay(today(), lang),
   };
+  // what an event carries besides its records ({{ticket}}, {{wait}}, {{barber}}, {{plan}}, ...) fills in under its own name
+  for (const [k, v] of Object.entries(x)) {
+    const key = k.toLowerCase();
+    if (key === 'occasion' || key in values || (typeof v !== 'string' && typeof v !== 'number')) continue;
+    values[key] = String(v);
+  }
   return text.replace(/\{\{\s*([a-z_.]+)\s*\}\}/gi, (_m, k: string) => values[k.toLowerCase()] ?? '').replace(/[ \t]{2,}/g, ' ').trim();
 }
 /** The wording of a step in a language: `<k>Es` for Spanish when the rule has it, otherwise the main text. */

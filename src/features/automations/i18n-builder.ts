@@ -75,7 +75,7 @@ export const more: Dict = {
     'auto.f.doc.kind': 'the kind of document', 'auto.f.doc.status': 'the document status', 'auto.f.envelope.status': 'the signature request status', 'auto.f.message.channel': 'the channel of the message',
     'auto.f.payment.amount': 'the payment amount', 'auto.f.payment.method': 'the payment method',
     'auto.f.extra.days': 'the number of days', 'auto.f.extra.balance': 'the balance still open', 'auto.f.extra.to': 'what it changed to', 'auto.f.extra.from': 'what it was before', 'auto.f.extra.hoursLeft': 'the hours left to pay',
-    'auto.f.extra.noShows': 'the appointments this person has missed', 'auto.f.extra.amount': 'the credit amount', 'auto.f.extra.kind': 'the kind of deadline', 'auto.f.extra.serviceId': 'the suggested service',
+    'auto.f.extra.noShows': 'the appointments this person has missed', 'auto.f.extra.amount': 'the amount', 'auto.f.extra.kind': 'the kind of deadline', 'auto.f.extra.serviceId': 'the suggested service',
     // comparisons and values
     'auto.op.is': 'is', 'auto.op.is_not': 'is not', 'auto.op.in': 'is one of', 'auto.op.gt': 'is more than', 'auto.op.lt': 'is less than', 'auto.op.has': 'includes', 'auto.op.empty': 'is empty', 'auto.op.not_empty': 'is filled in',
     'auto.val.yes': 'yes', 'auto.val.no': 'no', 'auto.val.gone': 'something that no longer exists',
@@ -189,7 +189,7 @@ export const more: Dict = {
     'auto.f.doc.kind': 'el tipo de documento', 'auto.f.doc.status': 'el estado del documento', 'auto.f.envelope.status': 'el estado de la solicitud de firma', 'auto.f.message.channel': 'el canal del mensaje',
     'auto.f.payment.amount': 'el monto del pago', 'auto.f.payment.method': 'el método de pago',
     'auto.f.extra.days': 'el número de días', 'auto.f.extra.balance': 'el saldo pendiente', 'auto.f.extra.to': 'a lo que cambió', 'auto.f.extra.from': 'lo que era antes', 'auto.f.extra.hoursLeft': 'las horas que quedan para pagar',
-    'auto.f.extra.noShows': 'las citas a las que esta persona ha faltado', 'auto.f.extra.amount': 'el monto del crédito', 'auto.f.extra.kind': 'el tipo de fecha límite', 'auto.f.extra.serviceId': 'el servicio sugerido',
+    'auto.f.extra.noShows': 'las citas a las que esta persona ha faltado', 'auto.f.extra.amount': 'el monto', 'auto.f.extra.kind': 'el tipo de fecha límite', 'auto.f.extra.serviceId': 'el servicio sugerido',
     'auto.op.is': 'es', 'auto.op.is_not': 'no es', 'auto.op.in': 'es uno de', 'auto.op.gt': 'es más de', 'auto.op.lt': 'es menos de', 'auto.op.has': 'incluye', 'auto.op.empty': 'está vacío', 'auto.op.not_empty': 'tiene algo',
     'auto.val.yes': 'sí', 'auto.val.no': 'no', 'auto.val.gone': 'algo que ya no existe',
     'auto.kind.individual': 'Una persona', 'auto.kind.business': 'Un negocio', 'auto.lang.en': 'Inglés', 'auto.lang.es': 'Español', 'auto.lang.zh': 'Chino',

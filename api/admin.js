@@ -20,7 +20,7 @@ import { sendSystemEmail, ownerWelcomeEmail } from './_lib/mail.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const INDUSTRIES = ['build', 'clean', 'landscape', 'wash', 'haul', 'snow', 'turnover', 'events', 'practice'];
+const INDUSTRIES = ['build', 'clean', 'landscape', 'wash', 'haul', 'snow', 'turnover', 'events', 'practice', 'barber'];
 const PLAN = /^[a-z][a-z0-9_]{1,40}$/;
 const HOURS = 72;
 const uidKey = (uid) => keyHash('uid', uid);

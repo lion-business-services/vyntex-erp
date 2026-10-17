@@ -4,7 +4,7 @@
 //
 // Wording is a dictionary key, never text, so the edition's own words apply ("engagement" in the practice edition).
 // Keys: `auto.ev.<event>` (the event as the start of a sentence), `auto.f.<path>` (a field), `auto.op.<operator>`.
-import type { DemoState, Lang, Ref, RuleCond, RuleEvent } from '../types';
+import type { DemoState, Lang, ModuleId, Ref, RuleCond, RuleEvent } from '../types';
 import type { IndustryPack } from '@/packs/types';
 import type { TFn } from '@/i18n';
 import { clientTypesOf, lostReasonsOf, sourcesOf, stagesOf, taskTypesOf } from '../config';
@@ -18,7 +18,10 @@ import type { RuleSubject } from './engine';
  *   opportunity.created  a cross-sell opportunity was opened for a client
  *   credit.expiring      a client credit is about to run out
  */
-export type ExtraEvent = 'appointment.soon' | 'appointment.pay_soon' | 'opportunity.created' | 'credit.expiring';
+export type ExtraEvent = 'appointment.soon' | 'appointment.pay_soon' | 'opportunity.created' | 'credit.expiring'
+  // the shop floor (barbershop edition): someone joined the walk-in line, was called to a chair, was finished; a client is
+  // due for their next cut; a package or gift card is running low; a membership bills soon
+  | 'walkin.joined' | 'walkin.called' | 'walkin.done' | 'client.due' | 'pass.low' | 'pass.renews';
 export type EngineEvent = RuleEvent | ExtraEvent;
 export const ev = (e: EngineEvent): RuleEvent => e as RuleEvent;
 
@@ -47,6 +50,8 @@ export interface EventDef {
   extra?: FieldDef[];
   /** Editions that have the records this event is about. Missing means every edition. */
   family?: 'practice' | 'field';
+  /** Only where the edition has this module (the shop floor events need a shop floor). */
+  module?: ModuleId;
 }
 
 const users = (d: DemoState): FieldOption[] => d.users.filter((u) => u.active !== false).map((u) => ({ id: u.id, label: u.name }));
@@ -169,11 +174,18 @@ export const EVENTS: EventDef[] = [
   { id: 'envelope.completed', group: 'document', subjects: ['envelope', 'doc', 'client'], family: 'practice' },
   { id: 'message.received', group: 'message', subjects: ['message', 'client'], family: 'practice' },
   { id: 'worker.document', group: 'time', subjects: [], family: 'field' },
-  { id: 'daily', group: 'time', subjects: [] },
+  // ---- the shop floor
+  { id: 'walkin.joined', group: 'appointment', subjects: ['client'], extra: [{ path: 'extra.wait', type: 'number' }, { path: 'extra.position', type: 'number' }, { path: 'extra.source', type: 'enum', options: keys('floor.src.', ['desk', 'kiosk', 'online', 'phone']) }], module: 'floor' },
+  { id: 'walkin.called', group: 'appointment', subjects: ['client'], module: 'floor' },
+  { id: 'walkin.done', group: 'appointment', subjects: ['client'], extra: [{ path: 'extra.amount', type: 'number' }, { path: 'extra.tip', type: 'number' }], module: 'floor' },
+  { id: 'client.due', group: 'client', subjects: ['client'], days: { dir: 'after', default: 0 }, extra: [DAYS, { path: 'extra.gap', type: 'number' }], module: 'floor' },
+  { id: 'pass.low', group: 'money', subjects: ['client'], extra: [{ path: 'extra.passKind', type: 'enum', options: keys('mem.kind.', ['membership', 'package', 'gift_card']) }, { path: 'extra.left', type: 'number' }], module: 'memberships' },
+  { id: 'pass.renews', group: 'money', subjects: ['client'], days: { dir: 'before', default: 3 }, extra: [DAYS, { path: 'extra.amount', type: 'number' }], module: 'memberships' },
+  { id: 'daily', group: 'time', subjects: [], extra: [{ path: 'extra.weekday', type: 'enum', options: keys('auto.wd.', ['0', '1', '2', '3', '4', '5', '6']) }] },
 ];
 export const eventDef = (id: EngineEvent | string): EventDef | undefined => EVENTS.find((e) => e.id === id);
 /** The events an edition can use: one about appointments means nothing where there are none. */
-export const eventsFor = (pack: IndustryPack): EventDef[] => EVENTS.filter((e) => !e.family || e.family === pack.family);
+export const eventsFor = (pack: IndustryPack): EventDef[] => EVENTS.filter((e) => (!e.family || e.family === pack.family) && (!e.module || pack.modules.includes(e.module)));
 
 /** Every field a condition on this event may test: the fields of the records that come with it, then the event's own. */
 export function fieldsFor(event: EngineEvent | string): FieldDef[] {

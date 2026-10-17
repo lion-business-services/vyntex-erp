@@ -6,12 +6,17 @@ import { useApp } from '@/app/hooks';
 import { appPath, currentUrl, navigate, useRoute } from '@/app/router';
 import { Button, IconButton } from '@/ui';
 import type { Permission } from '@/domain/permissions';
+import type { ModuleId } from '@/domain/types';
+import { moduleOn } from '@/domain/config';
 import './tour.css';
 
-interface Step { id: string; to: string; target?: string; perm?: Permission; body?: string }
+interface Step { id: string; to: string; target?: string; perm?: Permission; body?: string; /** Only in an edition that has this screen. */ module?: ModuleId }
 const STEPS: Step[] = [
   { id: 'welcome', to: '', target: '[data-testid="industry"]' },
   { id: 'dash', to: '', target: '[data-testid="dash-attention"]' },
+  { id: 'floor', to: '/floor', target: '[data-testid="floor-chairs"]', perm: 'appointments', module: 'floor' },
+  { id: 'members', to: '/memberships', target: '.mem-kpis', perm: 'clients', module: 'memberships' },
+  { id: 'barberpay', to: '/barber-pay', target: '[data-testid="pay-table"]', perm: 'payroll', module: 'commissions' },
   { id: 'leads', to: '/leads?view=board', target: '[data-testid="leads-board"]', perm: 'leads' },
   { id: 'jobs', to: '/jobs', target: '[data-testid="jobs-table"]', perm: 'jobs' },
   { id: 'tasks', to: '/tasks', target: '[data-testid="tasks-board"]', perm: 'tasks' },
@@ -25,9 +30,9 @@ const STEPS: Step[] = [
 interface Box { top: number; left: number; width: number; height: number }
 
 export function Tour({ onClose }: { onClose: () => void }) {
-  const { t, data, can, isWorker } = useApp();
+  const { t, data, pack, can, isWorker } = useApp();
   const route = useRoute();
-  const steps = useMemo(() => (isWorker ? [] : STEPS.filter((s) => !s.perm || can(s.perm))), [isWorker, can]);
+  const steps = useMemo(() => (isWorker ? [] : STEPS.filter((s) => (!s.perm || can(s.perm)) && (!s.module || moduleOn(data, pack, s.module)))), [isWorker, can, data, pack]);
   const [i, setI] = useState(0);
   const [box, setBox] = useState<Box | null>(null);
   const card = useRef<HTMLDivElement>(null);

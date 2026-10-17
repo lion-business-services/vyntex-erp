@@ -32,6 +32,7 @@ import { glance, type GlanceId, type GlanceTile } from './glance';
 import { QuickLinks, quickLinks } from './links';
 import { Quiet, Swap } from './parts';
 import { SetupChecklist } from './setup';
+import { ShopPulse } from '@/features/floor/pulse';
 import './dashboard.css';
 
 const GLANCE_ICON: Record<GlanceId, ReactNode> = {
@@ -188,6 +189,7 @@ export default function PracticeDashboard() {
         </div>
       </header>
       <SetupChecklist />
+      <ShopPulse />
 
       {/* 2. the links the team sends to clients: up front, because they are used every day */}
       {links.length > 0 && (

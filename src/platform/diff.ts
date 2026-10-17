@@ -15,6 +15,7 @@ export const COLLECTIONS = [
   'users', 'leads', 'clients', 'jobs', 'tasks', 'workers', 'workerPays', 'docs', 'activity', 'messages',
   'offices', 'grants', 'accessRequests', 'catalog', 'playbooks', 'apptTypes', 'appointments', 'credits', 'crossSell', 'opportunities', 'reviews', 'templates',
   'envelopes', 'connections', 'posts', 'cash', 'cashCloses', 'complianceItems', 'rules', 'reveals', 'secureLog', 'audit',
+  'chairs', 'walkins', 'passPlans', 'passes', 'payouts',
 ] as const;
 /** `automationRuns` is the automation history (data.automation.runs). `runs` is its older name, still accepted when rows come back. */
 export type CollectionId = (typeof COLLECTIONS)[number] | 'automationRuns' | 'runs';
@@ -37,6 +38,7 @@ export const APPEND_ONLY: readonly CollectionId[] = ['activity', 'automationRuns
 export const APPLY_ORDER: readonly CollectionId[] = [
   'offices', 'catalog', 'playbooks', 'apptTypes', 'templates', 'workers', 'clients', 'leads', 'jobs', 'tasks', 'workerPays', 'docs', 'messages',
   'appointments', 'opportunities', 'crossSell', 'reviews', 'envelopes', 'posts', 'cash', 'cashCloses', 'complianceItems', 'rules', 'accessRequests',
+  'chairs', 'passPlans', 'passes', 'walkins', 'payouts',
   'activity', 'automationRuns',
 ];
 

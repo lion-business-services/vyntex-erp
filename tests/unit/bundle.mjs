@@ -23,7 +23,8 @@ export async function load(entry) {
 /** A workspace with no records, for an edition. The same lists the store creates. */
 export function blank(pack) {
   const lists = ['users', 'leads', 'clients', 'jobs', 'tasks', 'workers', 'workerPays', 'docs', 'activity', 'messages', 'offices', 'grants', 'accessRequests', 'catalog', 'playbooks', 'apptTypes',
-    'appointments', 'credits', 'crossSell', 'opportunities', 'reviews', 'templates', 'envelopes', 'connections', 'posts', 'cash', 'cashCloses', 'complianceItems', 'rules', 'reveals', 'secureLog', 'audit'];
+    'appointments', 'credits', 'crossSell', 'opportunities', 'reviews', 'templates', 'envelopes', 'connections', 'posts', 'cash', 'cashCloses', 'complianceItems', 'rules', 'reveals', 'secureLog', 'audit',
+    'chairs', 'walkins', 'passPlans', 'passes', 'payouts'];
   return {
     v: 7, pack: pack.id, seededOn: '2026-01-01', seedLang: 'en', touched: false,
     company: { name: 'Sample Test Co', initials: 'ST', license: '', phone: '', email: '' },

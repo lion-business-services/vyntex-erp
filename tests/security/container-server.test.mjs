@@ -23,6 +23,10 @@ function site(t, { config = {}, env = {} } = {}) {
     'vercel.json': JSON.stringify(cfg),
     'top-secret.txt': 'outside the build',
     'dist/index.html': '<!doctype html><title>app shell</title>',
+    // the public pages a real build writes next to the shell (scripts/prerender.mjs); vercel.json maps their addresses to them
+    'dist/pricing.html': '<!doctype html><title>app shell: pricing</title>',
+    'dist/demo.html': '<!doctype html><title>app shell: demo</title>',
+    'dist/request-demo.html': '<!doctype html><title>app shell: request a demo</title>',
     'dist/assets/app-ABC123.js': 'console.log("app")',
     'dist/brand/logo.png': 'png',
     'dist/.env': 'LEFT_BEHIND=1',
@@ -251,4 +255,20 @@ test('reading the address patterns of vercel.json', () => {
 test('the vercel.json of this repository can be followed by this server', (t) => {
   const root = write(tempDir(t), { 'dist/index.html': 'x' });
   assert.doesNotThrow(() => createApp({ root, dist: path.join(root, 'dist'), config: realConfig(), env: {}, log: () => {} }));
+});
+
+test('public pages have their own files; every other page address is marked noindex', async (t) => {
+  const { raw } = await site(t);
+  const pages = { '/pricing': /pricing/, '/demo': /: demo/, '/request-demo': /request a demo/ };
+  for (const [target, title] of Object.entries(pages)) {
+    const r = await raw(target);
+    assert.equal(r.status, 200, target); assert.match(r.text, title, target);
+    assert.equal(r.headers['x-robots-tag'], undefined, target + ' can be indexed');
+  }
+  assert.equal((await raw('/')).headers['x-robots-tag'], undefined, 'the overview can be indexed');
+  for (const target of ['/demo/jobs', '/some-company/clients/123', '/signin', '/admin', '/invite/abc', '/pricing-company/leads']) {
+    const r = await raw(target);
+    assert.equal(r.status, 200, target); assert.match(r.text, /<title>app shell<\/title>/, target);
+    assert.equal(r.headers['x-robots-tag'], 'noindex, nofollow', target);
+  }
 });

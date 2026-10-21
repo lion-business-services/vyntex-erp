@@ -674,7 +674,7 @@ function ChairForm({ chair, onClose }: { chair?: Chair; onClose: () => void }) {
       <label className="check"><input type="checkbox" checked={v.walkIns} onChange={(e) => setV({ ...v, walkIns: e.target.checked })} /> <span>{t('floor.chair.takesWalkins')}</span></label>
       <fieldset className="floor-skip"><legend className="small">{t('floor.chair.skip')}</legend>
         {(data.catalog ?? []).filter((s) => s.active && s.appointmentTypeId).map((s) => (
-          <label key={s.id} className="check"><input type="checkbox" checked={v.skipServiceIds.includes(s.id)} onChange={(e) => setV({ ...v, skipServiceIds: e.target.checked ? [...v.skipServiceIds, s.id] : v.skipServiceIds.filter((x) => x !== s.id) })} /> <span>{serviceName(data, s.id, lang)}</span></label>
+          <label key={s.id} className="check"><input type="checkbox" checked={v.skip.includes(s.id)} onChange={(e) => setV({ ...v, skip: e.target.checked ? [...v.skip, s.id] : v.skip.filter((x) => x !== s.id) })} /> <span>{serviceName(data, s.id, lang)}</span></label>
         ))}
       </fieldset>
     </Modal>

@@ -213,10 +213,13 @@ export const barberPack: IndustryPack = {
   family: 'practice',
   // not in the pricing file: no plan and no price are shown for this edition, it is quoted on request
   priced: false,
+  // Prioritize the eight daily workflows. Supporting ERP modules remain available to authorized
+  // managers via Settings > Shop tools; they do not compete for space in the daily sidebar.
   modules: [
-    'floor', 'appointments', 'calendar', 'clients', 'tasks', 'leads', 'jobs',
-    'memberships', 'commissions', 'catalog', 'payments', 'cash', 'reviews', 'messages', 'social', 'opportunities', 'team', 'documents', 'reports',
-    'automations', 'integrations', 'assistant', 'settings', 'security', 'audit',
+    'appointments', 'floor', 'clients', 'team', 'commissions', 'automations', 'settings',
+    'calendar', 'tasks', 'leads', 'jobs', 'memberships', 'catalog', 'payments', 'cash',
+    'reviews', 'messages', 'social', 'opportunities', 'documents', 'reports',
+    'integrations', 'assistant', 'security', 'audit',
   ],
   leadStages: STAGES,
   leadSources: [

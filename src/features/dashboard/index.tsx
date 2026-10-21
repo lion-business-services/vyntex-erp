@@ -69,11 +69,12 @@ const TASKS_SHOWN = 3, JOBS_SHOWN = 5, EVENTS_SHOWN = 5;
 
 /** The home screen of an office that serves clients through engagements and appointments (./practice.tsx). */
 const PracticeDashboard = lazy(() => import('./practice'));
+const BarberDashboard = lazy(() => import('./barber'));
 
 /** Which home screen an edition gets is the edition's own choice (`family` in its pack): field work, or a practice. */
 export default function DashboardPage(props: PageProps) {
   const { pack } = useApp();
-  return pack.family === 'practice' ? <PracticeDashboard /> : <FieldDashboard {...props} />;
+  return pack.id === 'barber' ? <BarberDashboard /> : pack.family === 'practice' ? <PracticeDashboard /> : <FieldDashboard {...props} />;
 }
 
 function FieldDashboard(_: PageProps) {

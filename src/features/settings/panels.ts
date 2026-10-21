@@ -30,6 +30,8 @@ const practiceOnly = (app: App) => app.pack.family === 'practice';
 
 export const SETTINGS_PANELS: SettingsPanelDef[] = [
   { id: 'business', labelKey: 'settings.tab.business', icon: LuBuilding2, view: lazy(() => import('./business')) },
+  // Essential barbershop controls in one place, without inflating the daily navigation.
+  { id: 'shop-tools', labelKey: 'settings.tab.shopTools', icon: LuLayoutGrid, when: (app) => app.pack.id === 'barber', view: lazy(() => import('./barber-tools')) },
   { id: 'team', labelKey: 'settings.tab.team', icon: LuUsers, view: lazy(() => import('./team').then((m) => ({ default: m.TeamSection }))) },
   // plans and prices: only for an edition that is in the pricing file, in a deployment that shows plans
   { id: 'plan', labelKey: 'settings.tab.plan', icon: LuLayers, when: (app) => app.priced, view: lazy(() => import('./plan').then((m) => ({ default: m.PlanSection }))) },
@@ -55,5 +57,13 @@ export const SETTINGS_PANELS: SettingsPanelDef[] = [
 
 /** The sections this viewer gets for this company, in order. */
 export function settingsPanelsFor(app: App): SettingsPanelDef[] {
-  return SETTINGS_PANELS.filter((p) => (!p.perm || app.can(p.perm)) && (!p.module || moduleOn(app.data, app.pack, p.module)) && (!p.when || p.when(app)));
+  const dailyShopSettings = new Set([
+    'business', 'shop-tools', 'team', 'appointments', 'communications',
+    'appearance', 'data', 'domain',
+  ]);
+  return SETTINGS_PANELS.filter((p) =>
+    (app.pack.id !== 'barber' || dailyShopSettings.has(p.id)) &&
+    (!p.perm || app.can(p.perm)) &&
+    (!p.module || moduleOn(app.data, app.pack, p.module)) &&
+    (!p.when || p.when(app)));
 }

@@ -97,7 +97,16 @@ export function moduleExists(m: ModuleDef, app: Pick<App, 'data' | 'pack'>): boo
  * The screens the viewer gets, in menu order: the edition lists its modules in the order it wants them inside each group;
  * a module the edition does not list but the company switched on comes after those.
  */
+/** A barbershop's daily navigation matches the operational portal: eight destinations. Advanced
+ * capability-specific screens stay accessible through Settings without losing their real routing,
+ * permissions, database collections or integrations. Other editions are entirely unchanged. */
+export const BARBER_DAILY_MODULES: readonly string[] = [
+  'dashboard', 'appointments', 'floor', 'clients', 'team', 'commissions', 'automations', 'settings',
+];
 export function modulesFor(app: Pick<App, 'data' | 'pack' | 'can'>): ModuleDef[] {
   const order = (m: ModuleDef) => { const at = app.pack.modules.indexOf(m.id as ModuleId); return m.id === 'dashboard' ? -1 : at < 0 ? 999 : at; };
-  return MODULES.filter((m) => moduleExists(m, app) && (!m.perm || app.can(m.perm))).sort((a, b) => order(a) - order(b));
+  return MODULES.filter((m) =>
+    (app.pack.id !== 'barber' || BARBER_DAILY_MODULES.includes(m.id)) &&
+    moduleExists(m, app) &&
+    (!m.perm || app.can(m.perm))).sort((a, b) => order(a) - order(b));
 }

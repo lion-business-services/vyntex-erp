@@ -20,6 +20,7 @@ import { pick } from '@/i18n';
 import { BRAND } from '@/config/brand';
 import { DEPLOY } from '@/config/deployment';
 import { money } from '@/lib/money';
+import { session } from '@/platform/session';
 import { GROUPS, TEAM_ICON_OFFICE, modulesFor, type ModuleDef } from './modules';
 import { searchAll } from './search';
 import { assistantOn } from '@/features/assistant/deploy';
@@ -86,6 +87,10 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
   const style = accent ? ({ '--accent': accent, '--accent-soft': accent + '22', '--accent-line': accent + '66', '--accent-ink': inkOn(accent) } as React.CSSProperties) : undefined;
   const actor = isWorker ? byId(data.workers, prefs.viewAs.slice(7))?.name : app.user?.name;
   const sample = !app.live;
+  const liveSession = app.live ? session() : null;
+  const trialDays = liveSession?.planId === 'trial' && liveSession.trialExpiresAt
+    ? Math.max(0, Math.ceil((Date.parse(liveSession.trialExpiresAt) - Date.now()) / 86_400_000))
+    : null;
 
   return (
     <div className="shell" style={style}>
@@ -146,7 +151,14 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
           )}
           {actor && <span className="row tight nowrap" title={t(isWorker ? 'role.worker' : 'role.' + prefs.viewAs)} data-testid="actor"><Avatar name={actor} size="sm" accent /><span className="small strong hide-s">{actor}</span></span>}
         </div>
-        <main className="content" id="main" tabIndex={-1}>{children}</main>
+        <main className="content" id="main" tabIndex={-1}>
+          {trialDays !== null && <div className="vx-trial-banner" role="status">
+            <strong>{trialDays > 0 ? String(trialDays) + (trialDays === 1 ? ' day' : ' days') + ' left in your free trial' : 'Your free trial has ended'}</strong>
+            <span>{trialDays > 0 ? 'Explore your workspace and connect your approved services.' : 'Contact VYNTEX to choose a subscription. Your data is retained.'}</span>
+            <Link to="/pricing">View plans →</Link>
+          </div>}
+          {children}
+        </main>
       </div>
       {search && <CommandPalette onClose={() => setSearch(false)} modules={visible} onQuick={setQuick} />}
       {quick === 'task' && <TaskFormModal onClose={() => setQuick(null)} />}

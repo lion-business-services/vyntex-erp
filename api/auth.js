@@ -1,6 +1,6 @@
 // /api/auth/*: sign-in, the second sign-in step, fresh identity checks, sign-out, invitations and passwords.
 //
-// There is NO sign-up route. An account exists only because a member with the "users" capability invited that
+// Public self-signup is supported through a verified one-time trial invitation. An account exists only because a member with the "users" capability invited that
 // address (invite/accept below), or because the platform operator invited the first owner of a company.
 // The browser never talks to Supabase: it talks to these routes, and the Supabase tokens stay inside a sealed,
 // HttpOnly cookie (api/_lib/session.js).
@@ -34,6 +34,7 @@ import { sha256Hex, randomToken, sealWith, openWith, deriveKey } from './_lib/cr
 import { sendSystemEmail, resetEmail, emailConfigured } from './_lib/mail.js';
 import { need, secureCookies } from './_lib/env.js';
 import { randomBytes } from 'node:crypto';
+import { trialStatus, trialRequest } from './_lib/trial.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const CODE = /^\d{6}$/;
@@ -87,7 +88,7 @@ function publicSession(session, ctx) {
     idleMinutes: session.idle,
     expiresAt: new Date((session.iat + envInt('SESSION_MAX_HOURS', 12, 1, 72) * 3600) * 1000).toISOString(),
     memberships: (ctx.memberships || []).map((m) => ({
-      tenantId: m.tenant_id, slug: m.slug, name: m.name, industry: m.industry, plan: m.plan, status: m.status,
+      tenantId: m.tenant_id, slug: m.slug, name: m.name, industry: m.industry, plan: m.plan, status: m.status, trialExpiresAt: m.trial_expires_at ?? null,
       role: m.role, memberId: m.member_id, workerId: m.worker_id, memberName: m.member_name,
       capabilities: m.capabilities || [], mfaRequired: !!m.mfa_required || (deployId() === 'lbs' && m.role !== 'worker'),
     })),
@@ -522,6 +523,7 @@ async function passwordUpdate(request) {
 // routing
 // ---------------------------------------------------------------------------------------------------------------------
 const POST_ROUTES = {
+  'trial/request': trialRequest,
   'signin': signin,
   'mfa/enroll': mfaEnroll,
   'mfa/confirm': mfaConfirm,
@@ -538,8 +540,9 @@ const POST_ROUTES = {
 
 const handle = entry('auth', async (request, path) => {
   if (path === 'session') return request.method === 'GET' ? getSession(request) : methodNotAllowed('GET');
+  if (path === 'trial/status') return request.method === 'GET' ? trialStatus() : methodNotAllowed('GET');
   const route = Object.hasOwn(POST_ROUTES, path) ? POST_ROUTES[path] : null;
-  // Anything else does not exist. In particular there is no "signup", "register" or "users" route.
+  // All unknown routes remain closed by default.
   if (!route) return fail(404, 'not_found');
   if (request.method !== 'POST') return methodNotAllowed('POST');
   return route(request);

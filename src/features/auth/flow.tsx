@@ -294,7 +294,7 @@ function Foot() {
   const { t } = useApp();
   return (
     <>
-      <p className="auth-fine" data-testid="auth-invite-only">{t('auth.noSignup')}</p>
+      {DEPLOY.id === "vyntex" ? <p className="auth-fine"><Link to="/signup" data-testid="auth-start-trial">{t("auth.trialSignup")}</Link></p> : <p className="auth-fine" data-testid="auth-invite-only">{t("auth.noSignup")}</p>}
       {(SAMPLE_BASE || DEPLOY.marketing) && (
         <div className="auth-links">
           {SAMPLE_BASE && <Link to={SAMPLE_BASE} className="linkbtn" data-testid="auth-open-sample">{t(DEPLOY.publicDemo ? 'auth.openDemo' : 'auth.openPreview')}</Link>}

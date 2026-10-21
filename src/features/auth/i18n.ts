@@ -8,7 +8,7 @@ export const dict: Dict = {
   en: {
     'auth.paused.title': 'Workspace paused', 'auth.paused.body': 'The {company} workspace is paused. Your records are kept safe. Please contact VYNTEX USA at 609-780-3218 or info@vyntexusa.com to reactivate it.', 'auth.paused.other': 'Sign in with another account',
     'auth.signin.title': 'Sign in', 'auth.invite.title': 'Accept your invitation', 'auth.reset.title': 'Reset your password', 'auth.mfa.title': 'Confirm it is you',
-    'auth.noSignup': 'There is no public sign-up. Accounts are opened by invitation from a workspace owner.',
+    'auth.noSignup': 'There is no public sign-up. Accounts are opened by invitation from a workspace owner.', 'auth.trialSignup': 'New to VYNTEX? Start a free 7-day trial.',
     'auth.openDemo': 'Open the demo', 'auth.openPreview': 'Open the sample preview', 'auth.back': 'Back to sign in', 'auth.home': 'Back to the overview',
     'auth.support': 'Need help? Write to {email} or call {phone}.', 'auth.language': 'Language',
     'auth.checking': 'Checking your session', 'auth.wait': 'One moment',
@@ -93,6 +93,7 @@ export const dict: Dict = {
     'auth.password.failed': 'The password could not be changed. Try again.',
   },
   es: {
+    'auth.trialSignup': '¿Nuevo en VYNTEX? Comience su prueba gratuita de 7 días.',
     'auth.paused.title': 'Espacio en pausa', 'auth.paused.body': 'El espacio de {company} está en pausa. Sus registros se conservan de forma segura. Comuníquese con VYNTEX USA al 609-780-3218 o a info@vyntexusa.com para reactivarlo.', 'auth.paused.other': 'Entrar con otra cuenta',
     'auth.signin.title': 'Iniciar sesión', 'auth.invite.title': 'Acepte su invitación', 'auth.reset.title': 'Restablezca su contraseña', 'auth.mfa.title': 'Confirme que es usted',
     'auth.noSignup': 'No hay registro público. Las cuentas se abren por invitación del dueño de un espacio de trabajo.',

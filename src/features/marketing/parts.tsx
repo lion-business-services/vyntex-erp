@@ -134,7 +134,7 @@ export function MkHeader({ current }: { current: MkPageId }) {
   );
   const demo = <Link to="/demo" className="mk-top-demo" onClick={close} data-testid="mk-nav-demo">{t('mk.nav.demo')}</Link>;
   const request = (
-    <Link to="/request-demo" className="btn primary mk-top-cta" aria-current={current === 'request' ? 'page' : undefined} onClick={close} data-testid="mk-nav-request">{t('mk.nav.request')}</Link>
+    <Link to="/signup" className="btn primary mk-top-cta" onClick={close} data-testid="mk-nav-trial">{lang === "es" ? "Prueba gratis · 7 días" : "Free trial · 7 days"}</Link>
   );
 
   return (

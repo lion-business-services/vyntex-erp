@@ -50,6 +50,8 @@ export interface WorkspaceSession {
   industry: IndustryId;
   /** Plan id from the pricing file, or '' for an edition without plans. Entitlements are worked out from it; prices are never stored. */
   planId: string;
+  /** Server-authoritative trial deadline, if this workspace is on a trial. */
+  trialExpiresAt?: string | null;
   role: WorkspaceRole;
   /** Team user id (office roles) or worker id (workers) of the person acting. */
   actorId: string;

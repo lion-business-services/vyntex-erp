@@ -14,6 +14,7 @@ export const VARIABLES = {
   SUPABASE_ANON_KEY: { need: 'core', secret: false, about: 'Public key of that project. Sent as the api key with every call made on a person\'s behalf.' },
   SUPABASE_SERVICE_ROLE_KEY: { need: 'core', secret: true, about: 'Server key of that project. Bypasses row level security. Used only where a person\'s token cannot do the job.' },
   SESSION_SECRET: { need: 'core', secret: true, about: '32 or more random characters. Seals the session cookie.' },
+  TRIAL_SIGNUP_ENABLED: { need: 'optional', secret: false, about: 'Enable only after client database, 0064 migration and email sending are verified.' },
   SESSION_SECRET_PREVIOUS: { need: 'optional', secret: true, about: 'The secret used before the last change, so open sessions survive a rotation. Remove after a day.' },
   SESSION_MAX_HOURS: { need: 'optional', secret: false, about: 'Longest life of a session whatever the activity. Default 12.' },
   TOKEN_ENC_KEY: { need: 'core', secret: true, about: '32 random bytes, base64. Seals provider tokens before they are stored.' },

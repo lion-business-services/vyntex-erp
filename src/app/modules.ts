@@ -4,7 +4,7 @@
 // A module owns src/features/<id>/ (index.tsx, i18n.ts, <id>.css) and its actions in src/domain/actions/<area>.ts.
 import { lazy, type ComponentType } from 'react';
 import {
-  LuAlarmClock, LuBadgeCheck, LuBanknote, LuBookOpen, LuBriefcase, LuCalculator, LuCalendarClock, LuCalendarDays, LuChartColumn, LuFileText, LuHandCoins,
+  LuAlarmClock, LuArmchair, LuBadgeCheck, LuCrown, LuPercent, LuBanknote, LuBookOpen, LuBriefcase, LuCalculator, LuCalendarClock, LuCalendarDays, LuChartColumn, LuFileText, LuHandCoins,
   LuHardHat, LuLayoutDashboard, LuLightbulb, LuListChecks, LuLock, LuMail, LuPlug, LuScrollText, LuSettings, LuShare2, LuShieldCheck, LuSignature, LuSparkles,
   LuStar, LuUserPlus, LuUsers, LuUsersRound, LuWallet, LuZap,
 } from 'react-icons/lu';
@@ -15,6 +15,7 @@ import { isOverdue, newLeads } from '@/domain/selectors';
 import type { App } from './hooks';
 import { envelopesWaiting } from '@/domain/actions/esign';
 import { assistantOn } from '@/features/assistant/deploy';
+import { inLine } from '@/domain/actions/shop';
 
 /** `id` is the record in the address (/jobs/<id>), `sub` anything after it. */
 export interface PageProps { id?: string; sub?: string }
@@ -43,6 +44,8 @@ export interface ModuleDef {
 
 export const MODULES: ModuleDef[] = [
   { id: 'dashboard', path: '', group: 'work', icon: LuLayoutDashboard, labelKey: 'nav.dashboard', page: lazy(() => import('@/features/dashboard')) },
+  // the barbershop edition's live floor: chairs, the walk-in line, the kiosk and the waiting-area display
+  { id: 'floor', path: 'floor', perm: 'appointments', group: 'work', icon: LuArmchair, labelKey: 'nav.floor', page: lazy(() => import('@/features/floor')), count: ({ data }) => inLine(data).length },
   // ---- work
   { id: 'leads', path: 'leads', perm: 'leads', group: 'work', icon: LuUserPlus, labelKey: 'nav.leads', page: lazy(() => import('@/features/leads')), count: ({ data }) => newLeads(data).length },
   { id: 'clients', path: 'clients', perm: 'clients', group: 'work', icon: LuUsers, labelKey: 'nav.clients', page: lazy(() => import('@/features/clients')) },
@@ -60,6 +63,8 @@ export const MODULES: ModuleDef[] = [
   { id: 'payments', path: 'payments', perm: 'money', group: 'business', icon: LuWallet, labelKey: 'nav.money', page: lazy(() => import('@/features/payments')) },
   { id: 'reviews', path: 'reviews', perm: 'reviews', group: 'business', icon: LuStar, labelKey: 'nav.reviews', page: lazy(() => import('@/features/reviews')) },
   { id: 'deadlines', path: 'deadlines', perm: 'deadlines', group: 'business', icon: LuAlarmClock, labelKey: 'nav.deadlines', page: lazy(() => import('@/features/deadlines')) },
+  { id: 'memberships', path: 'memberships', perm: 'clients', group: 'business', icon: LuCrown, labelKey: 'nav.memberships', page: lazy(() => import('@/features/memberships')) },
+  { id: 'commissions', path: 'barber-pay', perm: 'payroll', group: 'business', icon: LuPercent, labelKey: 'nav.commissions', page: lazy(() => import('@/features/commissions')) },
   { id: 'reports', path: 'reports', perm: 'reports', group: 'business', icon: LuChartColumn, labelKey: 'nav.reports', page: lazy(() => import('@/features/reports')) },
   // the subcontractor W-9 and 1099 screens: only where the edition has them
   { id: 'compliance', path: 'compliance', perm: 'compliance', group: 'business', icon: LuShieldCheck, labelKey: 'nav.compliance', page: lazy(() => import('@/features/compliance')), when: ({ pack }) => pack.compliance },
@@ -92,7 +97,16 @@ export function moduleExists(m: ModuleDef, app: Pick<App, 'data' | 'pack'>): boo
  * The screens the viewer gets, in menu order: the edition lists its modules in the order it wants them inside each group;
  * a module the edition does not list but the company switched on comes after those.
  */
+/** A barbershop's daily navigation matches the operational portal: eight destinations. Advanced
+ * capability-specific screens stay accessible through Settings without losing their real routing,
+ * permissions, database collections or integrations. Other editions are entirely unchanged. */
+export const BARBER_DAILY_MODULES: readonly string[] = [
+  'dashboard', 'appointments', 'floor', 'clients', 'team', 'commissions', 'automations', 'settings',
+];
 export function modulesFor(app: Pick<App, 'data' | 'pack' | 'can'>): ModuleDef[] {
   const order = (m: ModuleDef) => { const at = app.pack.modules.indexOf(m.id as ModuleId); return m.id === 'dashboard' ? -1 : at < 0 ? 999 : at; };
-  return MODULES.filter((m) => moduleExists(m, app) && (!m.perm || app.can(m.perm))).sort((a, b) => order(a) - order(b));
+  return MODULES.filter((m) =>
+    (app.pack.id !== 'barber' || BARBER_DAILY_MODULES.includes(m.id)) &&
+    moduleExists(m, app) &&
+    (!m.perm || app.can(m.perm))).sort((a, b) => order(a) - order(b));
 }

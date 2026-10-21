@@ -159,6 +159,9 @@ function runRule(d: DemoState, ctx: Ctx, rule: RuleDef, event: string, s: RuleSu
     }
   }
   if (!lines.length) return;
+  // a rule made only of hand-offs to apps, none of them connected, has nothing to report: it is waiting for its apps,
+  // and it runs the first time the event comes again after one is connected
+  if (!did && !error && rule.then.every((x) => x.do === 'connector')) return;
   const status: AutomationRun['status'] = error ? 'failed' : did ? 'ok' : 'skipped';
   record(d, { id: uid('r'), at: nowIso(), ruleId: rule.id, steps: lines, ...(ref ? { ref } : {}), status, ...(error ? { error } : {}), dedupe: freeKey(d, error ? failMark : key) });
 }
@@ -212,6 +215,15 @@ function population(d: DemoState, event: EngineEvent | string, days: number): { 
   if (id.startsWith('lead.')) {
     const all = id === 'lead.idle' ? d.leads : d.leads.filter((l) => since(l.created, days));
     return { windowDays: id === 'lead.idle' ? 0 : days, list: all.map((l) => ({ name: l.name, subject: { ref: { type: 'lead', id: l.id }, lead: l, client: clientOf(d, l.clientId), job: d.jobs.find((j) => j.id === l.jobId), extra: { to: l.status, days: daysBetween((l.lastContact ?? l.created).slice(0, 10), today()) } } })) };
+  }
+  if (id.startsWith('walkin.')) {
+    // a guest who left no number is not on file: nothing a rule could write to or link
+    const all = (d.walkins ?? []).filter((w) => since(w.joined, days) && !!clientOf(d, w.clientId));
+    return { windowDays: days, list: all.map((w) => ({ name: w.name, subject: { ref: { type: 'client' as const, id: w.clientId! }, client: clientOf(d, w.clientId), extra: { name: w.name, ticket: w.ticket, amount: w.amount ?? 0, tip: w.tip ?? 0, source: w.source } } })) };
+  }
+  if (id === 'client.due' || id === 'pass.low' || id === 'pass.renews') {
+    const holders = id === 'client.due' ? d.clients : d.clients.filter((c) => (d.passes ?? []).some((p) => p.clientId === c.id));
+    return { windowDays: 0, list: holders.map((c) => ({ name: c.name, subject: { ref: { type: 'client' as const, id: c.id }, client: c } })) };
   }
   if (id === 'client.created' || id === 'client.birthday' || id === 'opportunity.created' || id === 'credit.expiring') {
     const all = id === 'client.created' ? d.clients.filter((c) => since(c.since, days)) : d.clients;

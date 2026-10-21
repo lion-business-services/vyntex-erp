@@ -280,7 +280,8 @@ async def field(browser, pack):
     await pg.goto(BASE + '/demo/calendar'); await pg.wait_for_selector('[data-testid=calendar-grid]')
     kinds = await pg.locator('[data-testid=calendar-legend] button').evaluate_all("els => els.map(e => e.dataset.kind)")
     record(f'{pack}: calendar legend as before', 'meet' not in kinds and kinds[:2] == ['appt', 'follow'], kinds)
-    record(f'{pack}: sync card as before', await pg.locator('[data-testid=calendar-sync]').count() == 1 and await pg.locator('[data-testid=calendar-conn-gcal]').count() == 0)
+    # the field editions now have the Integrations screen, so the calendar shows the Google Calendar connection card
+    record(f'{pack}: connection card shown, nothing connected', await pg.locator('[data-testid=calendar-conn-gcal][data-state=not_connected]').count() == 1)
     record(f'{pack}: no appointments in the menu', await pg.locator('nav a[href$="/appointments"]').count() == 0)
     # schedule a visit for a lead from the day panel, as before
     d = await state(pg, pack); lead_dates = {l['id']: l.get('apptDate') for l in d['leads']}

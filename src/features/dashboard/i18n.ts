@@ -6,6 +6,15 @@ import type { Dict } from '@/i18n';
 // interpreter understands (see features/assistant/engine.ts).
 export const dict: Dict = {
   en: {
+    'setup.title': 'Get {company} ready', 'setup.allDone': '{company} is all set', 'setup.sub': 'A few steps make this workspace yours. Each one ticks itself off when it is done.',
+    'setup.progress': '{done} of {n} steps done', 'setup.hide': 'Hide the setup steps',
+    'setup.business.title': 'Add your business details', 'setup.business.body': 'Name, logo, colour, phone, email and address. They appear on every screen and document.', 'setup.business.go': 'Add details',
+    'setup.security.title': 'Protect your sign-in', 'setup.security.body': 'Your account uses an authenticator app. Keep your recovery codes somewhere safe.', 'setup.security.go': 'Review',
+    'setup.team.title': 'Invite your team', 'setup.team.body': 'Each person gets their own sign-in and a role that decides what they see.', 'setup.team.go': 'Invite people',
+    'setup.services.title': 'Add your services and prices', 'setup.services.body': 'What you sell, at which prices. Leads, estimates and invoices pick them up.', 'setup.services.go': 'Add services',
+    'setup.clients.title': 'Bring in your clients', 'setup.clients.body': 'Add them one by one or import a spreadsheet.', 'setup.clients.go': 'Add clients',
+    'setup.apps.title': 'Connect your email and calendar', 'setup.apps.body': 'Gmail, Google Calendar and the other apps you use.', 'setup.apps.go': 'Connect apps',
+    'setup.rules.title': 'Check your automations', 'setup.rules.body': 'The rules that assign leads, create tasks and prepare emails for you.', 'setup.rules.go': 'Open rules',
     'dash.hi.morning': 'Good morning', 'dash.hi.afternoon': 'Good afternoon', 'dash.hi.evening': 'Good evening',
     'dash.hi.named': '{greeting}, {name}.', 'dash.hi.plain': '{greeting}.',
     'dash.state.lead': 'Needs your attention today:', 'dash.state.and': 'and',
@@ -100,6 +109,15 @@ export const dict: Dict = {
     'dash.links.badUrl': 'That is not a web address. It should look like https://example.com/page.',
   },
   es: {
+    'setup.title': 'Prepare {company}', 'setup.allDone': '{company} está listo', 'setup.sub': 'Unos pocos pasos hacen suyo este espacio. Cada uno se marca solo cuando está hecho.',
+    'setup.progress': '{done} de {n} pasos hechos', 'setup.hide': 'Ocultar los pasos de configuración',
+    'setup.business.title': 'Agregue los datos de su negocio', 'setup.business.body': 'Nombre, logo, color, teléfono, correo y dirección. Aparecen en cada pantalla y documento.', 'setup.business.go': 'Agregar datos',
+    'setup.security.title': 'Proteja su acceso', 'setup.security.body': 'Su cuenta usa una aplicación de autenticación. Guarde sus códigos de recuperación en un lugar seguro.', 'setup.security.go': 'Revisar',
+    'setup.team.title': 'Invite a su equipo', 'setup.team.body': 'Cada persona tiene su propio acceso y un rol que decide lo que ve.', 'setup.team.go': 'Invitar personas',
+    'setup.services.title': 'Agregue sus servicios y precios', 'setup.services.body': 'Lo que vende y a qué precios. Los prospectos, presupuestos y facturas los usan.', 'setup.services.go': 'Agregar servicios',
+    'setup.clients.title': 'Traiga a sus clientes', 'setup.clients.body': 'Agréguelos uno por uno o importe una hoja de cálculo.', 'setup.clients.go': 'Agregar clientes',
+    'setup.apps.title': 'Conecte su correo y su calendario', 'setup.apps.body': 'Gmail, Google Calendar y las demás aplicaciones que usa.', 'setup.apps.go': 'Conectar aplicaciones',
+    'setup.rules.title': 'Revise sus automatizaciones', 'setup.rules.body': 'Las reglas que asignan prospectos, crean tareas y le preparan correos.', 'setup.rules.go': 'Abrir reglas',
     'dash.hi.morning': 'Buenos días', 'dash.hi.afternoon': 'Buenas tardes', 'dash.hi.evening': 'Buenas noches',
     'dash.hi.named': '{greeting}, {name}.', 'dash.hi.plain': '{greeting}.',
     'dash.state.lead': 'Para atender hoy:', 'dash.state.and': 'y',

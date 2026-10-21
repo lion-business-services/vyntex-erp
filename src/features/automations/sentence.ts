@@ -6,6 +6,7 @@ import type { IndustryPack } from '@/packs/types';
 import type { TFn } from '@/i18n';
 import { RULES } from '@/domain/automations';
 import { eventDef, fieldDef } from '@/domain/rules/fields';
+import { APP_NAMES } from '@/domain/rules/steps';
 import { money } from '@/lib/money';
 import { ruleLine } from './format';
 
@@ -83,6 +84,7 @@ export function stepTexts(rule: RuleDef, step: RuleStep, r: Reader): string[] {
     case 'opportunity': return [t('auto.do.opportunity', { service: (r.data.catalog ?? []).find((s) => s.id === p.serviceId)?.name ?? t('auto.val.gone') })];
     case 'review': return [t('auto.do.review', { channel: lowerFirst(t('auto.ch.' + (p.channel ?? 'email'))) })];
     case 'tag': return [t('auto.do.tag', { tag: String(p.tag ?? '') })];
+    case 'connector': return [t('auto.do.connector.' + String(p.app ?? ''), { app: APP_NAMES[String(p.app)] ?? String(p.app ?? '') })];
     default: return [t('auto.do.other')];
   }
 }

@@ -94,9 +94,9 @@ test('practice, in Spanish', async () => {
 
 test('an edition without those screens keeps answering the way it did', async () => {
   const e = await env('build', 'en');
-  // "appointments" is the calendar there, and "opportunities" the pipeline
+  // "appointments" is the calendar there; the field editions now have the opportunities screen, so that question is answered from it
   assert.ok(!asst.interpret('Any appointments this week?', e).unknown);
-  assert.match(texts(asst.interpret('What opportunities do we have?', e)), /lead/i);
+  assert.ok(!asst.interpret('What opportunities do we have?', e).unknown);
   assert.equal(asst.interpret('Schedule a visit with ' + e.data.leads.find((l) => l.status === 'new').name + ' on Friday at 10am', e).proposal.kind, 'visit');
 });
 

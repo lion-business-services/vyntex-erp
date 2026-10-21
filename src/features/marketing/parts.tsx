@@ -14,7 +14,7 @@ import { ThemeToggle } from '@/ui/ThemeToggle';
 
 export type MkPageId = 'home' | 'pricing' | 'request';
 /** Sections of the overview that the header links to. */
-export type MkSectionId = 'product' | 'industries' | 'how-it-works';
+export type MkSectionId = 'product' | 'industries' | 'integrations' | 'how-it-works';
 
 /** Digits of the business phone with country code, for WhatsApp links. */
 export const WHATSAPP_NUMBER = BRAND.phoneHref.replace(/\D/g, '');
@@ -105,7 +105,7 @@ function useNarrow(maxWidth: number): boolean {
 
 export function MkHeader({ current }: { current: MkPageId }) {
   const { t, lang } = useApp();
-  const compact = useNarrow(1099);
+  const compact = useNarrow(1239);
   const phone = useNarrow(700);
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -121,6 +121,7 @@ export function MkHeader({ current }: { current: MkPageId }) {
     <nav className="mk-nav" aria-label={t('mk.nav.label')}>
       <SectionLink id="product" onHome={onHome} onDone={close} tid>{t('mk.nav.product')}</SectionLink>
       <SectionLink id="industries" onHome={onHome} onDone={close} tid>{t('mk.nav.industries')}</SectionLink>
+      <SectionLink id="integrations" onHome={onHome} onDone={close} tid>{t('mk.nav.integrations')}</SectionLink>
       <Link to="/pricing" aria-current={current === 'pricing' ? 'page' : undefined} onClick={close} data-testid="mk-nav-pricing">{t('mk.nav.pricing')}</Link>
       <SectionLink id="how-it-works" onHome={onHome} onDone={close} tid>{t('mk.nav.how')}</SectionLink>
     </nav>
@@ -192,6 +193,7 @@ export function MkFooter({ current }: { current?: MkPageId }) {
           <h2>{t('mk.foot.pages')}</h2>
           <SectionLink id="product" onHome={onHome}>{t('mk.nav.product')}</SectionLink>
           <SectionLink id="industries" onHome={onHome}>{t('mk.nav.industries')}</SectionLink>
+          <SectionLink id="integrations" onHome={onHome}>{t('mk.nav.integrations')}</SectionLink>
           <SectionLink id="how-it-works" onHome={onHome}>{t('mk.nav.how')}</SectionLink>
           <Link to="/pricing">{t('mk.nav.pricing')}</Link>
           <Link to="/request-demo">{t('mk.nav.request')}</Link>

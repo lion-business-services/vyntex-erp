@@ -200,14 +200,14 @@ function Connections() {
   }, []);
   const line = (id: 'gcal' | 'gmeet', name: string) => {
     const state = states[id] ?? 'not_connected';
-    return <div className="row between nowrap cal-conn" data-testid={`calendar-conn-${id}`} data-state={state}><span className="small">{name}</span><Badge tone={state === 'connected' ? 'ok' : state === 'not_connected' ? 'neutral' : 'warn'} outline={state === 'not_connected'}>{t('calendar.conn.' + state)}</Badge></div>;
+    return <div className="row between nowrap cal-conn" data-testid={`calendar-conn-${id}`} data-state={state}><span className="small">{name}</span><Badge tone={state === 'connected' || state === 'demo' ? 'ok' : state === 'not_connected' ? 'neutral' : 'warn'} outline={state === 'not_connected'}>{t('calendar.conn.' + state)}</Badge></div>;
   };
   return (
     <Card title={<><LuRefreshCw aria-hidden="true" className="cal-ico" />{t('calendar.g.sync')}</>} className="cal-sync">
       <div data-testid="calendar-sync">
         {line('gcal', 'Google Calendar')}
         {line('gmeet', 'Google Meet')}
-        <p className="small muted cal-gap">{t(states.gcal === 'connected' ? 'calendar.conn.onBody' : 'calendar.conn.offBody')}</p>
+        <p className="small muted cal-gap">{t(states.gcal === 'connected' ? 'calendar.conn.onBody' : states.gcal === 'demo' ? 'calendar.conn.demoBody' : 'calendar.conn.offBody')}</p>
         <p className="xs dim cal-gap">{t('calendar.conn.meetBody')}</p>
         {can('integrations') && <p className="cal-gap"><A to="/integrations" className="linkbtn small">{t('calendar.conn.open')}</A></p>}
       </div>

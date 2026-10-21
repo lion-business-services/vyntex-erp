@@ -393,10 +393,15 @@ for (const edition of ['build', 'clean', 'events']) {
   });
 }
 
-test('the field editions ship exactly the eight coded rules, each as one builtin step', () => {
-  const rules = engine.shippedRules(PACKS.build);
+test('the field editions ship the eight coded rules, each as one builtin step, then the connected-app rules', () => {
+  const all = engine.shippedRules(PACKS.build);
+  const rules = all.filter((r) => !r.id.startsWith('connected-'));
   assert.deepEqual(rules.map((r) => r.id), legacy.RULES.map((r) => r.id));
   for (const r of rules) { assert.deepEqual(r.then, [{ do: 'builtin', params: { rule: r.id } }]); assert.equal(r.when.event, legacy.RULES.find((x) => x.id === r.id).trigger); }
+  // the connected-app rules are plain data, made only of connector steps, so with no app connected they record nothing
+  const connected = all.filter((r) => r.id.startsWith('connected-'));
+  assert.deepEqual(connected.map((r) => r.id), ['connected-won', 'connected-scheduled', 'connected-paid', 'connected-sent']);
+  for (const r of connected) assert.ok(r.then.length && r.then.every((x) => x.do === 'connector'), r.id);
 });
 
 test('a fresh sample: the starting emails are prepared as before and no run is typed in', async () => {

@@ -53,6 +53,35 @@ export function inviteEmail({ lang, company, inviter, link, hours }) {
   };
 }
 
+/** The first owner of a new client company, invited by VYNTEX from the operator console. */
+export function ownerWelcomeEmail({ lang, company, link, hours, address }) {
+  const product = productName();
+  if (es(lang)) {
+    return {
+      subject: `Su ${product} para ${company} está listo`,
+      text: [
+        'Hola:', '',
+        `VYNTEX USA preparó el espacio de ${company} en ${product}.`, '',
+        'Abra este enlace para crear su contraseña y activar su cuenta:', link, '',
+        `El enlace funciona una sola vez y vence en ${hours} horas. Después de activarla, su dirección para entrar es:`, address, '',
+        'Por su seguridad, al entrar se le pedirá agregar una aplicación de autenticación (Google Authenticator, Microsoft Authenticator o similar).',
+        'Si tiene alguna pregunta, llámenos o escríbanos por WhatsApp al 609-780-3218, o escriba a info@vyntexusa.com.', '',
+      ].join('\n'),
+    };
+  }
+  return {
+    subject: `Your ${product} for ${company} is ready`,
+    text: [
+      'Hello,', '',
+      `VYNTEX USA has set up the ${company} workspace on ${product}.`, '',
+      'Open this link to create your password and activate your account:', link, '',
+      `The link works once and expires in ${hours} hours. Once your account is active, your sign-in address is:`, address, '',
+      'For your security, you will be asked to add an authenticator app (Google Authenticator, Microsoft Authenticator or similar) when you sign in.',
+      'Questions? Call or WhatsApp us at 609-780-3218, or write to info@vyntexusa.com.', '',
+    ].join('\n'),
+  };
+}
+
 export function resetEmail({ lang, link }) {
   const product = productName();
   if (es(lang)) {

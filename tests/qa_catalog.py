@@ -385,8 +385,10 @@ async def field(browser, pack):
     print('flow', run, flush=True)
     facts = {p['id']: p for p in json.load(open(os.path.join(HERE, '.pack-facts.json')))}[pack]
     ctx, pg, errs = await open_workspace(browser, pack)
+    # the field samples now come with a catalog and opportunities; this flow is about a company that has none yet
+    await patch(pg, pack, "d.catalog = []; d.playbooks = []; d.crossSell = []; d.opportunities = []; d.config = { ...d.config, modules: { ...(d.config.modules || {}), catalog: false, opportunities: false } };")
     s0 = await state(pg, pack)
-    record(run, 'the edition starts without a catalog', s0['catalog'] == [] and s0['playbooks'] == [] and s0['crossSell'] == [] and s0['opportunities'] == [])
+    record(run, 'a company without a catalog', s0['catalog'] == [] and s0['playbooks'] == [] and s0['crossSell'] == [] and s0['opportunities'] == [])
     # F1 without a catalog the job form and the job page are what they were
     await goto(pg, '/jobs'); await pg.click('[data-testid=jobs-new]'); await pg.wait_for_selector('[data-testid=jobs-f-name]')
     record(run, 'job form without a catalog: no service, tier, period or office field; the address is there', sum([await pg.locator(f'[data-testid=jobs-f-{k}]').count() for k in ['service', 'tier', 'period', 'office', 'unit']]) == 0 and await pg.locator('[data-testid=jobs-f-address]').count() == 1)

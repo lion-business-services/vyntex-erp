@@ -14,7 +14,7 @@ const { qrMatrix } = await load(`export { qrMatrix } from '@/features/auth/qr';`
 
 const texts = ['A', 'hello world',
   'otpauth://totp/LBS%20Command:owner-e2e-practice-mgb1x2%40example.com?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=LBS%20Command&algorithm=SHA1&digits=6&period=30',
-  'otpauth://totp/VYNTEX%20Command:someone%40example.com?secret=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567&issuer=VYNTEX%20Command&algorithm=SHA1&digits=6&period=30',
+  'otpauth://totp/VYNTEX%20ERP:someone%40example.com?secret=ABCDEFGHIJKLMNOPQRSTUVWXYZ234567&issuer=VYNTEX%20ERP&algorithm=SHA1&digits=6&period=30',
   'ñandú 中文 end'];
 // the longest text each version holds at level M, so every size and every block layout is exercised
 for (const len of [14, 26, 42, 62, 84, 106, 122, 152, 180, 213, 251, 287, 331, 362, 412, 450, 504, 560, 624, 666]) {

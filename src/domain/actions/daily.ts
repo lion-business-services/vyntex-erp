@@ -15,6 +15,7 @@ import { daysBetween, today } from '@/lib/dates';
 import { reviewSettings, reviewsDue, sweepReviews } from './reviews';
 import * as actions from './index';
 import * as appointments from './appointments';
+import { runShopTimed } from './shop';
 
 /** Sweeps that belong to other modules. Looked up by name, so this file builds and runs whether or not they exist yet. */
 const OTHER_SWEEPS = ['sweepAppointments', 'sweepEnvelopes', 'evaluateCrossSell'] as const;
@@ -108,10 +109,12 @@ export function runTimed(d: DemoState, ctx: Ctx, now: Date = new Date()): void {
   for (const due of reviewsDue(d)) say('review.due', { ref: { type: 'job', id: due.job.id }, job: due.job, client: due.client, extra: { days: due.days, threshold: delay } });
   // a low rating always gets its follow-up task, however the rating arrived
   sweepReviews(d, ctx);
+  // the shop floor: memberships about to bill, clients due for their next cut (only where there is a shop floor)
+  try { runShopTimed(d, ctx); } catch { /* reported by the shop floor itself */ }
 }
 
 export function runDaily(d: DemoState, ctx: Ctx) {
-  emit(d, ctx, 'daily', {});
+  emit(d, ctx, 'daily', { extra: { weekday: new Date().getDay() } });
   runOtherSweeps(d, ctx);
   runTimed(d, ctx);
 }

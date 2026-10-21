@@ -1,6 +1,7 @@
 // The edition blueprint: what every field edition (crews working on site) shares, so each of the eight packs stays a small
 // file and they all behave the same. An edition spreads `fieldDefaults()` and overrides only what is truly different.
 // The practice edition writes its own values for the same fields (src/packs/practice/pack.ts).
+import { CONNECTED_RULES } from './connected-rules';
 import type { DocKind, L10n, ModuleId, OfficeRole, OptionDef, RuleDef, RuleEvent, StageDef } from '@/domain/types';
 import type { Permission } from '@/domain/permissions';
 import type { IndustryPack } from './types';
@@ -55,7 +56,8 @@ export const FIELD_LOST_REASONS: OptionDef[] = [
 ];
 
 /** The screens the field editions have today, as the menu shows them. */
-export const FIELD_MODULES: ModuleId[] = ['leads', 'clients', 'jobs', 'calendar', 'tasks', 'team', 'documents', 'messages', 'payments', 'reports', 'compliance', 'automations', 'assistant', 'settings'];
+export const FIELD_MODULES: ModuleId[] = ['leads', 'clients', 'jobs', 'calendar', 'tasks', 'team', 'catalog', 'opportunities', 'documents', 'esign', 'messages', 'payments', 'reviews', 'reports', 'compliance', 'social',
+  'automations', 'integrations', 'assistant', 'settings', 'security', 'audit'];
 
 const FIELD_DOC_KINDS: DocKind[] = ['estimate', 'contract', 'invoice'];
 
@@ -73,6 +75,7 @@ export const FIELD_RULES: RuleDef[] = [
   shipped('job-completed', 'job.status', l('Work completed', 'Cierre del trabajo')),
   shipped('payment-posted', 'payment.received', l('Payment posted', 'Pago registrado')),
   shipped('compliance-watch', 'daily', l('Compliance watch', 'Control de cumplimiento')),
+  ...CONNECTED_RULES,
 ];
 
 type Blueprint = Pick<IndustryPack, 'family' | 'priced' | 'modules' | 'leadStages' | 'leadSources' | 'lostReasons' | 'taskTypes' | 'clientTypes' | 'roleLabels'

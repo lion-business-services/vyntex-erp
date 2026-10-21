@@ -1,0 +1,21 @@
+/* "Works with the tools you already use": groups of connections, each a chip that lights in once, a beat apart. */
+.mks-in-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:22px 26px;margin-top:8px}
+.mks-in-gh{font-size:12px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:0 0 10px}
+.mks-in-group ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.mks-in-app{display:flex;align-items:center;gap:11px;min-height:48px;padding:8px 12px;border:1px solid var(--line);border-radius:var(--radius-s);background:var(--surface);
+  opacity:0;transform:translateY(8px);transition:opacity var(--motion-standard) var(--ease-vyntex) calc(var(--i) * 35ms),transform var(--motion-standard) var(--ease-vyntex) calc(var(--i) * 35ms),border-color var(--motion-fast) var(--ease-vyntex),box-shadow var(--motion-fast) var(--ease-vyntex)}
+.mks-in-grid.in .mks-in-app{opacity:1;transform:none}
+.mks-in-app:hover{border-color:var(--accent-line);box-shadow:var(--glow-soft)}
+.mks-in-ic{display:grid;place-items:center;width:32px;height:32px;flex:none;border-radius:var(--radius-s);background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--accent)}
+.mks-in-ic svg{width:16px;height:16px}
+.mks-in-name{flex:1;min-width:0;font-weight:700;font-size:14.5px;color:var(--text)}
+.mks-in-state{flex:none;font-size:11.5px;font-weight:700;color:var(--ok);background:var(--ok-soft);border-radius:999px;padding:3px 9px;white-space:nowrap}
+.mks-in-app.soon .mks-in-ic{background:var(--surface-2);border-color:var(--line-strong);color:var(--text-2)}
+.mks-in-app.soon .mks-in-state{color:var(--violet,#B69CFF);background:var(--violet-soft,rgba(150,120,255,.14))}
+.mks-in-foot{display:flex;flex-wrap:wrap;gap:10px 26px;align-items:center;margin-top:22px}
+.mks-in-note{display:inline-flex;gap:8px;align-items:center;margin:0;font-size:13.5px;color:var(--text-2)}
+.mks-in-note svg{width:15px;height:15px;color:var(--accent);flex:none}
+.mks-in-foot .mks-link{margin-left:auto;gap:8px}
+.mks-in-foot .mks-link>svg:first-child{width:15px;height:15px}
+@media (max-width:640px){.mks-in-foot .mks-link{margin-left:0}}
+@media (prefers-reduced-motion:reduce){.mks-in-app{opacity:1;transform:none;transition:none}}

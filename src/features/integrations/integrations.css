@@ -34,3 +34,26 @@
   .integrations-more{margin-left:0;min-height:40px}
 }
 @media (prefers-reduced-motion:reduce){.integrations-more svg{transition:none}}
+
+/* ---- the sample workspace: simulated connections (src/platform/demo-links.ts) ---- */
+.integrations-demo{display:flex;gap:16px 22px;align-items:center;flex-wrap:wrap;margin-bottom:22px;border-color:var(--accent-line);background:linear-gradient(120deg,var(--accent-soft),transparent 60%),var(--surface);box-shadow:var(--glow-soft)}
+.integrations-demo-text{flex:1 1 420px;min-width:0;display:grid;gap:6px}
+.integrations-demo-h{display:flex;gap:8px;align-items:center;font-weight:750;font-size:15.5px}
+.integrations-demo-h svg{width:18px;height:18px;color:var(--accent);flex:none}
+.integrations-demo-count{display:inline-flex;gap:6px;align-items:center;color:var(--ok);font-weight:650}
+.integrations-demo-count svg{width:13px;height:13px}
+.integrations-planned{margin:-3px 0 0}
+.integrations-card[data-state="demo"]{border-color:var(--accent-line);box-shadow:var(--glow-soft)}
+.integrations-card[data-state="demo"] .integrations-ic{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+.integrations-sim{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.integrations-sim-h{color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;font-size:11px}
+.integrations-sim-list,.integrations-sim-log{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:13px}
+.integrations-sim-list li,.integrations-sim-log li{display:flex;gap:8px;align-items:flex-start}
+.integrations-sim-list svg{width:14px;height:14px;color:var(--ok);flex:none;margin-top:2px}
+.integrations-sim-log svg{width:13px;height:13px;color:var(--accent);flex:none;margin-top:3px}
+.integrations-sim-log li{animation:int-in .45s var(--ease-vyntex) both}
+.integrations-sim-log .dim{font-size:11.5px;white-space:nowrap}
+.integrations-consent-list{list-style:none;margin:0;padding:0;display:grid;gap:10px;max-height:46vh;overflow:auto}
+.integrations-consent-list li{display:flex;gap:10px;align-items:flex-start;font-size:13.5px}
+@keyframes int-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.integrations-sim-log li{animation:none}}

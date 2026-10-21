@@ -3,7 +3,7 @@ import type { Dict } from '@/i18n';
 export const dict: Dict = {
   en: {
     'settings.sub': 'Your business details, your team, your plan and what gets connected during setup.', 'settings.sections': 'Settings sections',
-    'settings.tab.business': 'Your business', 'settings.tab.team': 'Team and roles', 'settings.tab.plan': 'Plan and add-ons', 'settings.tab.connections': 'Connections',
+    'settings.tab.business': 'Your business', 'settings.tab.shopTools': 'Shop tools', 'settings.tab.team': 'Team and roles', 'settings.tab.plan': 'Plan and add-ons', 'settings.tab.connections': 'Connections',
     'settings.tab.emails': 'Automatic emails', 'settings.tab.appearance': 'Language and appearance', 'settings.tab.data': 'Data and privacy',
 
     'settings.biz.title': 'See it with your business',
@@ -152,7 +152,7 @@ export const dict: Dict = {
   },
   es: {
     'settings.sub': 'Los datos de su negocio, su equipo, su plan y lo que se conecta durante la instalación.', 'settings.sections': 'Secciones de configuración',
-    'settings.tab.business': 'Su negocio', 'settings.tab.team': 'Equipo y roles', 'settings.tab.plan': 'Plan y complementos', 'settings.tab.connections': 'Conexiones',
+    'settings.tab.business': 'Su negocio', 'settings.tab.shopTools': 'Herramientas del local', 'settings.tab.team': 'Equipo y roles', 'settings.tab.plan': 'Plan y complementos', 'settings.tab.connections': 'Conexiones',
     'settings.tab.emails': 'Correos automáticos', 'settings.tab.appearance': 'Idioma y apariencia', 'settings.tab.data': 'Datos y privacidad',
 
     'settings.biz.title': 'Véalo con su negocio',

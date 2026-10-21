@@ -6,13 +6,13 @@ import type { Dict } from '@/i18n';
 
 export const dict: Dict = {
   en: {
-    'mk.title.home': 'Run your entire business from one command center', 'mk.title.pricing': 'Plans and prices', 'mk.title.request': 'Request a demo',
-    'mk.nav.label': 'Main', 'mk.nav.home': 'Overview', 'mk.nav.product': 'Product', 'mk.nav.industries': 'Industries', 'mk.nav.pricing': 'Pricing', 'mk.nav.how': 'How it works',
+    'mk.title.home': 'The AI-powered ERP that runs your entire business', 'mk.title.pricing': 'Plans and prices', 'mk.title.request': 'Request a demo',
+    'mk.nav.label': 'Main', 'mk.nav.home': 'Overview', 'mk.nav.product': 'Product', 'mk.nav.industries': 'Industries', 'mk.nav.integrations': 'Integrations', 'mk.nav.pricing': 'Pricing', 'mk.nav.how': 'How it works',
     'mk.nav.request': 'Request a demo', 'mk.nav.demo': 'Explore demo', 'mk.nav.menu': 'Open the menu', 'mk.nav.close': 'Close the menu',
     'mk.notFound': 'That page does not exist. This is the overview.',
     'mk.tok.job': '{job}', 'mk.tok.worker': '{worker}', 'mk.tok.jobs': '{jobs}', 'mk.tok.workers': '{workers}',
 
-    'mk.hero.h1a': 'Run your entire business from one intelligent', 'mk.hero.h1b': 'command\u00A0center.',
+    'mk.hero.h1a': 'Run your entire business from one', 'mk.hero.h1b': 'AI-powered\u00A0ERP.',
     'mk.hero.lede': 'Bring your leads, clients, {jobs}, {workers}, tasks, documents, scheduling, communications, payments and workflows into one place, and let the repetitive work run by itself.',
     'mk.cta.demo': 'Explore live demo', 'mk.cta.pricing': 'See pricing', 'mk.cta.request': 'Request a demo',
     'mk.hero.fact1': '{n} industry editions', 'mk.hero.fact2': 'Sample data', 'mk.hero.fact3': 'Fully customizable',
@@ -105,13 +105,13 @@ export const dict: Dict = {
     'mk.rd.aside.look': 'Or look first', 'mk.rd.aside.lookP': 'The demo is open. There is nothing to fill in.',
   },
   es: {
-    'mk.title.home': 'Dirija todo su negocio desde un solo centro de mando', 'mk.title.pricing': 'Planes y precios', 'mk.title.request': 'Solicite una demo',
-    'mk.nav.label': 'Principal', 'mk.nav.home': 'Inicio', 'mk.nav.product': 'Producto', 'mk.nav.industries': 'Industrias', 'mk.nav.pricing': 'Precios', 'mk.nav.how': 'Cómo funciona',
+    'mk.title.home': 'El ERP con IA que dirige todo su negocio', 'mk.title.pricing': 'Planes y precios', 'mk.title.request': 'Solicite una demo',
+    'mk.nav.label': 'Principal', 'mk.nav.home': 'Inicio', 'mk.nav.product': 'Producto', 'mk.nav.industries': 'Industrias', 'mk.nav.integrations': 'Integraciones', 'mk.nav.pricing': 'Precios', 'mk.nav.how': 'Cómo funciona',
     'mk.nav.request': 'Solicitar una demo', 'mk.nav.demo': 'Explorar la demo', 'mk.nav.menu': 'Abrir el menú', 'mk.nav.close': 'Cerrar el menú',
     'mk.notFound': 'Esa página no existe. Esta es la página de inicio.',
     'mk.tok.job': '{job}', 'mk.tok.worker': '{worker}', 'mk.tok.jobs': '{jobs}', 'mk.tok.workers': '{workers}',
 
-    'mk.hero.h1a': 'Dirija todo su negocio desde un solo', 'mk.hero.h1b': 'centro de mando inteligente.',
+    'mk.hero.h1a': 'Dirija todo su negocio desde un solo', 'mk.hero.h1b': 'ERP con inteligencia\u00A0artificial.',
     'mk.hero.lede': 'Reúna prospectos, clientes, {jobs}, {workers}, tareas, documentos, agenda, comunicaciones, pagos y flujos de trabajo en un solo lugar, y deje que el trabajo repetitivo se haga solo.',
     'mk.cta.demo': 'Explorar la demo en vivo', 'mk.cta.pricing': 'Ver precios', 'mk.cta.request': 'Solicitar una demo',
     'mk.hero.fact1': '{n} ediciones por industria', 'mk.hero.fact2': 'Datos de ejemplo', 'mk.hero.fact3': 'Totalmente personalizable',

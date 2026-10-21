@@ -62,13 +62,25 @@ insert into test.mod_spec values
    $$insert into public.social_posts (tenant_id, text) values ({t}, 'Matrix post')$$),
   -- the consent switch per number (0048): read with "comms", written by the server only (a STOP is a fact a provider reports)
   ('messaging_consents', '{comms}', null, null, null),
+  -- the shop floor (0063). A chair is read and its status set by people who work appointments, added and paid by the
+  -- people who change configuration: checked by hand below.
+  ('chairs', '{appointments}', null, null, null),
+  ('pass_plans', '{clients}', '{catalog}', '{catalog,delete}',
+   $$insert into public.pass_plans (tenant_id, kind, name, price, visits) values ({t}, 'membership', 'Matrix plan', 10, 1)$$),
+  ('passes', '{clients}', '{clients}', '{clients,delete}',
+   $$insert into public.passes (tenant_id, kind, client_id, visits_left, sold) values ({t}, 'package', {c1}, 3, '{"amount":10,"method":"cash"}')$$),
+  ('walkins', '{appointments}', '{appointments}', '{appointments,delete}',
+   $$insert into public.walkins (tenant_id, ticket, name) values ({t}, 9, 'Matrix guest')$$),
+  -- written once per barber and week, never changed or removed
+  ('payouts', '{payroll}', '{payroll}', null,
+   $$insert into public.payouts (tenant_id, member_id, period_from, period_to, services, share, tips, rent, amount, visits, method) select {t}, {m_staff}, w, w + 6, 0, 0, 0, 0, 0, 0, 'cash' from (select date_trunc('week', current_date)::date - 7 * (100 + (random() * 20000)::int) as w) x$$),
   -- read by rules of their own (a person's own rows, or the people who decide): checked by hand below
   ('access_requests', null, null, null, null),
   ('access_grants', null, null, null, null),
   ('reveal_requests', null, null, null, null),
   ('secure_access_log', null, null, null, null);
 
-select test.ok((select count(*) = 26 from test.mod_spec) and not exists (
+select test.ok((select count(*) = 31 from test.mod_spec) and not exists (
     select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind = 'r' and c.relname not in (select relname from test.core_tables) and c.relname not in (select rel from test.mod_spec)),
   'the matrix names every module table') \g /dev/null
@@ -113,13 +125,13 @@ begin
         if r.ins is not null then
           res := test.as(who, test.mod_sql(r.ins, p));
           perform test.is(res, case when can_write then 'rows:1' else 'error:42501' end, format('%s: %s %s insert', r.rel, who, case when can_write then 'may' else 'cannot' end));
-        elsif r.rel <> 'access_requests' then   -- (a person files their own request: checked by hand below)
+        elsif r.rel not in ('access_requests', 'chairs') then   -- (a person files their own request; chairs: checked by hand below)
           perform test.ok(not has_table_privilege('authenticated', ('public.' || r.rel)::regclass, 'INSERT') and not has_any_column_privilege('authenticated', ('public.' || r.rel)::regclass, 'INSERT'),
             format('%s: no signed-in person holds an insert privilege (%s as %s)', r.rel, p, who));
         end if;
 
         -- update (a change that changes nothing still has to pass the rule)
-        if has_update then
+        if has_update and r.rel <> 'chairs' then
           res := test.as(who, format('update public.%I set extra = extra where tenant_id = %L', r.rel, t));
           if can_write or (r.rel = 'cash_closes' and array['cash', 'write'] <@ perms) then
             perform test.ok(res like 'rows:%' and res <> 'rows:0', format('%s: %s may update (%s)', r.rel, who, res));
@@ -129,7 +141,11 @@ begin
         end if;
 
         -- delete: one fresh row made by the test runner, then the person tries to remove exactly that row
-        if r.ins is not null then
+        if r.rel = 'payouts' then
+          -- append only, for everyone: nobody removes a payout (the rows written above stay, each for a week long past)
+          res := test.as(who, format('delete from public.payouts where tenant_id = %L', t));
+          perform test.ok(test.blocked(res), format('%s: %s cannot delete (%s)', r.rel, who, res));
+        elsif r.ins is not null then
           execute test.mod_sql(r.ins, p) || ' returning id' into made;
           res := test.as(who, format('delete from public.%I where id = %L', r.rel, made));
           if can_del then perform test.is(res, 'rows:1', format('%s: %s may delete', r.rel, who));
@@ -140,12 +156,12 @@ begin
         n := n + 1;
       end loop;
       -- what the people who may write left behind goes away again, so the later files start from the sample rows
-      if r.ins is not null then
+      if r.ins is not null and r.rel <> 'payouts' then
         execute format('delete from public.%I where tenant_id = %L and created_at >= $1 and id not in (select id from test.ids)', r.rel, t) using transaction_timestamp();
       end if;
     end loop;
   end loop;
-  perform test.ok(n = 2 * 26 * 9, format('the matrix covered 26 tables, 9 people and 2 editions (%s passes)', n));
+  perform test.ok(n = 2 * 31 * 9, format('the matrix covered 31 tables, 9 people and 2 editions (%s passes)', n));
 end $$;
 
 -- Controls: the matrix above really tells roles apart in both editions.
@@ -154,6 +170,18 @@ select test.ok('cash' = any (test.perms('m_staff', 'm')) and not 'cash' = any (t
   'control: the two editions give the same role different capabilities (cash for a practice associate, every client for a field manager)') \g /dev/null
 select test.ok(test.perms('m_w1', 'm') = '{}' and test.perms('m_disabled', 'm') = '{}' and test.perms('b_owner', 'm') = '{}',
   'control: a field worker, a disabled member and the owner of another company hold nothing here') \g /dev/null
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- Chairs: the floor sets a chair's status; adding a chair and changing its barber or pay is configuration
+-- ---------------------------------------------------------------------------------------------------------------------
+select test.matrix('setting the status of the chairs of company M', format($q$update public.chairs set status = 'open' where tenant_id = %L$q$, test.id('m')),
+  'm_owner=rows:2 m_manager=rows:2 m_staff=rows:2 m_readonly=rows:0 m_w1=rows:0 m_disabled=rows:0 b_owner=rows:0 nobody=rows:0 anon=error:42501') \g /dev/null
+select test.matrix('changing the split of a chair of company M', format($q$update public.chairs set split = 55 where tenant_id = %L and pay = 'commission'$q$, test.id('m')),
+  'm_manager=error:42501 m_staff=error:42501 m_readonly=rows:0 b_owner=rows:0 m_owner=rows:1') \g /dev/null
+select test.matrix('adding a chair to company M', format($q$insert into public.chairs (tenant_id, label) values (%L, 'Matrix chair')$q$, test.id('m')),
+  'm_manager=error:42501 m_staff=error:42501 m_readonly=error:42501 b_owner=error:42501 anon=error:42501 m_owner=rows:1') \g /dev/null
+select test.matrix('removing that chair', format($q$delete from public.chairs where tenant_id = %L and label = 'Matrix chair'$q$, test.id('m')),
+  'm_manager=rows:0 m_staff=rows:0 b_owner=rows:0 m_owner=rows:1') \g /dev/null
 
 -- ---------------------------------------------------------------------------------------------------------------------
 -- The four tables with a rule of their own

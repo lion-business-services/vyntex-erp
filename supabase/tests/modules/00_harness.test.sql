@@ -137,14 +137,14 @@ begin
   foreach p in array array['m', 'n'] loop
     perform test.seed_access(p); perform test.seed_catalog(p); perform test.seed_appointments(p); perform test.seed_vault(p);
     perform test.seed_documents(p); perform test.seed_cash(p); perform test.seed_rules(p); perform test.seed_sales(p);
-    perform test.seed_messaging(p);
+    perform test.seed_messaging(p); perform test.seed_shop(p);
   end loop;
 end $$;
 
 select test.begin_section('30. module harness') \g /dev/null
-select test.ok((select count(*) = 26 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+select test.ok((select count(*) = 31 from pg_class c join pg_namespace n on n.oid = c.relnamespace
                 where n.nspname = 'public' and c.relkind = 'r' and c.relname not in (select relname from test.core_tables)),
-  'the module range adds 26 tables to public (25 module tables and the consent switch of 0048)') \g /dev/null
+  'the module range adds 31 tables to public (25 module tables, the consent switch of 0048 and the 5 shop floor tables of 0063)') \g /dev/null
 select test.is((select coalesce(string_agg(name, ', ' order by name), '') from (select distinct name from app.ws_collections where kind = 'pending') w), '',
   'every collection is built: no placeholder is left ("connections" is a real, read-only collection since 0048b)') \g /dev/null
 select test.ok(not exists (

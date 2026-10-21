@@ -5,12 +5,16 @@
   "outputDirectory": "dist",
   "cleanUrls": false,
   "trailingSlash": false,
-     "functions": {
-     "api/*.js": {
-       "maxDuration": 60
-     }
-   },
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
+    {
+      "source": "/api/admin/:path*",
+      "destination": "/api/admin?vxpath=:path*"
+    },
     {
       "source": "/api/auth/:path*",
       "destination": "/api/auth?vxpath=:path*"

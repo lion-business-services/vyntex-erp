@@ -25,6 +25,7 @@ const PricingPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === '
 const RequestDemoPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/marketing').then((m) => ({ default: m.RequestDemoPage })));
 const Tour = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/tour').then((m) => ({ default: m.Tour })));
 const SignIn = lazy(() => import('@/features/auth').then((m) => ({ default: m.SignIn })));
+const AdminPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/admin'));
 const LiveGate = lazy(() => import('@/features/auth').then((m) => ({ default: m.LiveGate })));
 const LiveChrome = lazy(() => import('@/features/auth').then((m) => ({ default: m.LiveChrome })));
 const Invite = lazy(() => import('@/features/auth').then((m) => ({ default: m.Invite })));
@@ -102,6 +103,7 @@ export function App() {
   // else (nobody signed in, another company, an address that is no company at all) is the same sign-in page. The address
   // stays as it is, so signing in leads back to the page that was asked for. The sample controls never appear here.
   else if (ws.mode === 'workspace') page = isLive() && who?.slug === ws.slug ? <><Workspace /><Suspense fallback={null}><LiveChrome /></Suspense></> : <LiveGate slug={ws.slug} />;
+  else if (top === 'admin' && AdminPage) page = <AdminPage />;
   else if (top === 'signin') page = <SignIn />;
   else if (top === 'invite') page = <Invite token={route.parts[1]} />;
   else if (top === 'reset-password') page = <ResetPassword />;

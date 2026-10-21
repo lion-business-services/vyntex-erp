@@ -13,7 +13,8 @@ import { act, getSnapshot } from '@/store/store';
 import { Badge, Button, Card, IconButton, Menu, Note, PageHeader, Seg, confirmDialog, cx, toast } from '@/ui';
 import { DemoTag, PlanBadge, CanWrite } from '@/app/shared';
 import { ALWAYS_ON, RULES } from '@/domain/automations';
-import { createLead } from '@/domain/actions';
+import { convertLead, createLead } from '@/domain/actions';
+import { useDemoLinks } from '@/platform/demo-links';
 import { effectiveRules, isRuleOn, ruleChanged, shippedRule, shippedRules } from '@/domain/rules/engine';
 import { deleteRule, duplicateRule, resetRule, setRuleActive } from '@/domain/rules/manage';
 import { eventDef, type EventGroup } from '@/domain/rules/fields';
@@ -79,8 +80,8 @@ export default function AutomationsPage({ id, sub }: PageProps) {
 
 function RulesPage() {
   const app = useApp();
-  const { t, data, pack, lang, can, standing, date, dateTime } = app;
-  const [fresh, setFresh] = useState<{ leadId: string; name: string; ran: boolean; tick: number } | null>(null);
+  const { t, data, pack, lang, can, standing, date, dateTime, live } = app;
+  const [fresh, setFresh] = useState<{ leadId: string; name: string; ran: boolean; tick: number; won?: boolean } | null>(null);
   const [all, setAll] = useState(false);
   const [group, setGroup] = useState<EventGroup | 'all'>('all');
   const freshRef = useRef<HTMLLIElement | null>(null);
@@ -131,6 +132,16 @@ function RulesPage() {
     const ran = getSnapshot().data.automation.runs.some((r) => r.ref?.type === 'lead' && r.ref.id === lead.id);
     setFresh((was) => ({ leadId: lead.id, name: lead.name, ran, tick: (was?.tick ?? 0) + 1 }));
     toast(t(ran ? 'auto.try.done' : 'auto.try.off', { lead: lead.name }));
+  };
+  // the next step of the demo: win the sample lead, so the won-lead rules and the connected apps run on it too
+  const links = useDemoLinks();
+  const googleOn = Object.keys(links).length > 0;
+  const winIt = () => {
+    if (!fresh) return;
+    const job = act(convertLead, fresh.leadId);
+    if (!job) return;
+    setFresh((was) => (was ? { ...was, tick: was.tick + 1, won: true } : was));
+    toast(t('auto.try.wonDone', { lead: fresh.name }));
   };
   useEffect(() => { if (fresh?.ran) freshRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, [fresh]);
 
@@ -238,6 +249,10 @@ function RulesPage() {
               <CanWrite><Button variant="primary" icon={<LuUserPlus aria-hidden="true" />} onClick={tryIt} data-testid="auto-try">{t(fresh ? 'auto.try.again' : 'auto.tryLead')}</Button></CanWrite>
               {fresh && data.leads.some((l) => l.id === fresh.leadId) && <A to={`/leads/${fresh.leadId}`} className="btn" data-testid="auto-try-open">{t('auto.try.open', { lead: fresh.name.split(' ')[0] })}</A>}
             </div>
+            {fresh && !fresh.won && data.leads.some((l) => l.id === fresh.leadId && !l.jobId) && (
+              <CanWrite><Button icon={<LuZap aria-hidden="true" />} onClick={winIt} data-testid="auto-try-win">{t('auto.try.win', { lead: fresh.name.split(' ')[0] })}</Button></CanWrite>
+            )}
+            {!live && <p className="xs auto-try-apps">{googleOn ? t('auto.try.appsOn', { n: Object.keys(links).length }) : <>{t('auto.try.appsOff')} <A to="/integrations" data-testid="auto-try-apps">{t('auto.try.appsLink')}</A></>}</p>}
             {fresh && !fresh.ran && <p className="small auto-try-off" role="status">{t('auto.try.off', { lead: fresh.name })}</p>}
           </Card>
 

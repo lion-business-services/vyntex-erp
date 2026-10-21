@@ -13,14 +13,16 @@ import { Badge, cx } from '@/ui';
 import { DemoLink, Head } from './shared';
 import './automation.css';
 
-/** The three rules that tell the story of a job: a lead arrives, the lead is won, the work is finished. */
+/** The rules that tell the story of a job: a lead arrives, the lead is won, the work is finished, and the connected apps. */
 const SHOWN = ['lead-intake', 'lead-won', 'job-completed'];
+/** A shipped rule that is plain data (src/packs/connected-rules.ts), worded for this section like the coded ones. */
+const CONNECTED = { id: 'connected-won', thens: 5, entitlement: undefined };
 
 export function AutomationSection() {
   const { t, pack, lang } = useApp();
   const reduced = usePrefersReducedMotion();
   const { ref, seen, visible } = useInView<HTMLDivElement>('0px 0px -18% 0px');
-  const rules = SHOWN.map((id) => RULES.find((r) => r.id === id)).filter((r): r is (typeof RULES)[number] => !!r);
+  const rules: { id: string; thens: number; entitlement?: (typeof RULES)[number]['entitlement'] }[] = [...SHOWN.map((id) => RULES.find((r) => r.id === id)).filter((r): r is (typeof RULES)[number] => !!r), CONNECTED];
   // the won-lead rule opens the section: it is the one that touches the most records
   const [pick, setPick] = useState({ id: (rules.find((r) => r.id === 'lead-won') ?? rules[0])?.id ?? '', n: 0 });
   const rule = rules.find((r) => r.id === pick.id) ?? rules[0];
@@ -33,7 +35,7 @@ export function AutomationSection() {
   const s = rule.entitlement ? standing(rule.entitlement, pack.id, 0) : null;
   const fromPlan = s && s.state === 'upgrade' && s.plan ? planName(s.plan, lang) : null;
   const planNote = fromPlan && rule.entitlement === 'clientEmails' && has('auto.needsPlan') ? t('auto.needsPlan', { plan: fromPlan }) : null;
-  const total = RULES.filter((r) => r.id !== 'compliance-watch' || pack.compliance).length + (pack.recurring ? ALWAYS_ON.length : 0);
+  const total = pack.rules.filter((r) => r.id !== 'compliance-watch' || pack.compliance).length + (pack.recurring ? ALWAYS_ON.length : 0);
   const state = reduced ? 'static' : seen ? 'run' : 'idle';
 
   return (
@@ -77,7 +79,7 @@ export function AutomationSection() {
             </div>
           </div>
           <div className="mks-au-foot">
-            <p className="mks-au-honest"><LuMailCheck aria-hidden="true" />{t('mk.s.au.honest')}</p>
+            <p className="mks-au-honest"><LuMailCheck aria-hidden="true" />{t(rule.id === CONNECTED.id ? 'mk.s.au.honestApps' : 'mk.s.au.honest')}</p>
           </div>
         </div>
       </Reveal>

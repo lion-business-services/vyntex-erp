@@ -157,9 +157,9 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
               ? (app.lang === 'es' ? `${trialDays === 1 ? 'Queda 1 día' : `Quedan ${trialDays} días`} de su prueba gratuita` : `${trialDays} ${trialDays === 1 ? 'day' : 'days'} left in your free trial`)
               : (app.lang === 'es' ? 'Su prueba gratuita terminó' : 'Your free trial has ended')}</strong>
             <span>{trialDays > 0
-              ? (app.lang === 'es' ? 'Explore su espacio de trabajo y conecte los servicios que autorice.' : 'Explore your workspace and connect your approved services.')
-              : (app.lang === 'es' ? 'Llame a VYNTEX al 609-780-3218 para elegir un plan. Sus datos se conservan.' : 'Call VYNTEX at 609-780-3218 to choose a plan. Your data is kept.')}</span>
-            <Link to="/pricing">{app.lang === 'es' ? 'Ver planes' : 'View plans'} →</Link>
+              ? (app.lang === 'es' ? 'Elija un plan cuando quiera: todo lo que configure se conserva.' : 'Choose a plan whenever you are ready: everything you set up is kept.')
+              : (app.lang === 'es' ? 'Elija un plan para seguir trabajando. Sus datos se conservan.' : 'Choose a plan to keep working. Your data is kept.')}</span>
+            <A to="/settings/billing" data-testid="trial-choose-plan">{app.lang === 'es' ? 'Elegir un plan' : 'Choose a plan'} →</A>
           </div>}
           {children}
         </main>

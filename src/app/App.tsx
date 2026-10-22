@@ -31,7 +31,6 @@ const LiveChrome = lazy(() => import('@/features/auth').then((m) => ({ default: 
 const Invite = lazy(() => import('@/features/auth').then((m) => ({ default: m.Invite })));
 const ResetPassword = lazy(() => import('@/features/auth').then((m) => ({ default: m.ResetPassword })));
 const Mfa = lazy(() => import('@/features/auth').then((m) => ({ default: m.Mfa })));
-const TrialSignup = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/auth/trial'));
 const SignPage = lazy(() => import('@/features/public').then((m) => ({ default: m.SignPage })));
 const ReviewPage = lazy(() => import('@/features/public').then((m) => ({ default: m.ReviewPage })));
 // the moving day ground of the public pages (ui/DayBackdrop.tsx); the LBS deployment keeps its own ground and leaves it out
@@ -106,7 +105,6 @@ export function App() {
   else if (ws.mode === 'workspace') page = isLive() && who?.slug === ws.slug ? <><Workspace /><Suspense fallback={null}><LiveChrome /></Suspense></> : <LiveGate slug={ws.slug} />;
   else if (top === 'admin' && AdminPage) page = <AdminPage />;
   else if (top === 'signin') page = <SignIn />;
-  else if (top === 'signup' && TrialSignup) page = <TrialSignup />;
   else if (top === 'invite') page = <Invite token={route.parts[1]} />;
   else if (top === 'reset-password') page = <ResetPassword />;
   else if (top === 'mfa') page = <Mfa />;
@@ -115,7 +113,8 @@ export function App() {
   else if (LandingPage && PricingPage && RequestDemoPage) {
     if (top === '') page = <Sales><LandingPage /></Sales>;
     else if (top === 'pricing') page = <Sales><PricingPage /></Sales>;
-    else if (top === 'request-demo') page = <Sales><RequestDemoPage /></Sales>;
+    // trials are given by VYNTEX through an invitation: an old /signup link lands on the request form
+    else if (top === 'request-demo' || top === 'signup') page = <Sales><RequestDemoPage /></Sales>;
     else page = <Sales><LandingPage notFound /></Sales>;
   }
   // a deployment without sales pages: its home page is the sign-in page

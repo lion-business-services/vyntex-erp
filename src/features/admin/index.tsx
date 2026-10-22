@@ -4,7 +4,7 @@
 // workspace. Everything is decided by the server and the database (api/admin.js, 0061_operator_console.sql): this page
 // only asks. Only people the database lists as operators get past the first answer, and only after the second sign-in step.
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { LuBuilding2, LuCircleCheck, LuCopy, LuExternalLink, LuLogOut, LuMailCheck, LuPause, LuPlay, LuPlus, LuRefreshCw, LuSend, LuShieldCheck } from 'react-icons/lu';
+import { LuBuilding2, LuCircleCheck, LuCopy, LuCreditCard, LuExternalLink, LuLogOut, LuMailCheck, LuPause, LuPlay, LuPlus, LuRefreshCw, LuSend, LuShieldCheck } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Link } from '@/app/router';
 import { Lockup } from '@/brand';
@@ -41,8 +41,12 @@ export function slugProblem(slug: string, taken: string[]): '' | 'short' | 'form
   if (taken.includes(slug)) return 'taken';
   return '';
 }
+const TRIAL = (lang: Lang) => ({ id: 'trial', label: lang === 'es' ? 'Prueba de 7 días (sin costo, solo por invitación)' : '7-day trial (free, invitation only)' });
 const planOptions = (industry: IndustryId, lang: Lang) =>
-  isPriced(industry) ? plansFor(industry).map((p) => ({ id: p.id, label: `${planName(p, lang)} · ${money(p.monthly)}${lang === 'es' ? '/mes' : '/mo'}` })) : [{ id: 'quoted', label: lang === 'es' ? 'Cotizado' : 'Quoted' }];
+  [...(isPriced(industry) ? plansFor(industry).map((p) => ({ id: p.id, label: `${planName(p, lang)} · ${money(p.monthly)}${lang === 'es' ? '/mes' : '/mo'}` })) : [{ id: 'quoted', label: lang === 'es' ? 'Cotizado' : 'Quoted' }]), TRIAL(lang)];
+
+interface BillingRow { tenant_id: string; billing_status: string | null; billing: string | null; current_period_end: string | null; grace_until: string | null; trial_expires_at: string | null; paid_cents: number; open_checkout: string | null }
+interface BillingOverview { companies: BillingRow[]; available: boolean; mode: 'test' | 'live' | null; webhook: boolean }
 
 type Gate = { at: 'checking' } | { at: 'signin' } | { at: 'mfa' } | { at: 'denied' } | { at: 'ready'; email: string } | { at: 'offline' };
 
@@ -89,7 +93,7 @@ export default function AdminPage() {
 /** A plan id as people read it: the plan's name from the pricing file, or the id itself when it is not there. */
 function planLabel(industry: string, id: string, lang: Lang): string {
   const p = PACK_LIST.some((x) => x.id === industry) ? plansFor(industry as IndustryId).find((x) => x.id === id) : undefined;
-  return p ? planName(p, lang) : id === 'quoted' ? (lang === 'es' ? 'Cotizado' : 'Quoted') : id;
+  return p ? planName(p, lang) : id === 'quoted' ? (lang === 'es' ? 'Cotizado' : 'Quoted') : id === 'trial' ? (lang === 'es' ? 'Prueba de 7 días' : '7-day trial') : id;
 }
 
 function Console() {
@@ -100,17 +104,25 @@ function Console() {
   const [done, setDone] = useState<Created | null>(null);
   const [inviting, setInviting] = useState<AdminCompany | null>(null);
   const [q, setQ] = useState('');
+  const [bill, setBill] = useState<BillingOverview | null>(null);
+  const [paying, setPaying] = useState<AdminCompany | null>(null);
 
   const load = useCallback(async () => {
-    const a = await get<{ companies: AdminCompany[] }>('/api/admin/companies', { session: true });
+    const [a, b] = await Promise.all([
+      get<{ companies: AdminCompany[] }>('/api/admin/companies', { session: true }),
+      get<BillingOverview>('/api/billing/operator', { session: true, passive: true }),
+    ]);
     if (a.ok) { setList(a.data.companies); setFailed(false); } else setFailed(true);
+    if (b.ok) setBill(b.data);
   }, []);
+  const billOf = (id: string) => bill?.companies.find((x) => x.tenant_id === id) ?? null;
   useEffect(() => { void load(); }, [load]);
 
   const stats = useMemo(() => {
     const l = list ?? [];
-    return { total: l.length, active: l.filter((c) => c.status === 'active' && c.owner).length, waiting: l.filter((c) => !c.owner && c.status !== 'closed').length, paused: l.filter((c) => c.status === 'suspended').length };
-  }, [list]);
+    const paying = (bill?.companies ?? []).filter((x) => x.billing_status === 'active' || x.billing_status === 'trialing').length;
+    return { total: l.length, active: l.filter((c) => c.status === 'active' && c.owner).length, waiting: l.filter((c) => !c.owner && c.status !== 'closed').length, paused: l.filter((c) => c.status === 'suspended').length, paying };
+  }, [list, bill]);
   const shown = (list ?? []).filter((c) => !q.trim() || `${c.name} ${c.slug} ${c.owner?.email ?? ''} ${c.invitation?.email ?? ''}`.toLowerCase().includes(q.trim().toLowerCase()));
 
   const setStatus = async (c: AdminCompany, status: 'active' | 'suspended') => {
@@ -137,7 +149,10 @@ function Console() {
         <div className="card adm-stat"><span>{t('admin.stat.active')}</span><b>{stats.active}</b></div>
         <div className="card adm-stat"><span>{t('admin.stat.waiting')}</span><b>{stats.waiting}</b></div>
         <div className="card adm-stat"><span>{t('admin.stat.paused')}</span><b>{stats.paused}</b></div>
+        <div className="card adm-stat"><span>{t('admin.stat.paying')}</span><b data-testid="admin-stat-paying">{stats.paying}</b></div>
       </div>
+      {bill && !bill.available && <p className="small muted adm-note" data-testid="admin-billing-off">{t('admin.bill.off')}</p>}
+      {bill?.available && bill.mode === 'test' && <p className="small muted adm-note" data-testid="admin-billing-test">{t('admin.bill.test')}</p>}
 
       <Card flush title={t('admin.list')} actions={<div className="adm-search"><SearchBox value={q} onChange={setQ} placeholder={t('admin.search')} label={t('admin.search')} /></div>}>
         {failed ? <div className="adm-pad"><p role="alert">{t('admin.loadFailed')}</p><Button onClick={() => void load()}>{t('admin.retry')}</Button></div>
@@ -146,7 +161,7 @@ function Console() {
           : (
             <div className="table-wrap">
               <table className="tbl adm-table" data-testid="admin-table">
-                <thead><tr><th>{t('admin.col.company')}</th><th>{t('admin.col.edition')}</th><th>{t('admin.col.owner')}</th><th>{t('admin.col.status')}</th><th className="adm-actions-h"><span className="sr">{t('admin.col.actions')}</span></th></tr></thead>
+                <thead><tr><th>{t('admin.col.company')}</th><th>{t('admin.col.edition')}</th><th>{t('admin.col.owner')}</th><th>{t('admin.col.status')}</th><th>{t('admin.col.billing')}</th><th className="adm-actions-h"><span className="sr">{t('admin.col.actions')}</span></th></tr></thead>
                 <tbody>
                   {shown.map((c) => {
                     const pack = PACK_LIST.find((p) => p.id === c.industry);
@@ -163,11 +178,13 @@ function Console() {
                           <Badge tone={c.status === 'suspended' ? 'warn' : c.owner ? 'ok' : 'accent'}>{t(c.status === 'suspended' ? 'admin.st.paused' : c.owner ? 'admin.st.live' : 'admin.st.waiting')}</Badge>
                           <br /><span className="xs dim">{t('admin.since', { date: dateTime(c.created_at) })}</span>
                         </td>
+                        <td data-testid="admin-billing"><BillingCell company={c} b={billOf(c.id)} /></td>
                         <td className="adm-actions">
                           {!c.owner && c.status !== 'closed' && <Button size="sm" icon={<LuSend />} onClick={() => setInviting(c)} data-testid="admin-reinvite">{t('admin.reinvite')}</Button>}
                           {c.status === 'suspended'
                             ? <Button size="sm" icon={<LuPlay />} onClick={() => void setStatus(c, 'active')} data-testid="admin-resume">{t('admin.resume')}</Button>
                             : <Button size="sm" variant="ghost" icon={<LuPause />} onClick={() => void setStatus(c, 'suspended')} data-testid="admin-pause">{t('admin.pause')}</Button>}
+                          {bill?.available && c.status !== 'closed' && !['active', 'trialing', 'past_due', 'unpaid'].includes(billOf(c.id)?.billing_status ?? '') && <Button size="sm" variant="ghost" icon={<LuCreditCard />} onClick={() => setPaying(c)} data-testid="admin-paylink">{t('admin.pay.open')}</Button>}
                         </td>
                       </tr>
                     );
@@ -183,6 +200,7 @@ function Console() {
       {creating && <NewCompany taken={(list ?? []).map((c) => c.slug)} onClose={() => setCreating(false)} onDone={(c) => { setCreating(false); setDone(c); void load(); }} />}
       {inviting && <Reinvite company={inviting} onClose={() => setInviting(null)} onDone={(c) => { setInviting(null); setDone(c); void load(); }} />}
       {done && <Result created={done} onClose={() => setDone(null)} />}
+      {paying && <PaymentLink company={paying} onClose={() => { setPaying(null); void load(); }} />}
     </>
   );
 }
@@ -210,7 +228,7 @@ function NewCompany({ taken, onClose, onDone }: { taken: string[]; onClose: () =
     setBusy(false);
     if (a.ok) { onDone({ name: f.name.trim(), slug: a.data.company.slug, link: a.data.link, address: a.data.address, delivery: a.data.delivery, email: f.ownerEmail.trim(), lang: f.lang }); return; }
     const reason = String((a.data as { reason?: string }).reason || '');
-    setErr(a.code === 'conflict' ? t('admin.slug.taken') : t(reason && t('admin.err.' + reason) !== 'admin.err.' + reason ? 'admin.err.' + reason : 'admin.err.generic'));
+    setErr(reason && t('admin.err.' + reason) !== 'admin.err.' + reason ? t('admin.err.' + reason) : a.code === 'conflict' ? t('admin.slug.taken') : t('admin.err.generic'));
   };
 
   return (
@@ -238,6 +256,7 @@ function NewCompany({ taken, onClose, onDone }: { taken: string[]; onClose: () =
               {plans.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </Field>
+          {plan === 'trial' && <p className="small muted full" data-testid="admin-f-trial-note">{t('admin.form.trial')}</p>}
           <Field label={t('admin.f.ownerName')} htmlFor="adm-oname" error={tried && !f.ownerName.trim()}>
             <input id="adm-oname" value={f.ownerName} maxLength={200} autoComplete="off" onChange={(e) => set({ ownerName: e.target.value })} data-testid="admin-f-owner-name" />
           </Field>
@@ -325,3 +344,105 @@ function Result({ created, onClose }: { created: Created; onClose: () => void })
   );
 }
 
+
+/* ---------- billing of a company, seen by an operator ---------- */
+function BillingCell({ company, b }: { company: AdminCompany; b: BillingRow | null }) {
+  const { t, dateTime } = useApp();
+  const st = b?.billing_status ?? null;
+  if (st && st !== 'none' && st !== 'canceled' && st !== 'incomplete_expired') {
+    const tone = st === 'active' || st === 'trialing' ? 'ok' : st === 'incomplete' ? 'info' : 'bad';
+    return <><Badge tone={tone}>{t('bill.st.' + st)}</Badge>
+      {b?.grace_until && <><br /><span className="xs neg">{t('admin.bill.grace', { date: dateTime(b.grace_until) })}</span></>}
+      {!b?.grace_until && b?.current_period_end && <><br /><span className="xs dim">{t('admin.bill.renews', { date: dateTime(b.current_period_end) })}</span></>}
+      {!!b?.paid_cents && <><br /><span className="xs dim">{t('admin.bill.paid', { amount: money(b.paid_cents / 100) })}</span></>}</>;
+  }
+  if (company.plan === 'trial') {
+    const end = b?.trial_expires_at ?? null;
+    if (!end) return <Badge tone="accent">{t('admin.bill.trialWaiting')}</Badge>;
+    const left = Math.ceil((Date.parse(end) - Date.now()) / 86_400_000);
+    return <><Badge tone={left > 0 ? 'warn' : 'bad'}>{left > 0 ? t('admin.bill.trial', { n: left }) : t('admin.bill.trialEnded')}</Badge>{b?.open_checkout && <><br /><span className="xs dim">{t('admin.bill.linkOpen')}</span></>}</>;
+  }
+  return <><Badge tone="neutral">{t(st === 'canceled' ? 'bill.st.canceled' : 'admin.bill.none')}</Badge>{b?.open_checkout && <><br /><span className="xs dim">{t('admin.bill.linkOpen')}</span></>}</>;
+}
+
+/* ---------- a Stripe payment link for the owner ---------- */
+function PaymentLink({ company, onClose }: { company: AdminCompany; onClose: () => void }) {
+  const { t, lang, dateTime } = useApp();
+  const priced = PACK_LIST.some((p) => p.id === company.industry) && isPriced(company.industry as IndustryId);
+  const plans = priced ? plansFor(company.industry as IndustryId) : [];
+  const [plan, setPlan] = useState(plans.some((p) => p.id === company.plan) ? company.plan : (plans[1]?.id ?? plans[0]?.id ?? ''));
+  const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
+  const [c, setC] = useState({ recurring: '', interval: 'month' as 'month' | 'year', setup: '', label: '' });
+  const [l, setL] = useState<Lang>(lang);
+  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const [out, setOut] = useState<{ url: string; expiresAt: number; delivery: Created['delivery'] } | null>(null);
+  const chosen = plans.find((p) => p.id === plan);
+  const cents = (v: string) => { const n = Number(v.replace(/[$,\s]/g, '')); return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : NaN; };
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault(); setErr('');
+    let body: Record<string, unknown>;
+    if (priced) body = { tenant: company.id, plan, billing, lang: l };
+    else {
+      const rec = cents(c.recurring); const setup = c.setup.trim() ? cents(c.setup) : 0;
+      if (!Number.isInteger(rec) || rec < 100 || !Number.isInteger(setup)) { setErr(t('admin.pay.err.bad_amount')); return; }
+      body = { tenant: company.id, lang: l, custom: { recurringCents: rec, interval: c.interval, setupCents: setup, label: c.label.trim() || undefined } };
+    }
+    setBusy(true);
+    const a = await post<{ url: string; expiresAt: number; delivery: Created['delivery'] }>('/api/billing/operator/link', body, { session: true });
+    setBusy(false);
+    if (a.ok) { setOut(a.data); return; }
+    const k = 'admin.pay.err.' + a.code;
+    setErr(t(k) !== k ? t(k) : t('admin.err.generic'));
+  };
+  const copy = async () => { try { await navigator.clipboard.writeText(out!.url); toast(t('admin.copied', { what: t('admin.pay.link') })); } catch { toast(t('admin.copyFailed'), true); } };
+
+  return (
+    <Modal title={t('admin.pay.title', { name: company.name })} onClose={onClose} labelClose={t('common.cancel')}>
+      {out ? (
+        <div data-testid="admin-pay-done">
+          <p className="small" role="status">{t(out.delivery === 'sent' ? 'admin.pay.sent' : 'admin.pay.manual', { email: company.owner?.email ?? company.invitation?.email ?? '' })}</p>
+          <Field label={t('admin.pay.link')} htmlFor="adm-pay-url" hint={t('admin.pay.expires', { date: dateTime(new Date(out.expiresAt * 1000).toISOString()) })}>
+            <div className="row nowrap"><input id="adm-pay-url" readOnly value={out.url} data-testid="admin-pay-url" onFocus={(e) => e.currentTarget.select()} /><Button icon={<LuCopy />} onClick={() => void copy()}>{t('admin.copy')}</Button></div>
+          </Field>
+          <div className="row"><span className="grow" /><Button variant="primary" onClick={onClose}>{t('admin.done.close')}</Button></div>
+        </div>
+      ) : !company.owner ? (
+        <><p className="small" role="alert" data-testid="admin-pay-no-owner">{t('admin.pay.err.no_owner')}</p><div className="row"><span className="grow" /><Button onClick={onClose}>{t('admin.done.close')}</Button></div></>
+      ) : (
+        <form onSubmit={submit} noValidate data-testid="admin-pay-form">
+          <p className="small muted">{t('admin.pay.intro', { email: company.owner.email })}</p>
+          <div className="fgrid">
+            {priced ? <>
+              <Field label={t('admin.f.plan')} htmlFor="adm-pay-plan">
+                <select id="adm-pay-plan" value={plan} onChange={(e) => setPlan(e.target.value)} data-testid="admin-pay-plan">
+                  {plans.map((p) => <option key={p.id} value={p.id}>{planName(p, lang)}</option>)}
+                </select>
+              </Field>
+              <Field label={t('admin.pay.billing')} htmlFor="adm-pay-billing">
+                <select id="adm-pay-billing" value={billing} onChange={(e) => setBilling(e.target.value as 'monthly' | 'yearly')} data-testid="admin-pay-billing">
+                  <option value="monthly">{t('bill.monthly')}</option><option value="yearly">{t('bill.yearly')}</option>
+                </select>
+              </Field>
+              {chosen && <p className="small full" data-testid="admin-pay-summary">{t('admin.pay.summary', { recurring: money(billing === 'yearly' ? chosen.yearly : chosen.monthly), period: t(billing === 'yearly' ? 'bill.perYear' : 'bill.perMonth'), setup: money(chosen.setup), first: money(chosen.setup + (billing === 'yearly' ? chosen.yearly : chosen.monthly)) })}</p>}
+            </> : <>
+              <p className="small muted full">{t('admin.pay.quoted')}</p>
+              <Field label={t('admin.pay.recurring')} htmlFor="adm-pay-rec"><input id="adm-pay-rec" inputMode="decimal" value={c.recurring} onChange={(e) => setC({ ...c, recurring: e.target.value })} data-testid="admin-pay-recurring" /></Field>
+              <Field label={t('admin.pay.interval')} htmlFor="adm-pay-int">
+                <select id="adm-pay-int" value={c.interval} onChange={(e) => setC({ ...c, interval: e.target.value as 'month' | 'year' })}><option value="month">{t('bill.monthly')}</option><option value="year">{t('bill.yearly')}</option></select>
+              </Field>
+              <Field label={t('admin.pay.setup')} htmlFor="adm-pay-setup"><input id="adm-pay-setup" inputMode="decimal" value={c.setup} onChange={(e) => setC({ ...c, setup: e.target.value })} data-testid="admin-pay-setup" /></Field>
+              <Field label={t('admin.pay.label')} htmlFor="adm-pay-label"><input id="adm-pay-label" maxLength={120} value={c.label} onChange={(e) => setC({ ...c, label: e.target.value })} /></Field>
+            </>}
+            <Field label={t('admin.f.lang')} htmlFor="adm-pay-lang" full>
+              <select id="adm-pay-lang" value={l} onChange={(e) => setL(e.target.value as Lang)}><option value="en">English</option><option value="es">Español</option></select>
+            </Field>
+          </div>
+          <p className="xs dim">{t('admin.pay.note')}</p>
+          {err && <p className="small neg" role="alert" data-testid="admin-pay-error">{err}</p>}
+          <div className="row"><span className="grow" /><Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button><Button variant="primary" type="submit" disabled={busy} icon={<LuCreditCard />} data-testid="admin-pay-submit">{t(busy ? 'admin.pay.busy' : 'admin.pay.submit')}</Button></div>
+        </form>
+      )}
+    </Modal>
+  );
+}

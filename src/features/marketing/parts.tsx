@@ -108,16 +108,6 @@ export function MkHeader({ current }: { current: MkPageId }) {
   const compact = useNarrow(1239);
   const phone = useNarrow(700);
   const [open, setOpen] = useState(false);
-  // Avoid promising immediate trial access until the server has actually enabled onboarding.
-  const [trialAvailable, setTrialAvailable] = useState(false);
-  useEffect(() => {
-    let active = true;
-    void fetch('/api/auth/trial/status', { credentials: 'same-origin', cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : null)
-      .then((v) => { if (active) setTrialAvailable(v?.available === true); })
-      .catch(() => { if (active) setTrialAvailable(false); });
-    return () => { active = false; };
-  }, []);
   const close = () => setOpen(false);
   useEffect(() => { if (!compact) setOpen(false); }, [compact]);
   useEffect(() => {
@@ -144,7 +134,7 @@ export function MkHeader({ current }: { current: MkPageId }) {
   );
   const demo = <Link to="/demo" className="mk-top-demo" onClick={close} data-testid="mk-nav-demo">{t('mk.nav.demo')}</Link>;
   const request = (
-    <Link to={trialAvailable ? '/signup' : '/request-demo'} className="btn primary mk-top-cta" onClick={close} data-testid={trialAvailable ? 'mk-nav-trial' : 'mk-nav-request'}>{trialAvailable ? (lang === 'es' ? 'Prueba gratis · 7 días' : 'Free trial · 7 days') : t('mk.nav.request')}</Link>
+    <Link to="/request-demo" className="btn primary mk-top-cta" aria-current={current === 'request' ? 'page' : undefined} onClick={close} data-testid="mk-nav-request">{t('mk.nav.request')}</Link>
   );
 
   return (

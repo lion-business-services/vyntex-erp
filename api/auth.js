@@ -1,6 +1,6 @@
 // /api/auth/*: sign-in, the second sign-in step, fresh identity checks, sign-out, invitations and passwords.
 //
-// Public self-signup is supported through a verified one-time trial invitation. An account exists only because a member with the "users" capability invited that
+// There is NO sign-up route (a seven-day trial is given by VYNTEX through an operator invitation). An account exists only because a member with the "users" capability invited that
 // address (invite/accept below), or because the platform operator invited the first owner of a company.
 // The browser never talks to Supabase: it talks to these routes, and the Supabase tokens stay inside a sealed,
 // HttpOnly cookie (api/_lib/session.js).
@@ -34,7 +34,6 @@ import { sha256Hex, randomToken, sealWith, openWith, deriveKey } from './_lib/cr
 import { sendSystemEmail, resetEmail, emailConfigured } from './_lib/mail.js';
 import { need, secureCookies } from './_lib/env.js';
 import { randomBytes } from 'node:crypto';
-import { trialStatus, trialRequest } from './_lib/trial.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const CODE = /^\d{6}$/;
@@ -523,7 +522,6 @@ async function passwordUpdate(request) {
 // routing
 // ---------------------------------------------------------------------------------------------------------------------
 const POST_ROUTES = {
-  'trial/request': trialRequest,
   'signin': signin,
   'mfa/enroll': mfaEnroll,
   'mfa/confirm': mfaConfirm,
@@ -540,9 +538,8 @@ const POST_ROUTES = {
 
 const handle = entry('auth', async (request, path) => {
   if (path === 'session') return request.method === 'GET' ? getSession(request) : methodNotAllowed('GET');
-  if (path === 'trial/status') return request.method === 'GET' ? trialStatus() : methodNotAllowed('GET');
   const route = Object.hasOwn(POST_ROUTES, path) ? POST_ROUTES[path] : null;
-  // All unknown routes remain closed by default.
+  // Anything else does not exist. In particular there is no "signup", "register" or "users" route.
   if (!route) return fail(404, 'not_found');
   if (request.method !== 'POST') return methodNotAllowed('POST');
   return route(request);

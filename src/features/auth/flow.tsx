@@ -3,8 +3,7 @@
 // codes shown once, and, for someone who belongs to several companies, which one to open.
 // There is no sign-up anywhere in it: accounts are opened by invitation (src/features/auth/invite.tsx).
 // Each step asks the server and shows what the server said. Wrong email and wrong password read the same.
-import { useTrialAvailable } from './trial-status';
-import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { LuEye, LuEyeOff, LuCopy, LuDownload, LuCheck, LuBuilding2, LuArrowRight } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Link, SAMPLE_BASE, navigate } from '@/app/router';
@@ -19,11 +18,15 @@ import { openWorkspace } from '@/platform/live/workspace';
 import { AuthFrame } from './frame';
 import { qrPath } from './qr';
 
+// Read straight from the build constant so the bundler leaves billing out of a deployment without it.
+declare const __VX_DEPLOY__: string | undefined;
+const PausedBilling = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/billing/panel').then((m) => ({ default: m.BillingPanel })));
+
 type Stage =
   | { at: 'checking' } | { at: 'unconfigured' } | { at: 'offline' }
   | { at: 'form'; error?: string } | { at: 'forgot' }
   | { at: 'verify' } | { at: 'recovery' } | { at: 'enroll' } | { at: 'codes'; codes: string[]; email: string }
-  | { at: 'picker'; list: Membership[] } | { at: 'paused'; name: string };
+  | { at: 'picker'; list: Membership[] } | { at: 'paused'; name: string; tenantId: string; role: string };
 
 const quiet = { stepUp: false, session: false } as const;
 
@@ -293,11 +296,9 @@ function Picker({ list }: { list: Membership[] }) {
 /** The lines every sign-in page ends with: how accounts come to exist, and the way to the sample workspace when the build has one. */
 function Foot() {
   const { t } = useApp();
-  // the trial link shows only while the server has trials switched on; otherwise the page says accounts come by invitation
-  const trial = useTrialAvailable(DEPLOY.id === 'vyntex');
   return (
     <>
-      {trial ? <p className="auth-fine"><Link to="/signup" data-testid="auth-start-trial">{t('auth.trialSignup')}</Link></p> : <p className="auth-fine" data-testid="auth-invite-only">{t('auth.noSignup')}</p>}
+      <p className="auth-fine" data-testid="auth-invite-only">{t('auth.noSignup')}</p>
       {(SAMPLE_BASE || DEPLOY.marketing) && (
         <div className="auth-links">
           {SAMPLE_BASE && <Link to={SAMPLE_BASE} className="linkbtn" data-testid="auth-open-sample">{t(DEPLOY.publicDemo ? 'auth.openDemo' : 'auth.openPreview')}</Link>}
@@ -333,7 +334,7 @@ export function AuthFlow({ slug, onReady }: { slug?: string; /** A page that is 
     const list = usable(s);
     const mine = slug ? membershipFor(s, slug) : undefined;
     // a company VYNTEX has paused: say so, instead of a workspace that refuses every request
-    if (mine && mine.status === 'suspended') { show({ at: 'paused', name: mine.name }); return; }
+    if (mine && mine.status === 'suspended') { show({ at: 'paused', name: mine.name, tenantId: mine.tenantId, role: mine.role }); return; }
     if (slug && mine) {
       const gate = await openWorkspace(slug);
       if (gate.state === 'ready') return;   // the session is set: the page above draws the workspace
@@ -371,7 +372,10 @@ export function AuthFlow({ slug, onReady }: { slug?: string; /** A page that is 
     case 'codes': title = t('auth.codes.title'); sub = t('auth.codes.sub'); body = <RecoveryCodes codes={stage.codes} email={stage.email} onDone={() => { void advance(true); }} />; break;
     case 'paused':
       title = t('auth.paused.title');
-      body = <><div className="note warn" role="status" data-testid="auth-paused" tabIndex={-1} data-autofocus><p className="small">{t('auth.paused.body', { company: stage.name })}</p></div><div className="row"><Button onClick={() => { void other(); }}>{t('auth.paused.other')}</Button></div></>;
+      body = <><div className="note warn" role="status" data-testid="auth-paused" tabIndex={-1} data-autofocus><p className="small">{t('auth.paused.body', { company: stage.name })}</p></div>
+        {/* an owner or manager can see why and pay right here (VYNTEX ERP): the workspace opens as soon as Stripe confirms */}
+        {PausedBilling && (stage.role === 'owner' || stage.role === 'manager') && <Suspense fallback={null}><PausedBilling tenantId={stage.tenantId} compact /></Suspense>}
+        <div className="row"><Button onClick={() => { void other(); }}>{t('auth.paused.other')}</Button></div></>;
       break;
     case 'picker': title = t('auth.picker.title'); sub = t('auth.picker.sub'); body = <Picker list={stage.list} />; break;
   }

@@ -207,8 +207,11 @@ test('orders: from the accepted offer, idempotent; VYNTEX moves it; money needs 
 
 test('notifications go out through the outbox, and are marked sent only with the provider id', async () => {
   const before = S.mail.sent.length;
+  // the scheduled tick queues partner.notify once per five minutes; another test file on this database may already have
+  // used this window, so the job's own work (api/_lib/partners/jobs.js) is run directly here
   await S.cron('tick');
-  for (let i = 0; i < 3; i += 1) await S.cron('tick');
+  const { drainOutbox } = await import('../../api/_lib/partners/jobs.js');
+  await drainOutbox();
   const rows = await S.sql(String.raw`select '@@R@@' || jsonb_build_object('sent', (select count(*) from partner.notifications where status = 'sent' and provider_id like 'email_%'),
     'queued', (select count(*) from partner.notifications where status in ('queued', 'sending')))::text;`);
   assert.ok(rows.sent >= 3, JSON.stringify(rows));

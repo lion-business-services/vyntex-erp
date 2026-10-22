@@ -314,7 +314,7 @@ begin
       into v from partner.users u join partner.organizations o on o.id = u.partner_id
      where u.user_id = v_uid and u.status = 'active' and o.status = 'active';
   end if;
-  return coalesce(v, pg_catalog.jsonb_build_object('kind', null)) || pg_catalog.jsonb_build_object('aal', app.session_aal(), 'live', app.session_live());
+  return coalesce(v, pg_catalog.jsonb_build_object('kind', null)) || pg_catalog.jsonb_build_object('user_id', v_uid, 'aal', app.session_aal(), 'live', app.session_live());
 end
 $$;
 revoke all on function public.partner_context() from public, anon, service_role;

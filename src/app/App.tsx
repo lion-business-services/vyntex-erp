@@ -26,6 +26,9 @@ const RequestDemoPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ =
 const Tour = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/tour').then((m) => ({ default: m.Tour })));
 const SignIn = lazy(() => import('@/features/auth').then((m) => ({ default: m.SignIn })));
 const AdminPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/admin'));
+// The VYNTEX Partner Portal (/partners/*) and the client proposal page (/proposal/<token>): VYNTEX ERP only.
+const PartnersPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/partners'));
+const ProposalPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/partners/proposal'));
 const LiveGate = lazy(() => import('@/features/auth').then((m) => ({ default: m.LiveGate })));
 const LiveChrome = lazy(() => import('@/features/auth').then((m) => ({ default: m.LiveChrome })));
 const Invite = lazy(() => import('@/features/auth').then((m) => ({ default: m.Invite })));
@@ -95,7 +98,9 @@ export function App() {
   const top = route.parts[0] || '';
   const ws = workspaceOf(route.path);
   // every page, the sales pages included, follows the visitor's theme (day unless they picked night)
-  useEffect(() => { applyTheme(prefs.theme); }, [prefs.theme]);
+  // the Partner Portal and its proposals are dark on every device, whatever the visitor picked elsewhere
+  const portal = !!PartnersPage && (top === 'partners' || top === 'proposal');
+  useEffect(() => { applyTheme(portal ? 'dark' : prefs.theme); }, [prefs.theme, portal]);
   useEffect(() => { document.documentElement.lang = prefs.lang; }, [prefs.lang]);
 
   let page;
@@ -105,6 +110,8 @@ export function App() {
   // stays as it is, so signing in leads back to the page that was asked for. The sample controls never appear here.
   else if (ws.mode === 'workspace') page = isLive() && who?.slug === ws.slug ? <><Workspace /><Suspense fallback={null}><LiveChrome /></Suspense></> : <LiveGate slug={ws.slug} />;
   else if (top === 'admin' && AdminPage) page = <AdminPage />;
+  else if (top === 'partners' && PartnersPage) page = <PartnersPage />;
+  else if (top === 'proposal' && ProposalPage) page = <ProposalPage token={route.parts[1]} />;
   else if (top === 'signin') page = <SignIn />;
   else if (top === 'signup' && TrialSignup) page = <TrialSignup />;
   else if (top === 'invite') page = <Invite token={route.parts[1]} />;
@@ -121,6 +128,6 @@ export function App() {
   // a deployment without sales pages: its home page is the sign-in page
   else page = top === '' ? <SignIn /> : <NotFound />;
   // every page outside a workspace (sales, sign-in, invitations, signing) gets the living day ground; a workspace keeps a still one
-  const inWorkspace = ws.mode === 'demo' || (ws.mode === 'workspace' && isLive() && who?.slug === ws.slug);
+  const inWorkspace = ws.mode === 'demo' || (ws.mode === 'workspace' && isLive() && who?.slug === ws.slug) || portal;
   return <>{DAY_SKY && !inWorkspace && <DayBackdrop />}<Suspense fallback={<Loading />}>{page}</Suspense><Overlays /></>;
 }

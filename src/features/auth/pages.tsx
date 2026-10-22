@@ -23,7 +23,11 @@ function Unconfigured() {
 type InviteState = { at: 'checking' } | { at: 'unconfigured' } | { at: 'offline' } | { at: 'invalid' } | { at: 'form'; company: string; email: string; expiresAt: string } | { at: 'made' };
 
 /** `/invite/<token>`: the only way an account comes to exist. */
-export function Invite({ token: fromAddress }: { token?: string }) {
+/** A company invitation, or (kind 'partner') a VYNTEX Partner Portal invitation: same page, separate server routes. */
+export function Invite({ token: fromAddress, kind = 'company' }: { token?: string; kind?: 'company' | 'partner' }) {
+  const partner = kind === 'partner';
+  const route = partner ? '/api/auth/partner-invite' : '/api/auth/invite';
+  const home = partner ? '/partners/signin' : '/signin';
   const { t, dateTime } = useApp();
   // kept in memory; the address bar loses it right away
   // Also accept new trial links in the URL fragment: the token never travels in HTTP requests.
@@ -37,16 +41,16 @@ export function Invite({ token: fromAddress }: { token?: string }) {
 
   useEffect(() => {
     if (asked.current) return; asked.current = true;
-    if (fromAddress || window.location.hash.startsWith('#token=')) navigate('/invite', { replace: true });
+    if (fromAddress || window.location.hash.startsWith('#token=')) navigate(partner ? '/partners/invite' : '/invite', { replace: true });
     void (async () => {
       const there = await deploymentState();
       if (there !== 'yes') { setState({ at: there === 'no' ? 'unconfigured' : 'offline' }); return; }
       if (!TOKEN.test(token)) { setState({ at: 'invalid' }); return; }
-      const a = await post<{ company: string; emailHint: string; expiresAt: string }>('/api/auth/invite/check', { token }, quiet);
-      if (a.ok) setState({ at: 'form', company: a.data.company, email: a.data.emailHint, expiresAt: a.data.expiresAt });
+      const a = await post<{ company?: string; partner?: string; emailHint: string; expiresAt: string }>(route + '/check', { token }, quiet);
+      if (a.ok) setState({ at: 'form', company: (partner ? a.data.partner : a.data.company) || 'VYNTEX', email: a.data.emailHint, expiresAt: a.data.expiresAt });
       else setState({ at: a.status === 0 || a.status >= 500 ? 'offline' : 'invalid' });
     })();
-  }, [fromAddress, token]);
+  }, [fromAddress, token, partner, route]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -54,15 +58,18 @@ export function Invite({ token: fromAddress }: { token?: string }) {
     if (!existing && !name.trim()) { setError(t('auth.invite.nameRequired')); document.getElementById(id + 'n')?.focus(); return; }
     if (!existing && password !== again) { setError(t('auth.invite.mismatch')); document.getElementById(id + 'a')?.focus(); return; }
     setBusy(true); setError('');
-    const a = await post<{ signedIn: boolean; slug: string }>('/api/auth/invite/accept', { token, password, name: name.trim() }, quiet);
+    const a = await post<{ signedIn: boolean; slug: string }>(route + '/accept', { token, password, name: name.trim() }, quiet);
     if (a.ok) {
       if (!a.data.signedIn) { setState({ at: 'made' }); return; }
+      // a partner account goes to the portal, which asks for the authenticator app first
+      if (partner) { navigate('/partners', { replace: true }); return; }
       // signed in: the company's address opens the workspace, or asks for the second step first when the role needs one
       navigate(DEPLOY.liveBase === 'app' ? '/' + APP_SEGMENT : '/' + a.data.slug, { replace: true });
       return;
     }
     setBusy(false);
     if (a.code === 'invite_invalid') { setState({ at: 'invalid' }); return; }
+    if (a.code === 'account_in_use') { setError(t('auth.invite.inUse')); return; }
     if (a.code === 'account_exists') { setExisting(true); setPassword(''); setAgain(''); setError(t('auth.invite.exists', { company: state.company })); document.getElementById(id + 'p')?.focus(); return; }
     setError(failText(a, t, 'auth.err.offline'));
     document.getElementById(id + 'p')?.focus();
@@ -72,10 +79,10 @@ export function Invite({ token: fromAddress }: { token?: string }) {
   if (state.at === 'checking') body = <div className="auth-wait" role="status" aria-live="polite">{t('auth.wait')}</div>;
   else if (state.at === 'unconfigured') body = <Unconfigured />;
   else if (state.at === 'offline') body = <><p className="auth-err" role="alert">{t('auth.err.offline')}</p><div className="row"><Button onClick={() => location.reload()} data-autofocus>{t('auth.err.retry')}</Button></div></>;
-  else if (state.at === 'invalid') body = <><div className="note warn" role="alert" data-testid="auth-invite-invalid" tabIndex={-1} data-autofocus>{t('auth.invite.invalid')}</div><div className="auth-links"><Link to="/signin" className="linkbtn">{t('auth.back')}</Link></div></>;
-  else if (state.at === 'made') body = <><div className="note" role="status" tabIndex={-1} data-autofocus>{t('auth.invite.signIn')}</div><div className="row"><Link to="/signin" className="btn primary">{t('auth.signin.title')}</Link></div></>;
+  else if (state.at === 'invalid') body = <><div className="note warn" role="alert" data-testid="auth-invite-invalid" tabIndex={-1} data-autofocus>{t('auth.invite.invalid')}</div><div className="auth-links"><Link to={home} className="linkbtn">{t('auth.back')}</Link></div></>;
+  else if (state.at === 'made') body = <><div className="note" role="status" tabIndex={-1} data-autofocus>{t('auth.invite.signIn')}</div><div className="row"><Link to={home} className="btn primary">{t('auth.signin.title')}</Link></div></>;
   else {
-    sub = t('auth.invite.sub', { company: state.company });
+    sub = t(partner ? 'auth.invite.subPartner' : 'auth.invite.sub', { company: state.company });
     body = (
       <form onSubmit={submit} noValidate data-testid="auth-invite-form">
         <p className="small muted" data-testid="auth-invite-for">{t('auth.invite.for', { email: state.email, date: dateTime(state.expiresAt) })}</p>

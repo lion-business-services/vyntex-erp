@@ -344,6 +344,8 @@ export function AuthFlow({ slug, onReady }: { slug?: string; /** A page that is 
     // An address the person does not belong to looks exactly like not being signed in. Only someone who has just
     // signed in is taken on to a company of their own.
     if (slug && !fresh) { show({ at: 'form' }); return; }
+    // a Partner Portal account (no company workspace) signed in here: its home is the portal
+    if (!list.length && (s as { partner?: unknown }).partner) { navigate('/partners', { replace: true }); return; }
     if (!list.length) { show({ at: 'form', error: t('auth.err.invalid') }); return; }
     if (list.length === 1 || DEPLOY.liveBase === 'app') { navigate(workspaceAddress(list[0]), { replace: true }); return; }
     show({ at: 'picker', list });

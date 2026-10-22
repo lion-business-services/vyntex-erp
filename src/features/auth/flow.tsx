@@ -3,6 +3,7 @@
 // codes shown once, and, for someone who belongs to several companies, which one to open.
 // There is no sign-up anywhere in it: accounts are opened by invitation (src/features/auth/invite.tsx).
 // Each step asks the server and shows what the server said. Wrong email and wrong password read the same.
+import { useTrialAvailable } from './trial-status';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { LuEye, LuEyeOff, LuCopy, LuDownload, LuCheck, LuBuilding2, LuArrowRight } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
@@ -292,9 +293,11 @@ function Picker({ list }: { list: Membership[] }) {
 /** The lines every sign-in page ends with: how accounts come to exist, and the way to the sample workspace when the build has one. */
 function Foot() {
   const { t } = useApp();
+  // the trial link shows only while the server has trials switched on; otherwise the page says accounts come by invitation
+  const trial = useTrialAvailable(DEPLOY.id === 'vyntex');
   return (
     <>
-      {DEPLOY.id === "vyntex" ? <p className="auth-fine"><Link to="/signup" data-testid="auth-start-trial">{t("auth.trialSignup")}</Link></p> : <p className="auth-fine" data-testid="auth-invite-only">{t("auth.noSignup")}</p>}
+      {trial ? <p className="auth-fine"><Link to="/signup" data-testid="auth-start-trial">{t('auth.trialSignup')}</Link></p> : <p className="auth-fine" data-testid="auth-invite-only">{t('auth.noSignup')}</p>}
       {(SAMPLE_BASE || DEPLOY.marketing) && (
         <div className="auth-links">
           {SAMPLE_BASE && <Link to={SAMPLE_BASE} className="linkbtn" data-testid="auth-open-sample">{t(DEPLOY.publicDemo ? 'auth.openDemo' : 'auth.openPreview')}</Link>}

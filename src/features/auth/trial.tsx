@@ -18,7 +18,7 @@ export default function TrialSignup() {
   const [name,setName]=useState(''),[businessName,setBusinessName]=useState('');
   const [slug,setSlug]=useState(''),[manualSlug,setManualSlug]=useState(false);
   const [email,setEmail]=useState('');
-  const [industry,setIndustry]=useState('barber');
+  const [industry,setIndustry]=useState('build');
   const [agree,setAgree]=useState(false);
   const [website,setWebsite]=useState('');
   const copy=(en:string,spanish:string)=>es?spanish:en;

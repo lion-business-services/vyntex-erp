@@ -153,9 +153,13 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
         </div>
         <main className="content" id="main" tabIndex={-1}>
           {trialDays !== null && <div className="vx-trial-banner" role="status">
-            <strong>{trialDays > 0 ? String(trialDays) + (trialDays === 1 ? ' day' : ' days') + ' left in your free trial' : 'Your free trial has ended'}</strong>
-            <span>{trialDays > 0 ? 'Explore your workspace and connect your approved services.' : 'Contact VYNTEX to choose a subscription. Your data is retained.'}</span>
-            <Link to="/pricing">View plans →</Link>
+            <strong>{trialDays > 0
+              ? (app.lang === 'es' ? `${trialDays === 1 ? 'Queda 1 día' : `Quedan ${trialDays} días`} de su prueba gratuita` : `${trialDays} ${trialDays === 1 ? 'day' : 'days'} left in your free trial`)
+              : (app.lang === 'es' ? 'Su prueba gratuita terminó' : 'Your free trial has ended')}</strong>
+            <span>{trialDays > 0
+              ? (app.lang === 'es' ? 'Explore su espacio de trabajo y conecte los servicios que autorice.' : 'Explore your workspace and connect your approved services.')
+              : (app.lang === 'es' ? 'Llame a VYNTEX al 609-780-3218 para elegir un plan. Sus datos se conservan.' : 'Call VYNTEX at 609-780-3218 to choose a plan. Your data is kept.')}</span>
+            <Link to="/pricing">{app.lang === 'es' ? 'Ver planes' : 'View plans'} →</Link>
           </div>}
           {children}
         </main>

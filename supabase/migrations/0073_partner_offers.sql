@@ -423,13 +423,18 @@ $$;
  * Makes a client proposal link for an approved offer and freezes the offer. The server makes the token and passes its hash.
  * The link expires at the end of the offer's validity (or sooner, p_days).
  */
-create or replace function public.partner_offer_share(p_id uuid, p_token_hash text, p_days integer default 30) returns jsonb
+create or replace function public.partner_offer_share(p_user uuid, p_id uuid, p_token_hash text, p_days integer default 30) returns jsonb
 language plpgsql security definer
 set search_path = ''
 as $$
-declare o partner.offers; v_exp timestamptz;
+declare o partner.offers; v_exp timestamptz; v_partner uuid;
 begin
-  o := partner.offer_for_caller(p_id, true);
+  -- server only: the server made the token (and rate limits this), after guard() checked the person's session and second step.
+  -- The person must still be an active member of the active partner that owns the offer.
+  select u.partner_id into v_partner from partner.users u join partner.organizations g on g.id = u.partner_id
+   where u.user_id = p_user and u.status = 'active' and g.status = 'active';
+  select * into o from partner.offers where id = p_id;
+  if v_partner is null or not found or o.partner_id <> v_partner then raise exception 'Offer not found' using errcode = '42501'; end if;
   if o.status not in ('approved', 'sent', 'viewed') then raise exception 'Only an approved offer can be shared' using errcode = '22023', hint = 'not_approved'; end if;
   if o.valid_until < current_date then raise exception 'The offer has expired' using errcode = '22023', hint = 'expired'; end if;
   if p_token_hash is null or p_token_hash !~ '^[0-9a-f]{64}$' then raise exception 'Token' using errcode = '22023'; end if;
@@ -440,9 +445,9 @@ begin
   if o.status = 'approved' then
     update partner.offers set status = 'sent', sent_at = pg_catalog.now(), snapshot = partner.offer_client_json(o.id) where id = o.id;
   end if;
-  insert into partner.proposal_shares (offer_id, token_hash, created_by, expires_at) values (o.id, p_token_hash, (select auth.uid()), v_exp);
-  perform partner.offer_event(o.id, 'partner', 'shared', '', pg_catalog.jsonb_build_object('expires_at', v_exp));
-  perform partner.audit('partner', o.partner_id, 'offer', o.id::text, 'offer.shared');
+  insert into partner.proposal_shares (offer_id, token_hash, created_by, expires_at) values (o.id, p_token_hash, p_user, v_exp);
+  insert into partner.offer_events (offer_id, actor, actor_kind, kind, detail) values (o.id, p_user, 'partner', 'shared', pg_catalog.jsonb_build_object('expires_at', v_exp));
+  insert into partner.audit_log (actor, actor_kind, partner_id, entity, entity_id, action) values (p_user, 'partner', o.partner_id, 'offer', o.id::text, 'offer.shared');
   return pg_catalog.jsonb_build_object('expires_at', v_exp, 'ref', o.ref, 'lang', o.lang, 'client_email', o.client_email, 'client_name', o.client_name);
 end
 $$;
@@ -461,7 +466,7 @@ begin
 end
 $$;
 
-/** The client told the partner their decision (outside the proposal page). */
+/** The client told the partner they decline. Only the client (on the proposal page) or VYNTEX staff (with a reason) records an acceptance. */
 create or replace function public.partner_offer_decision(p_id uuid, p_decision text, p_name text default '') returns jsonb
 language plpgsql security definer
 set search_path = ''
@@ -469,7 +474,8 @@ as $$
 declare o partner.offers;
 begin
   o := partner.offer_for_caller(p_id, true);
-  if p_decision not in ('accepted', 'declined') then raise exception 'Decision' using errcode = '22023'; end if;
+  if p_decision = 'accepted' then raise exception 'Only the client accepts, on the proposal page, or VYNTEX records it' using errcode = '42501', hint = 'client_accepts'; end if;
+  if p_decision <> 'declined' then raise exception 'Decision' using errcode = '22023'; end if;
   if o.status not in ('sent', 'viewed', 'approved') then raise exception 'Only a sent offer can be decided' using errcode = '22023', hint = 'bad_state'; end if;
   if p_decision = 'accepted' and o.valid_until < current_date then raise exception 'The offer has expired' using errcode = '22023', hint = 'expired'; end if;
   update partner.offers set status = p_decision, decided_at = pg_catalog.now(), decided_name = pg_catalog.left(coalesce(p_name, ''), 200),
@@ -484,16 +490,43 @@ $$;
 -- What VYNTEX staff call: the approval queue
 -- ---------------------------------------------------------------------------------------------------------------------
 /** p_decision: 'approve' (optionally pricing quote lines: { "<line id>": { setup_cents, one_time_cents, recurring_cents } }) or 'changes'. */
-create or replace function public.partner_admin_offer_decide(p_id uuid, p_decision text, p_note text default '', p_prices jsonb default null) returns jsonb
+/** VYNTEX records a client's acceptance received outside the proposal page (signed paper, email): a written reason is kept. */
+create or replace function public.partner_admin_offer_accept(p_id uuid, p_name text, p_reason text) returns jsonb
 language plpgsql security definer
 set search_path = ''
 as $$
 declare o partner.offers;
 begin
   perform partner.require_staff();
+  if pg_catalog.length(pg_catalog.btrim(coalesce(p_reason, ''))) < 3 or pg_catalog.length(pg_catalog.btrim(coalesce(p_name, ''))) < 2 then
+    raise exception 'The client''s name and how they accepted are required' using errcode = '22023', hint = 'reason_required';
+  end if;
+  select * into o from partner.offers where id = p_id for update;
+  if not found then raise exception 'Offer not found' using errcode = '22023'; end if;
+  if o.status not in ('sent', 'viewed') then raise exception 'Only a sent offer can be accepted' using errcode = '22023', hint = 'bad_state'; end if;
+  if o.valid_until < current_date then raise exception 'The offer has expired' using errcode = '22023', hint = 'expired'; end if;
+  update partner.offers set status = 'accepted', decided_at = pg_catalog.now(), decided_name = pg_catalog.left(pg_catalog.btrim(p_name), 200) where id = o.id;
+  perform partner.offer_event(o.id, 'staff', 'accepted', pg_catalog.left(p_reason, 2000));
+  perform partner.audit('staff', o.partner_id, 'offer', o.id::text, 'offer.accepted_by_staff', pg_catalog.jsonb_build_object('reason', pg_catalog.left(p_reason, 500)));
+  perform partner.notify('offer.accepted', 'partner', o.partner_id, 'offer', o.id, pg_catalog.jsonb_build_object('ref', o.ref, 'client', o.client_name));
+  return partner.offer_json(o.id, true);
+end
+$$;
+
+create or replace function public.partner_admin_offer_decide(p_id uuid, p_decision text, p_note text default '', p_prices jsonb default null) returns jsonb
+language plpgsql security definer
+set search_path = ''
+as $$
+declare o partner.offers; v_role text := partner.require_staff();
+begin
   select * into o from partner.offers where id = p_id for update;
   if not found then raise exception 'Offer not found' using errcode = '22023'; end if;
   if o.status <> 'pending_approval' then raise exception 'Not waiting for approval' using errcode = '22023', hint = 'bad_state'; end if;
+  -- prices below a floor and prices set for quoted lines are money decisions: administrators only
+  if p_decision = 'approve' and v_role <> 'partner_admin' and (p_prices is not null
+      or exists (select 1 from pg_catalog.jsonb_array_elements(o.approval_reasons) r where r ->> 'code' in ('below_floor', 'quote_line'))) then
+    raise exception 'Administrators approve discounts below a floor and quoted prices' using errcode = '42501', hint = 'admin_only';
+  end if;
   if p_decision = 'approve' then
     perform partner.offer_reprice(o.id, p_prices);
     if exists (select 1 from partner.offers x, pg_catalog.jsonb_array_elements(x.approval_reasons) r where x.id = o.id and r ->> 'code' = 'quote_line') then
@@ -519,23 +552,38 @@ $$;
 -- The client proposal (server only, by token hash)
 -- ---------------------------------------------------------------------------------------------------------------------
 create or replace function public.partner_proposal_peek(p_token_hash text) returns jsonb
+language plpgsql stable security definer
+set search_path = ''
+as $$
+declare s partner.proposal_shares; o partner.offers;
+begin
+  select * into s from partner.proposal_shares where token_hash = p_token_hash and revoked_at is null and expires_at > pg_catalog.now();
+  if not found then return null; end if;
+  select * into o from partner.offers where id = s.offer_id;
+  if o.status not in ('sent', 'viewed', 'accepted', 'declined', 'ordered') or o.snapshot is null then return null; end if;
+  -- reading changes nothing (link scanners open links too); the page reports a real view with partner_proposal_viewed
+  return o.snapshot || pg_catalog.jsonb_build_object('status', case when o.status = 'ordered' then 'accepted' else o.status end,
+    'expired', o.valid_until < current_date, 'decided_at', o.decided_at);
+end
+$$;
+
+/** The proposal page, once drawn in a browser, says it was seen (a POST from the page's script). */
+create or replace function public.partner_proposal_viewed(p_token_hash text) returns boolean
 language plpgsql security definer
 set search_path = ''
 as $$
 declare s partner.proposal_shares; o partner.offers;
 begin
   select * into s from partner.proposal_shares where token_hash = p_token_hash and revoked_at is null and expires_at > pg_catalog.now() for update;
-  if not found then return null; end if;
-  select * into o from partner.offers where id = s.offer_id;
-  if o.status not in ('sent', 'viewed', 'accepted', 'declined', 'ordered') or o.snapshot is null then return null; end if;
+  if not found then return false; end if;
+  select * into o from partner.offers where id = s.offer_id for update;
   update partner.proposal_shares set views = views + 1, last_viewed_at = pg_catalog.now() where id = s.id;
   if o.status = 'sent' then
     update partner.offers set status = 'viewed' where id = o.id;
     insert into partner.offer_events (offer_id, actor_kind, kind) values (o.id, 'client', 'viewed');
     perform partner.notify('offer.viewed', 'partner', o.partner_id, 'offer', o.id, pg_catalog.jsonb_build_object('ref', o.ref, 'client', o.client_name));
   end if;
-  return o.snapshot || pg_catalog.jsonb_build_object('status', case when o.status = 'sent' then 'viewed' when o.status = 'ordered' then 'accepted' else o.status end,
-    'expired', o.valid_until < current_date, 'decided_at', o.decided_at);
+  return true;
 end
 $$;
 
@@ -577,16 +625,19 @@ end
 $$;
 
 revoke all on function public.partner_offer_save(uuid, jsonb), public.partner_offers(text), public.partner_offer(uuid), public.partner_offer_submit(uuid),
-  public.partner_offer_duplicate(uuid), public.partner_offer_withdraw(uuid), public.partner_offer_share(uuid, text, integer),
-  public.partner_offer_share_revoke(uuid, uuid), public.partner_offer_decision(uuid, text, text), public.partner_admin_offer_decide(uuid, text, text, jsonb)
+  public.partner_offer_duplicate(uuid), public.partner_offer_withdraw(uuid),
+  public.partner_offer_share_revoke(uuid, uuid), public.partner_offer_decision(uuid, text, text), public.partner_admin_offer_decide(uuid, text, text, jsonb),
+  public.partner_admin_offer_accept(uuid, text, text)
   from public, anon, service_role;
 grant execute on function public.partner_offer_save(uuid, jsonb), public.partner_offers(text), public.partner_offer(uuid), public.partner_offer_submit(uuid),
-  public.partner_offer_duplicate(uuid), public.partner_offer_withdraw(uuid), public.partner_offer_share(uuid, text, integer),
-  public.partner_offer_share_revoke(uuid, uuid), public.partner_offer_decision(uuid, text, text), public.partner_admin_offer_decide(uuid, text, text, jsonb)
+  public.partner_offer_duplicate(uuid), public.partner_offer_withdraw(uuid),
+  public.partner_offer_share_revoke(uuid, uuid), public.partner_offer_decision(uuid, text, text), public.partner_admin_offer_decide(uuid, text, text, jsonb),
+  public.partner_admin_offer_accept(uuid, text, text)
   to authenticated;
-revoke all on function public.partner_proposal_peek(text), public.partner_proposal_respond(text, text, text, text), public.partner_offers_expire()
-  from public, anon, authenticated;
-grant execute on function public.partner_proposal_peek(text), public.partner_proposal_respond(text, text, text, text), public.partner_offers_expire() to service_role;
+revoke all on function public.partner_proposal_peek(text), public.partner_proposal_viewed(text), public.partner_proposal_respond(text, text, text, text), public.partner_offers_expire(),
+  public.partner_offer_share(uuid, uuid, text, integer) from public, anon, authenticated;
+grant execute on function public.partner_proposal_peek(text), public.partner_proposal_viewed(text), public.partner_proposal_respond(text, text, text, text), public.partner_offers_expire(),
+  public.partner_offer_share(uuid, uuid, text, integer) to service_role;
 
 select partner.lockdown_check();
 select app.lockdown_check();

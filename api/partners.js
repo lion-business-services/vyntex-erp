@@ -24,7 +24,8 @@
 //   GET   admin/commissions POST admin/commissions/<id>/set   POST admin/commissions/adjust
 //   POST  admin/payouts     POST admin/payouts/<id>/<approve|sent|settled|cancel>
 //   public (no account; a client opening a proposal link):
-//   GET   proposal/<token>  POST proposal/<token>/respond  { decision: accepted|declined, name }
+//   GET   proposal/<token> (reads only)  POST proposal/<token>/viewed  POST proposal/<token>/respond  { decision: accepted|declined, name }
+//   POST  admin/offers/<id>/accept  { name, reason }   VYNTEX records an acceptance received outside the proposal page
 import { entry, ok, fail, readJson, methodNotAllowed, upstreamError, isUuid, isPlainObject, HttpError } from './_lib/respond.js';
 import { appOrigin, deployId } from './_lib/env.js';
 import { userRpc, serviceRpc } from './_lib/supabase.js';
@@ -111,8 +112,17 @@ async function offerAction(request, id, action) {
   }
   if (action === 'share') {
     // The token is made here; the database keeps only its hash. The link is shown to the partner once.
+    // The share function is the server's (service role): the database is first asked, with the person's own token, whether
+    // this session is a live partner session past the second step; then the server makes the token and keeps only its hash.
+    const { session, cookies } = await guard(request, { write: true });
+    await limit('partners.share', uidKey(session.uid), 60, 3600);
+    const who = await userRpc(session.at, 'partner_context', {});
+    if (!who.ok) throw refused(who, cookies);
+    if (who.data.kind !== 'partner' || who.data.aal !== 'aal2' || !who.data.live) return fail(403, 'forbidden', {}, { cookies });
     const token = randomToken(32);
-    const c = await call(request, 'partner_offer_share', { p_id: id, p_token_hash: sha256Hex(token), p_days: intOr(b.days, 30) }, { write: true, bucket: 'partners.share', max: 60 });
+    const r = await serviceRpc('partner_offer_share', { p_user: session.uid, p_id: id, p_token_hash: sha256Hex(token), p_days: intOr(b.days, 30) });
+    if (!r.ok) throw refused(r, cookies);
+    const c = { data: r.data, cookies };
     const link = `${appOrigin(request)}/proposal/${token}`;
     let delivery = 'not_sent';
     if (b.email === true && c.data.client_email) {
@@ -206,6 +216,7 @@ async function admin(request, parts) {
     if (b === 'retire') return P('partner_admin_policy_retire', { p_version: a.toLowerCase() }, 'retired');
     if (b === 'assign' && isUuid(x.partner)) return P('partner_admin_policy_assign', { p_partner: x.partner.toLowerCase(), p_version: a.toLowerCase(), p_assign: x.assign !== false, p_note: text(x.note, 1000) }, 'assigned');
   }
+  if (area === 'offers' && isUuid(a) && b === 'accept') return P('partner_admin_offer_accept', { p_id: a.toLowerCase(), p_name: text(x.name, 200), p_reason: text(x.reason, 2000) }, 'offer');
   if (area === 'offers' && isUuid(a) && b === 'decide') {
     if (x.decision !== 'approve' && x.decision !== 'changes') return fail(400, 'invalid', { reason: 'bad_decision' });
     return P('partner_admin_offer_decide', { p_id: a.toLowerCase(), p_decision: x.decision, p_note: text(x.note, 2000), p_prices: isPlainObject(x.prices) ? x.prices : null }, 'offer');
@@ -254,6 +265,16 @@ async function proposal(request, token, action) {
     if (!r.ok) return fail(503, 'store_unavailable');
     if (!r.data) return fail(404, 'cannot_be_opened', { reason: 'unavailable' });
     return ok({ proposal: r.data }, { headers: NO_STORE });
+  }
+  if (action === 'viewed') {
+    // sent by the page's script once the proposal is drawn: a link scanner that only fetches the page records nothing
+    if (m !== 'POST') return methodNotAllowed('POST');
+    assertSameSite(request);
+    await publicLimits(request, 'proposal.viewed', token, { perAddress: 60, perToken: 20 });
+    if (!PROPOSAL_TOKEN.test(token)) return fail(404, 'cannot_be_opened', { reason: 'unavailable' });
+    const r = await serviceRpc('partner_proposal_viewed', { p_token_hash: sha256Hex(token) });
+    if (!r.ok) return fail(503, 'store_unavailable');
+    return ok({ recorded: r.data === true }, { headers: NO_STORE });
   }
   if (action !== 'respond') return fail(404, 'not_found');
   if (m !== 'POST') return methodNotAllowed('POST');

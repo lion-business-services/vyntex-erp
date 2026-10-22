@@ -67,7 +67,7 @@ partner.notifications (outbox) -> job partner.notify (cron tick) -> Resend   |  
 | Role | Where it lives | Can |
 | --- | --- | --- |
 | `partner_admin` | `partner.staff` row, added from the SQL Editor | everything, including policy approval, publishing, compliance, money, suspension (money, policy, publishing and status changes need a fresh identity check) |
-| `partner_manager` | `partner.staff` | partners (create, edit, invite), offer approvals, order moves and notes; never policy, prices approval, publishing, compliance, payments or payouts |
+| `partner_manager` | `partner.staff` | partners (create, edit, invite), offer approvals within the catalog and floors, order moves and notes (except go-live and refunds); never policy, price approval, below-floor discounts, quoted prices, publishing, compliance, payments or payouts |
 | `partner_owner` / `partner_member` | `partner.users` row, created only by accepting a partner invitation | own partner's catalog views, offers, orders and statement |
 | client | no account | one proposal, by a private expiring link |
 
@@ -149,7 +149,7 @@ Remove one: `select partner.staff_remove('person@example.com');` (their sessions
 
 ## 7. Offer and order workflow
 
-**Offer:** `draft` -> (submit) -> `approved` (within catalog and floors) or `pending_approval` -> `approved` / `changes_requested`
+**Offer:** (only the client accepts on the proposal page; VYNTEX can record an acceptance given another way, with a reason) `draft` -> (submit) -> `approved` (within catalog and floors) or `pending_approval` -> `approved` / `changes_requested`
 -> (share link) `sent` -> `viewed` -> `accepted` / `declined` -> `ordered`; also `withdrawn`, `expired` (daily, after `valid_until`).
 Reasons for approval: discount below floor (one-time charges only; the monthly is never discounted), a quote-only line
 (VYNTEX sets its price when approving). A missing approved partner policy is shown to the partner but does not block.
@@ -176,12 +176,14 @@ ledger line has a unique dedupe key).
 
 | Model | Earned when | Amount |
 | --- | --- | --- |
-| `referral_flat_fee` | order `live`/`completed` AND setup + one-time charges fully paid (deposit + balance) | the highest approved fee among the order's items, once per client order |
+| `referral_flat_fee` | order `live`/`completed` AND the money kept (payments minus refunds and chargebacks) is more than $0 and covers the setup + one-time charges | the highest approved fee among the order's items, once per client order |
 | `revenue_share_setup` | same | rate x setup of each covered line |
 | `revenue_share_one_time` | same, and the whole order's one-time total >= the policy minimum ($350 in the source) | rate x (setup + one-time) of each covered line |
-| `revenue_share_recurring` | each `monthly` payment recorded after go-live | rate x the line's share of the collected amount |
+| `revenue_share_recurring` | each `monthly` payment for a month from the go-live month on | rate x the line's share of the collected amount |
 
 * The policy versions in force when the order was **submitted** are frozen on the order and used later.
+* A suspended or revoked partner earns nothing new (reversals and clawbacks still apply).
+* Go-live is recorded by an administrator; its date is today unless an earlier date is given with a reason (never in the future, never before the order or its first payment).
 * Refund or chargeback: every earned line of the order is reduced in proportion to the money returned (new negative lines).
 * Cancellation inside the clawback window (90 days from go-live in the source): the rest of the one-time pay is clawed back.
 * Rounding: half up, to the cent (the legacy whole-dollar rounding is a pending VYNTEX decision).
@@ -193,7 +195,7 @@ ledger line has a unique dedupe key).
 Payouts are made outside the portal (ACH, Zelle, check). The portal records them:
 1. Commissions & Payouts > Commissions: approve eligible lines (step-up).
 2. Create payout for a partner (needs W-9 `verified` and agreement `signed`): every approved line, deductions included.
-3. Approve (lines become payable) -> pay outside -> **Mark sent** with method and bank/Zelle reference -> **Mark settled**
+3. Approve (only lines still approved stay in it; lines held, disputed or reversed since the draft leave it; lines become payable) -> pay outside -> **Mark sent** with method and bank/Zelle reference -> **Mark settled**
    with the reconciliation reference (lines become paid). A commission can be in one live payout only.
 4. A sent payout cannot be cancelled: correct with a reversal or adjustment line.
 

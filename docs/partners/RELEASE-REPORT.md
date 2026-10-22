@@ -4,6 +4,25 @@ Date: 2026-10-22. Branch `feature/partner-portal` (from `feature/saas-seven-day-
 Status: **built and tested on local stand-ins. Not merged, not deployed, no migration applied to Supabase.** Nothing here
 claims a live result.
 
+## 0. Changes after the independent review of PR #18
+
+All in the unapplied migrations 0070-0076 (edited in place), with a database test for each (`98_partners.test.sql`, section "Review fixes", 150 partner checks now):
+
+| Finding | Fix |
+| --- | --- |
+| Refunds or chargebacks before go-live were ignored (paid $497, refunded $497, go-live still paid $99.40) | One-time pay now needs the **net** kept (payments minus every refund and chargeback) to cover the setup and one-time charges, and more than $0 |
+| Payout approval marked every line payable, even one held or reversed after the draft | Holding, disputing or reversing a line takes it out of any draft payout and fixes its total; approving a payout keeps only lines still approved (an emptied payout cannot be approved). A reversed line is never both paid and deducted |
+| Money actions open to partner managers | Go-live and refunds are partner_admin only; the go-live date defaults to today, cannot be in the future or before the order or its first payment, and an earlier date needs a written reason (history and audit log). Approving a discount below a floor or pricing quoted lines is partner_admin only |
+| A $0-collected order could pay a referral fee | Requires money actually kept (> $0 and >= what was due) |
+| A partner could mark its own offer accepted | Only the client (proposal page) accepts; VYNTEX staff can record an acceptance given another way, with the client's name and how it was given (`partner_admin_offer_accept`) |
+| Payout steps did not re-check the partner | Approve, sent and settled re-check: partner active, W-9 verified, agreement signed |
+| Suspended or revoked partners kept accruing | They accrue nothing new (reversals and clawbacks still apply); monthly shares stop |
+| Monthly shares counted months before go-live | Only months from the go-live month on |
+| Opening a proposal link changed state (link scanners) | Reading changes nothing; the page reports the view with a POST from its script (`/api/partners/proposal/<token>/viewed`) |
+| `partner_offer_share` callable by a signed-in person | Server only (service role): the server checks the person's live partner session (aal2) with their own token, rate limits, makes the token, and the database checks the person belongs to the partner that owns the offer |
+| Staff catalog preview not audited | Written to `partner.audit_log` (`preview.catalog`) |
+| Documented, unchanged | $350 minimum line scope, cent rounding, a second-person approval for publishing (recommended option): `CATALOG-MAPPING.md` items 21-23 |
+
 ## 1. Implementation
 
 ### What was built
@@ -82,11 +101,12 @@ Nothing was read from or written to the Master Command database by this work (th
   `npm run test:split` 79 checks pass · `npm run security:bundle` clean (both builds) · `npm run security:headers` 20/20 ·
   `npm run test:security` 101 pass · local `tsc -p tsconfig.local.json`: no error in the new or changed files (2 existing
   errors in `src/features/floor` are unrelated).
-* `npm run test:db`: all database checks pass (7298 assertions; 128 in the new partner module).
+* `npm run test:db`: all database checks pass (150 checks in the partner module after the review fixes).
 * `npm run test:server`: unit 126 pass; partner e2e 9 pass; public e2e 12 pass; the isolated e2e group passed in 3 of 5
   full runs. The failing case each time was the existing test "webhooks: a provider that checks the address first ..."
   (it got 429 instead of 503; it picks random client addresses for rate-limit buckets). It passes when its file is run
   alone (19/19) and passed in two runs on the base commit. Not caused by a known change here, but not proven unrelated either.
+* After the review fixes: `check`, `build`, `build:lbs`, `test:unit` 311, `test:split` 79, `test:security` 101, `security:bundle` clean, `security:headers` 20/20, `test:db` all pass (150 partner checks), `test:server` all pass in one full run (unit 126, isolated e2e 60/60, public 12, partner 9), `test:e2e` all 6 steps pass.
 * `npm run test:e2e` (real Chromium, local stand-ins): all 6 steps pass, including the new partner portal walk-through
   (desktop and phone screenshots).
 * `npm run typecheck` (full) was not run: this machine has no `@types/react`.

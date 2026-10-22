@@ -149,11 +149,14 @@ select test.is(test.err(test.j('pt_b1', format('select public.partner_offer(%L)'
 select test.is(test.err(test.j('pt_b1', format('select public.partner_offer_submit(%L)', :'of1'))), '42501', 'nor submit it') \g /dev/null
 select test.ok(jsonb_array_length(test.j('pt_b1', 'select public.partner_offers()')) = 0, 'nor see it in a list') \g /dev/null
 select test.is(test.j('pt_a1', format('select public.partner_offer_submit(%L)', :'of1')) ->> 'status', 'pending_approval', 'submitting puts it in the approval queue') \g /dev/null
-select test.is(test.err(test.j('pt_a1', format($q$select public.partner_offer_share(%L, %L)$q$, :'of1', repeat('d', 64)))), '22023', 'it cannot be shared before approval') \g /dev/null
+select test.is(test.err(test.j('service', format($q$select public.partner_offer_share(%L, %L, %L)$q$, test.id('pt_a1'), :'of1', repeat('d', 64)))), '22023', 'it cannot be shared before approval') \g /dev/null
+select test.is(test.err(test.j('pt_a1', format($q$select public.partner_offer_share(%L, %L, %L)$q$, test.id('pt_a1'), :'of1', repeat('d', 64)))), '42501', 'sharing is the server''s call (it makes the token): a signed-in person cannot call it') \g /dev/null
+select test.is(test.err(test.j('service', format($q$select public.partner_offer_share(%L, %L, %L)$q$, test.id('pt_b1'), :'of1', repeat('d', 64)))), '42501', 'and the server cannot share it for another partner''s person') \g /dev/null
 select test.is(test.err(test.j('pt_a1', format($q$select public.partner_admin_offer_decide(%L, 'approve')$q$, :'of1'))), '42501', 'a partner cannot approve its own offer') \g /dev/null
-select test.is(test.j('pt_mgr', format($q$select public.partner_admin_offer_decide(%L, 'approve', 'OK for this client')$q$, :'of1')) ->> 'status', 'approved', 'VYNTEX approves it') \g /dev/null
+select test.is(test.err(test.j('pt_mgr', format($q$select public.partner_admin_offer_decide(%L, 'approve', 'OK')$q$, :'of1'))), '42501', 'a manager cannot approve a discount below the floor') \g /dev/null
+select test.is(test.j('pt_admin', format($q$select public.partner_admin_offer_decide(%L, 'approve', 'OK for this client')$q$, :'of1')) ->> 'status', 'approved', 'an administrator approves it') \g /dev/null
 select test.ok(exists (select 1 from partner.notifications where kind = 'offer.approved' and entity_id = :'of1'::uuid and audience = 'partner'), 'the partner is notified') \g /dev/null
-select test.is(test.j('pt_a1', format($q$select public.partner_offer_share(%L, %L, 14)$q$, :'of1', repeat('d', 64))) ->> 'ref', (select ref from partner.offers where id = :'of1'), 'a proposal link is made') \g /dev/null
+select test.is(test.j('service', format($q$select public.partner_offer_share(%L, %L, %L, 14)$q$, test.id('pt_a1'), :'of1', repeat('d', 64))) ->> 'ref', (select ref from partner.offers where id = :'of1'), 'a proposal link is made') \g /dev/null
 select test.is((select status from partner.offers where id = :'of1'), 'sent', 'and the offer is sent and frozen') \g /dev/null
 select test.is(test.err(test.j('pt_a1', format($q$select public.partner_offer_save(%L, '{"client_name":"X","lines":[{"item":"growth"}]}')$q$, :'of1'))), '22023', 'a sent offer cannot be edited') \g /dev/null
 select test.ok(test.raw(format($q$update partner.offers set setup_cents = 1 where id = %L$q$, :'of1')) like 'error:%', 'not even directly in the database') \g /dev/null
@@ -167,7 +170,10 @@ select test.ok((select status = 'retired' from partner.catalog_versions where it
 select test.j('service', format($q$select public.partner_proposal_peek(%L)$q$, repeat('d', 64))) as prop \gset
 select test.ok((:'prop'::jsonb ->> 'setup_cents')::bigint = 80730 and (:'prop'::jsonb -> 'lines' -> 0 ->> 'setup_cents')::bigint = 80730, 'the proposal keeps the prices it was issued with') \g /dev/null
 select test.ok(not (:'prop'::text ~ '(est_once|estimate|partner|discount_bps|approval_reasons|floor|policy)'), 'the proposal shows no partner pay, partner, floor or policy') \g /dev/null
-select test.is(:'prop'::jsonb ->> 'status', 'viewed', 'opening it marks the offer viewed') \g /dev/null
+select test.ok(:'prop'::jsonb ->> 'status' = 'sent' and (select status = 'sent' and (select views from partner.proposal_shares where offer_id = :'of1') = 0 from partner.offers where id = :'of1'),
+  'reading the proposal changes nothing (link scanners)') \g /dev/null
+select test.is(test.j('service', format($q$select to_jsonb(public.partner_proposal_viewed(%L))$q$, repeat('d', 64)))::text, 'true', 'the page reports the view') \g /dev/null
+select test.ok((select status = 'viewed' from partner.offers where id = :'of1'), 'and only then the offer is viewed') \g /dev/null
 select test.ok(test.j('service', format($q$select public.partner_proposal_peek(%L)$q$, repeat('e', 64))) is null, 'an unknown link shows nothing') \g /dev/null
 select test.is(test.err(test.j('service', format($q$select public.partner_proposal_respond(%L, 'accepted', '')$q$, repeat('d', 64)))), '22023', 'accepting needs the client''s name') \g /dev/null
 select test.is(test.j('service', format($q$select public.partner_proposal_respond(%L, 'accepted', 'Rosa Ruiz', %L)$q$, repeat('d', 64), repeat('f', 32))) ->> 'status', 'accepted', 'the client accepts on the proposal page') \g /dev/null
@@ -193,7 +199,7 @@ select test.ok(not (test.j('pt_b1', format('select public.partner_order(%L)', :'
 select test.is(test.err(test.j('pt_b1', format('select public.partner_order(%L)', :'or1'))), '42501', 'partner B cannot read partner A''s order') \g /dev/null
 select test.is(test.err(test.j('pt_b1', format($q$select public.partner_order_message(%L, 'hi')$q$, :'or1'))), '42501', 'nor write on it') \g /dev/null
 select test.is(test.err(test.j('pt_a1', format($q$select public.partner_admin_order_move(%L, 'approved')$q$, :'or1'))), '42501', 'a partner cannot approve an order') \g /dev/null
-select test.is(test.err(test.j('pt_mgr', format($q$select public.partner_admin_order_move(%L, 'live')$q$, :'or1'))), '22023', 'the state machine refuses a jump (submitted to live)') \g /dev/null
+select test.is(test.err(test.j('pt_admin', format($q$select public.partner_admin_order_move(%L, 'live')$q$, :'or1'))), '22023', 'the state machine refuses a jump (submitted to live)') \g /dev/null
 select test.j('pt_mgr', format($q$select public.partner_admin_order_move(%L, 'info_required', 'Which booking calendar do they use?')$q$, :'or1')) \g /dev/null
 select test.j('pt_mgr', format($q$select public.partner_admin_order_note(%L, 'Internal: check the credit card on file', true)$q$, :'or1')) \g /dev/null
 select test.ok(not (test.j('pt_a1', format('select public.partner_order(%L)', :'or1'))::text like '%credit card on file%'), 'internal notes stay internal') \g /dev/null
@@ -212,11 +218,14 @@ select test.stepup_stale('pt_admin') \g /dev/null
 select test.is(test.err(test.j('pt_admin', format($q$select public.partner_admin_order_payment(%L, '{"kind":"deposit","amount_cents":40365,"reference":"INV-1"}')$q$, :'or1'))), 'VX403', 'recording money needs a fresh identity check') \g /dev/null
 select test.stepup('pt_admin') \g /dev/null
 select test.j('pt_admin', format($q$select public.partner_admin_order_payment(%L, '{"kind":"deposit","amount_cents":40365,"reference":"INV-1","method":"card"}')$q$, :'or1')) \g /dev/null
-select test.j('pt_mgr', format($q$select public.partner_admin_order_move(%L, 'live', '', %L)$q$, :'or1', current_date - 10)) \g /dev/null
+select test.is(test.err(test.j('pt_mgr', format($q$select public.partner_admin_order_move(%L, 'live')$q$, :'or1'))), '42501', 'a manager cannot record go-live') \g /dev/null
+select test.is(test.j('pt_admin', format($q$select public.partner_admin_order_move(%L, 'live', 'x', %L)$q$, :'or1', current_date + 1)) ->> 'error', '22023', 'go-live cannot be in the future') \g /dev/null
+select test.is(test.j('pt_admin', format($q$select public.partner_admin_order_move(%L, 'live', 'late entry', %L)$q$, :'or1', current_date - 10)) ->> 'error', '22023', 'nor before the first payment') \g /dev/null
+select test.j('pt_admin', format($q$select public.partner_admin_order_move(%L, 'live')$q$, :'or1')) \g /dev/null
 select test.is((select count(*)::text from partner.commissions where order_id = :'or1'), '0', 'live with only the deposit paid: nothing is earned yet') \g /dev/null
 select test.stepup('pt_admin') \g /dev/null
 select test.j('pt_admin', format($q$select public.partner_admin_order_payment(%L, '{"kind":"balance","amount_cents":40365,"reference":"INV-2"}')$q$, :'or1')) \g /dev/null
-select test.ok((select amount_cents = 16146 and kind = 'setup_share' and partner.commission_status(id) = 'eligible' and clawback_until = current_date + 80
+select test.ok((select amount_cents = 16146 and kind = 'setup_share' and partner.commission_status(id) = 'eligible' and clawback_until = current_date + 90
                 from partner.commissions where order_id = :'or1' and kind = 'setup_share'),
   'balance paid and live: 20% of the $807.30 setup = $161.46 is eligible, with its 90-day clawback date') \g /dev/null
 select test.ok((select policy_version_id = (select id from partner.policy_versions where policy_id = 'revshare-setup-20' and status = 'approved') and calculation like '20.00%% of setup $807.30 = $161.46%%'
@@ -276,7 +285,8 @@ select test.ok(not exists (select 1 from partner.commissions where order_id = :'
   'a collected monthly share is not clawed back') \g /dev/null
 
 -- the referral partner: one fee per client order, then a partial refund
-select test.j('pt_mgr', format($q$select public.partner_admin_order_move(%L, %L, 'ok')$q$, :'orb', s)) from unnest(array['under_review', 'approved', 'awaiting_payment', 'in_progress', 'live']) s \g /dev/null
+select test.j('pt_mgr', format($q$select public.partner_admin_order_move(%L, %L, 'ok')$q$, :'orb', s)) from unnest(array['under_review', 'approved', 'awaiting_payment', 'in_progress']) s \g /dev/null
+select test.j('pt_admin', format($q$select public.partner_admin_order_move(%L, 'live')$q$, :'orb')) \g /dev/null
 select test.stepup('pt_admin') \g /dev/null
 select test.j('pt_admin', format($q$select public.partner_admin_order_payment(%L, '{"kind":"one_time","amount_cents":49700,"reference":"INV-B1"}')$q$, :'orb')) \g /dev/null
 select test.ok((select count(*) = 1 and sum(amount_cents) = 15000 from partner.commissions where order_id = :'orb' and kind = 'referral_fee'), 'the referral partner earns the $150 fee once') \g /dev/null
@@ -304,6 +314,97 @@ select test.ok(jsonb_array_length(test.j('service', 'select public.partner_outbo
 select test.is(test.err(test.j('pt_admin', 'select public.partner_outbox_claim(1)')), '42501', 'only the server') \g /dev/null
 select partner.lockdown_check() \g /dev/null
 select test.ok(true, 'the partner schema passes its lockdown check') \g /dev/null
+
+
+-- ---------------------------------------------------------------------------------------------------------------------
+-- Review fixes (PR #18): each case below failed before the fix
+-- ---------------------------------------------------------------------------------------------------------------------
+create or replace function test.pp_order(p_partner uuid, p_item text, p_setup bigint, p_recurring bigint, p_status text default 'awaiting_payment') returns uuid language plpgsql as $$
+declare v uuid := gen_random_uuid();
+begin
+  insert into partner.orders (id, ref, partner_id, created_by, client_name, client_key, status, setup_cents, recurring_cents, submitted_at)
+  values (v, 'OR-T-' || left(v::text, 8), p_partner, gen_random_uuid(), 'Probe ' || left(v::text, 4), 'n:probe' || left(v::text, 8), p_status, p_setup, p_recurring, now() - interval '3 days');
+  insert into partner.order_lines (order_id, line_no, item_id, version_id, quantity, setup_cents, recurring_cents, item)
+  select v, 1, p_item, id, 1, p_setup, p_recurring, '{}' from partner.catalog_versions where item_id = p_item and status = 'published';
+  return v;
+end $$;
+create or replace function test.pp_pay(p_order uuid, p_kind text, p_amount bigint, p_ref text, p_ago interval default '0'::interval, p_period date default null) returns void language sql as $$
+  insert into partner.order_payments (order_id, kind, amount_cents, period, received_on, reference, recorded_by, created_at)
+  values (p_order, p_kind, p_amount, p_period, current_date, p_ref, gen_random_uuid(), now() - p_ago)
+$$;
+
+-- 1. money returned before go-live: nothing is earned on it (probe 1)
+select test.pp_order(:'pa', 'crm-basic', 49700, 24700) as r1 \gset
+select test.pp_pay(:'r1', 'deposit', 24900, 'R1-a', '2 hours'), test.pp_pay(:'r1', 'balance', 24800, 'R1-b', '1 hour'), test.pp_pay(:'r1', 'refund', 49700, 'R1-c', '30 minutes') \g /dev/null
+update partner.orders set status = 'live', live_at = current_date where id = :'r1' \g /dev/null
+select partner.evaluate_order(:'r1') \g /dev/null
+select test.is((select count(*)::text from partner.commissions where order_id = :'r1'), '0', 'paid, refunded in full, then live: no setup share') \g /dev/null
+select test.pp_order(:'pa', 'crm-basic', 49700, 24700) as r1b \gset
+select test.pp_pay(:'r1b', 'one_time', 49700, 'R1b-a', '2 hours'), test.pp_pay(:'r1b', 'refund', 10000, 'R1b-b', '1 hour') \g /dev/null
+update partner.orders set status = 'live', live_at = current_date where id = :'r1b' \g /dev/null
+select partner.evaluate_order(:'r1b') \g /dev/null
+select test.is((select count(*)::text from partner.commissions where order_id = :'r1b'), '0', 'a partial refund before go-live leaves the balance unpaid: nothing yet') \g /dev/null
+
+-- 2. a referral fee needs money actually kept (an order with no one-time charge and nothing paid earns no fee)
+insert into partner.organizations (id, display_name, kind, contact_email, w9_status, agreement_status) values ('44444444-4444-4444-4444-444444444444', 'Zero Referrals', 'referral', 'z@zero.example', 'verified', 'signed') \g /dev/null
+select test.pp_order('44444444-4444-4444-4444-444444444444', 'crm-basic', 0, 24700) as r2 \gset
+update partner.orders set status = 'live', live_at = current_date where id = :'r2' \g /dev/null
+select partner.evaluate_order(:'r2') \g /dev/null
+select test.is((select count(*)::text from partner.commissions where order_id = :'r2'), '0', 'nothing collected: no referral fee') \g /dev/null
+
+-- 3. monthly shares only for months from go-live on
+select test.pp_order(:'pa', 'starter', 0, 34700) as r3 \gset
+select test.pp_pay(:'r3', 'monthly', 34700, 'R3-a', '0', (date_trunc('month', current_date) - interval '1 month')::date),
+       test.pp_pay(:'r3', 'monthly', 34700, 'R3-b', '0', date_trunc('month', current_date)::date) \g /dev/null
+update partner.orders set status = 'live', live_at = current_date where id = :'r3' \g /dev/null
+select partner.evaluate_order(:'r3') \g /dev/null
+select test.is((select count(*)::text from partner.commissions where order_id = :'r3' and kind = 'recurring_share'), '1', 'the month before go-live earns nothing; the go-live month does') \g /dev/null
+
+-- 4. a suspended partner accrues nothing new
+select test.pp_order(:'pb', 'crm-basic', 49700, 24700) as r4 \gset
+select test.pp_pay(:'r4', 'one_time', 49700, 'R4-a', '1 hour') \g /dev/null
+update partner.orders set status = 'live', live_at = current_date where id = :'r4' \g /dev/null
+select partner.evaluate_order(:'r4') \g /dev/null
+select test.is((select count(*)::text from partner.commissions where order_id = :'r4'), '0', 'a suspended partner earns nothing new') \g /dev/null
+
+-- 5. a line held after the payout draft leaves it, and is never paid (probe 2); a reversed one too
+select partner.ledger_add(:'pa', null, null, null, null, 'adjustment', null, null, 30000, null, 'probe', null, null, 'probe', 'probe:hold') \g /dev/null
+select partner.commission_set((select id from partner.commissions where dedupe = 'probe:hold'), 'approved', 'staff', '') \g /dev/null
+select test.stepup('pt_admin') \g /dev/null
+select test.j('pt_admin', format($q$select public.partner_admin_payout_create(%L)$q$, :'pa')) ->> 'id' as b5 \gset
+select test.j('pt_admin', format($q$select public.partner_admin_commission_set(%L, 'hold', 'under investigation')$q$, (select id from partner.commissions where dedupe = 'probe:hold'))) \g /dev/null
+select test.ok((select not active from partner.payout_lines where commission_id = (select id from partner.commissions where dedupe = 'probe:hold')) and (select total_cents = 0 from partner.payout_batches where id = :'b5'),
+  'holding a line takes it out of the draft payout and fixes its total') \g /dev/null
+select test.is(test.err(test.j('pt_admin', format($q$select public.partner_admin_payout_step(%L, 'approve')$q$, :'b5'))), '22023', 'an emptied payout cannot be approved') \g /dev/null
+select test.is((select partner.commission_status(id) from partner.commissions where dedupe = 'probe:hold'), 'held', 'the held line is not payable') \g /dev/null
+select partner.ledger_add(:'pa', null, null, null, null, 'adjustment', null, null, 20000, null, 'probe', null, null, 'probe', 'probe:rev') \g /dev/null
+select partner.commission_set((select id from partner.commissions where dedupe = 'probe:rev'), 'approved', 'staff', '') \g /dev/null
+select test.j('pt_admin', format($q$select public.partner_admin_payout_create(%L)$q$, :'pa')) ->> 'id' as b6 \gset
+select test.j('pt_admin', format($q$select public.partner_admin_commission_set(%L, 'reverse', 'entered twice')$q$, (select id from partner.commissions where dedupe = 'probe:rev'))) \g /dev/null
+select test.ok(not exists (select 1 from partner.payout_lines where commission_id = (select id from partner.commissions where dedupe = 'probe:rev') and active),
+  'a reversed line is never both paid and deducted') \g /dev/null
+
+-- 6. payout steps re-check the partner: suspended, or W-9 no longer verified, means no money moves
+select partner.ledger_add(:'pa', null, null, null, null, 'adjustment', null, null, 5000, null, 'probe', null, null, 'probe', 'probe:gate') \g /dev/null
+select partner.commission_set((select id from partner.commissions where dedupe = 'probe:gate'), 'approved', 'staff', '') \g /dev/null
+select test.stepup('pt_admin') \g /dev/null
+select test.j('pt_admin', format($q$select public.partner_admin_payout_create(%L)$q$, :'pa')) ->> 'id' as b7 \gset
+select test.j('pt_admin', format($q$select public.partner_admin_payout_step(%L, 'approve')$q$, :'b7')) \g /dev/null
+update partner.organizations set w9_status = 'received' where id = :'pa' \g /dev/null
+select test.is(test.err(test.j('pt_admin', format($q$select public.partner_admin_payout_step(%L, 'sent', '{"method":"ACH","reference":"X-1"}')$q$, :'b7'))), '22023', 'no payout is sent without a verified W-9') \g /dev/null
+update partner.organizations set w9_status = 'verified' where id = :'pa' \g /dev/null
+
+-- 7. only the client accepts (or VYNTEX, with a written reason)
+select test.j('pt_a1', $q$select public.partner_offer_save(null, '{"client_name":"Bay Clinic","lines":[{"item":"starter"}]}')$q$) ->> 'id' as of7 \gset
+select test.j('pt_a1', format('select public.partner_offer_submit(%L)', :'of7')) \g /dev/null
+select test.j('service', format($q$select public.partner_offer_share(%L, %L, %L)$q$, test.id('pt_a1'), :'of7', repeat('7', 64))) \g /dev/null
+select test.is(test.err(test.j('pt_a1', format($q$select public.partner_offer_decision(%L, 'accepted', 'me')$q$, :'of7'))), '42501', 'a partner cannot mark its own offer accepted') \g /dev/null
+select test.is(test.err(test.j('pt_mgr', format($q$select public.partner_admin_offer_accept(%L, 'Ana', '')$q$, :'of7'))), '22023', 'VYNTEX records an acceptance only with how it was given') \g /dev/null
+select test.is(test.j('pt_mgr', format($q$select public.partner_admin_offer_accept(%L, 'Ana Bay', 'Signed paper proposal, Oct 20')$q$, :'of7')) ->> 'status', 'accepted', 'and then it is accepted') \g /dev/null
+
+-- 8. a staff preview of the catalog is written to the audit log
+select test.j('pt_mgr', format($q$select public.partner_catalog('partner', %L)$q$, :'pa')) \g /dev/null
+select test.ok(exists (select 1 from partner.audit_log where action = 'preview.catalog' and partner_id = :'pa'::uuid), 'a catalog preview is audited') \g /dev/null
 
 \pset tuples_only off
 \pset format aligned

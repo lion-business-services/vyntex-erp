@@ -220,7 +220,7 @@ function OrderDetail({ ctx, id }: { ctx: Context; id: string }) {
           {staff && (
             <Card title={t('pp.order.manage')}>
               <p className="xs muted">{t('pp.order.nextMoves')}</p>
-              <div className="row">{(NEXT[o.status] ?? []).map((s) => <Button key={s} size="sm" variant={s === 'approved' || s === 'live' ? 'primary' : undefined} onClick={() => setMoving(s)} data-testid={`om-move-${s}`}>{t('pp.st.' + s)}</Button>)}</div>
+              <div className="row">{(NEXT[o.status] ?? []).filter((s) => admin || !['live', 'refunded'].includes(s)).map((s) => <Button key={s} size="sm" variant={s === 'approved' || s === 'live' ? 'primary' : undefined} onClick={() => setMoving(s)} data-testid={`om-move-${s}`}>{t('pp.st.' + s)}</Button>)}</div>
               <Field label={t('pp.order.nextAction')} htmlFor="om-na"><input id="om-na" defaultValue={o.next_action} maxLength={400} onBlur={(e) => e.target.value !== o.next_action && void plan({ next_action: e.target.value })} /></Field>
               <Field label={t('pp.order.vyntexFollowUp')} htmlFor="om-vf"><input id="om-vf" type="date" defaultValue={isoDate(o.follow_up_at)} onChange={(e) => void plan({ follow_up_at: e.target.value })} /></Field>
               <div className="row">
@@ -254,6 +254,7 @@ function MoveOrder({ order, to, onClose, onDone }: { order: Order; to: string; o
     <Modal title={t('pp.order.moveTitle', { to: t('pp.st.' + to) })} onClose={onClose} labelClose={t('pp.cancel')}>
       <p className="small muted">{t('pp.order.moveNote')}</p>
       {to === 'live' && <Field label={t('pp.order.liveOn')} htmlFor="mv-l"><input id="mv-l" type="date" value={live} onChange={(e) => setLive(e.target.value)} /></Field>}
+      {to === 'live' && <p className="xs dim">{t('pp.order.liveNote')}</p>}
       <Field label={NEEDS_NOTE.includes(to) ? t('pp.order.why') : t('pp.order.noteOptional')} htmlFor="mv-n"><textarea id="mv-n" rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
       {err && <p className="small neg" role="alert">{err}</p>}
       <div className="row"><span className="grow" /><Button variant="ghost" onClick={onClose}>{t('pp.cancel')}</Button><Button variant="primary" onClick={() => void go()} data-testid="mv-go">{t('pp.confirm')}</Button></div>

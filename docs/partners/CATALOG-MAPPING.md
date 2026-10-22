@@ -225,6 +225,15 @@ line, not per order. AI tools are not covered. Details are in AUDIT.md §7.
 19. **Legacy public partner page** (`/partners/?t=`) and anon-executable legacy RPCs: VYNTEX decision on disabling them (the legacy DB must not be changed without approval).
 20. **Effective date** for the first published Partner Portal catalog and policy versions (proposal: the approval date; SG 2026-09-17 kept as `source_effective_date`).
 
+### Engine decisions made in the portal, pending VYNTEX confirmation (PR #18 review)
+
+21. **$350 minimum, line scope:** the engine checks the minimum on the whole order's one-time total (setup + one-time of all
+    lines) and then pays the 35% share on each covered line. Confirm that this is the meaning of "measured on the whole order".
+22. **Rounding:** every amount is rounded half up to the cent (the legacy code rounded to whole dollars, C7b).
+23. **Second-person approval for catalog publishing (recommended option, not built):** today one partner_admin with a
+    fresh identity check publishes prices and approves policies. VYNTEX may want a second administrator to confirm each
+    publication or policy approval (four-eyes); it can be added as a pending-approval step.
+
 ## 8. Import guidance
 
 - Import every item and policy as **draft** with provenance columns (`source`, `ref`, `source_effective_date`). Publish only after an admin approves each `needs_approval` row.

@@ -417,11 +417,23 @@ create or replace function public.partner_admin_order_move(p_id uuid, p_to text,
 language plpgsql security definer
 set search_path = ''
 as $$
-declare o partner.orders;
+declare o partner.orders; v_role text := partner.require_staff(); v_live date;
 begin
-  perform partner.require_staff();
   select * into o from partner.orders where id = p_id for update;
   if not found then raise exception 'Order not found' using errcode = '22023'; end if;
+  -- go-live and refunds start or end partner pay: administrators only
+  if p_to in ('live', 'refunded') and v_role <> 'partner_admin' then raise exception 'Administrators only' using errcode = '42501'; end if;
+  if p_to = 'live' then
+    v_live := coalesce(p_live_on, current_date);
+    if v_live > current_date then raise exception 'Go-live cannot be in the future' using errcode = '22023', hint = 'bad_live_date'; end if;
+    if v_live < o.submitted_at::date or v_live < coalesce((select min(x.received_on) from partner.order_payments x where x.order_id = o.id and x.kind in ('deposit', 'one_time', 'balance')), v_live) then
+      raise exception 'Go-live cannot be before the order or its first payment' using errcode = '22023', hint = 'bad_live_date';
+    end if;
+    -- a date other than today is a correction: it needs a written reason, kept in the history and the audit log
+    if v_live <> current_date and pg_catalog.length(pg_catalog.btrim(coalesce(p_note, ''))) < 3 then
+      raise exception 'Say why the go-live date is not today' using errcode = '22023', hint = 'note_required';
+    end if;
+  end if;
   if not partner.order_move_allowed(o.status, p_to, 'staff') then
     raise exception 'That move is not allowed from %', o.status using errcode = '22023', hint = 'bad_move';
   end if;
@@ -429,12 +441,12 @@ begin
     raise exception 'Say why' using errcode = '22023', hint = 'note_required';
   end if;
   update partner.orders set status = p_to,
-         live_at = case when p_to = 'live' then coalesce(p_live_on, o.live_at, current_date) else live_at end,
+         live_at = case when p_to = 'live' then v_live else live_at end,
          ended_at = case when p_to in ('cancelled', 'refunded') and o.live_at is not null then current_date else ended_at end
    where id = o.id;
   perform partner.order_event(o.id, 'staff', 'status', 'partner', p_note, o.status, p_to);
   perform partner.notify('order.status', 'partner', o.partner_id, 'order', o.id, pg_catalog.jsonb_build_object('ref', o.ref, 'client', o.client_name, 'to', p_to, 'note', pg_catalog.left(coalesce(p_note, ''), 500)));
-  perform partner.audit('staff', o.partner_id, 'order', o.id::text, 'order.moved', pg_catalog.jsonb_build_object('from', o.status, 'to', p_to));
+  perform partner.audit('staff', o.partner_id, 'order', o.id::text, 'order.moved', pg_catalog.jsonb_build_object('from', o.status, 'to', p_to, 'live_on', v_live, 'note', pg_catalog.left(coalesce(p_note, ''), 500)));
   -- go-live and a cancellation after go-live are commission events
   if p_to in ('live', 'cancelled', 'refunded') then perform partner.evaluate_order(o.id); end if;
   return partner.order_json(o.id, true);

@@ -172,6 +172,7 @@ begin
     if p_as is not null and p_as <> c.partner_id then raise exception 'Not allowed' using errcode = '42501'; end if;
   end if;
   if v_partner is not null then select o.kind into v_kind from partner.organizations o where o.id = v_partner; end if;
+  if c.kind = 'staff' and p_as is not null then perform partner.audit('staff', p_as, 'organization', p_as::text, 'preview.catalog', pg_catalog.jsonb_build_object('view', p_view)); end if;
   return pg_catalog.jsonb_build_object(
     'view', case when p_view = 'partner' then 'partner' else 'client' end,
     'categories', coalesce((select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('id', k.id, 'name', k.name) order by k.sort) from partner.catalog_categories k), '[]'::jsonb),

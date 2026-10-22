@@ -196,11 +196,16 @@ async def main():
         # ---- integrations
         await go('/integrations')
         cards = await pg.evaluate("() => [...document.querySelectorAll('[data-testid=integrations-card]')].map(c => [c.dataset.provider, c.dataset.state])")
-        rec('thirteen providers, none connected', len(cards) == 13 and all(s == 'not_connected' for _, s in cards), cards)
+        rec('twenty-two providers, none connected', len(cards) == 22 and all(s == 'not_connected' for _, s in cards), cards)
         text = await t('#main').inner_text()
         rec('the word Connected (state) is nowhere', 'Connected\n' not in text and 'Conectado\n' not in text)
-        await t('[data-provider=gmail] [data-testid=integrations-connect]').click(); await pg.wait_for_timeout(400)
-        rec('connect in a sample explains instead of connecting', await t('[data-provider=gmail] [data-testid=integrations-result][data-tone=note]').count() == 1 and '/integrations' in pg.url)
+        # connecting in a sample shows what the provider would ask, then simulates it: the card says demo, never connected
+        await t('[data-provider=gmail] [data-testid=integrations-connect]').click(); await pg.wait_for_selector('[data-testid=integrations-consent]')
+        rec('connect in a sample asks first and says it is a simulation', await t('[data-testid=integrations-consent]').count() == 1 and '/integrations' in pg.url)
+        await t('[data-testid=integrations-consent-ok]').click(); await pg.wait_for_timeout(500)
+        rec('a simulated connection is labelled demo, never connected', await t('[data-provider=gmail][data-state=demo] [data-testid=integrations-sim]').count() == 1 and await t('[data-state=connected]').count() == 0)
+        # back to nothing connected for the checks below
+        await pg.evaluate("() => localStorage.removeItem('vyntex.demoLinks')"); await go('/integrations')
         await t('[data-provider=whatsapp] [data-testid=integrations-needs]').click(); await pg.wait_for_timeout(200)
         rec('what is needed panel', await t('[data-provider=whatsapp] [data-testid=integrations-need] li').count() == 5)
         rec('sandbox note on Square', await t('[data-provider=square] .integrations-mode').count() == 1 and await t('[data-provider=gmail] .integrations-mode').count() == 0)

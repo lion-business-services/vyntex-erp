@@ -160,3 +160,4 @@
 @media (max-width:560px){.auto-hist-f select.input{flex:1 1 100%}}
 .auto-hist-cell{min-width:0}
 @media (max-width:720px){.auto-hist-cell{text-align:right}table.tbl.stackable td.auto-hist-what{display:block;padding-top:6px}}
+.auto-try-apps{margin-top:10px;color:var(--text-2)}.auto-try-apps a{color:var(--accent);font-weight:650}

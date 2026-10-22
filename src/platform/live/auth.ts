@@ -11,7 +11,7 @@ import { get, post, reasonOf, type Answer, type Fail } from './http';
 
 /** One company the person belongs to, as `GET /api/auth/session` lists it. */
 export interface Membership {
-  tenantId: string; slug: string; name: string; industry: string; plan: string; status: string;
+  tenantId: string; slug: string; name: string; industry: string; plan: string; status: string; trialExpiresAt?: string | null;
   role: WorkspaceRole; memberId: string; workerId: string | null; memberName: string; capabilities: string[]; mfaRequired: boolean;
 }
 /** What sign-in still needs: nothing, a code from the authenticator, or setting an authenticator up first. */
@@ -81,7 +81,7 @@ export function describe(answer: SessionAnswer, m: Membership): WorkspaceSession
     slug: DEPLOY.liveBase === 'app' ? APP_SEGMENT : m.slug,
     tenantId: m.tenantId,
     industry: m.industry as IndustryId,
-    planId: m.plan,
+    planId: m.plan, trialExpiresAt: m.trialExpiresAt ?? null,
     role: m.role,
     actorId: worker ? m.workerId ?? m.memberId : m.memberId,
     name: m.memberName,

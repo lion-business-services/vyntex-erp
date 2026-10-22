@@ -6,6 +6,8 @@
 //            are never written to browser storage, and every change is sent to the server right after it is made.
 //
 // The pages do not know which one is running: they use `useStore`, `act`, `mutate` and the selectors either way.
+import { addFieldExtras } from '@/packs/field-extras';
+import { demoClearLinks, demoCtxLinks } from '@/platform/demo-links';
 import { useSyncExternalStore } from 'react';
 import type { DemoState, IndustryId, Lang, ModuleCollection, ViewAs } from '@/domain/types';
 import type { PlanTier } from '@/lib/pricing';
@@ -105,7 +107,8 @@ function loadPrefs(): Prefs {
 }
 
 const MODULE_COLLECTIONS: ModuleCollection[] = ['offices', 'grants', 'accessRequests', 'catalog', 'playbooks', 'apptTypes', 'appointments', 'credits', 'crossSell', 'opportunities',
-  'reviews', 'templates', 'envelopes', 'connections', 'posts', 'cash', 'cashCloses', 'complianceItems', 'rules', 'reveals', 'secureLog', 'audit'];
+  'reviews', 'templates', 'envelopes', 'connections', 'posts', 'cash', 'cashCloses', 'complianceItems', 'rules', 'reveals', 'secureLog', 'audit',
+  'chairs', 'walkins', 'passPlans', 'passes', 'payouts'];
 /** Every list a workspace has, empty. An edition that does not use a module simply leaves its list this way. */
 function emptyCollections(): Pick<DemoState, ModuleCollection> {
   return Object.fromEntries(MODULE_COLLECTIONS.map((c) => [c, []])) as unknown as Pick<DemoState, ModuleCollection>;
@@ -135,6 +138,8 @@ export function freshData(id: IndustryId, lang: Lang): DemoState {
   // a sample that brings no appointment types or rules of its own still gets the edition's
   if (!d.apptTypes.length) d.apptTypes = starters(pack).apptTypes;
   if (!d.rules.length) d.rules = starters(pack).rules;
+  // the field editions' samples get catalog, signature, review, social and opportunity records built from their own work
+  addFieldExtras(d, pack, lang);
   primeDemo(d, { pack, lang, t: makeT(lang, pack, d.config), actor: d.users[0]?.id ?? 'u1' });
   return d;
 }
@@ -151,7 +156,11 @@ function blankData(id: IndustryId, lang: Lang): DemoState {
 function savedData(id: IndustryId, lang: Lang): DemoState | null {
   try {
     const d = JSON.parse(storage.get(dataKey(id)) || 'null') as DemoState | null;
-    if (d && d.v === DATA_VERSION && d.pack === id && Array.isArray(d.jobs) && d.config && daysBetween(d.seededOn, today()) <= STALE_AFTER_DAYS && (d.touched || d.seedLang === lang)) return d;
+    if (d && d.v === DATA_VERSION && d.pack === id && Array.isArray(d.jobs) && d.config && daysBetween(d.seededOn, today()) <= STALE_AFTER_DAYS && (d.touched || d.seedLang === lang)) {
+      // a copy saved before a list existed (the shop floor lists, for one) gets it empty
+      for (const k of MODULE_COLLECTIONS) if (!Array.isArray((d as unknown as Record<string, unknown>)[k])) (d as unknown as Record<string, unknown>)[k] = [];
+      return d;
+    }
   } catch { /* fall through to a fresh copy */ }
   return null;
 }
@@ -187,7 +196,7 @@ export function actorId(): string {
   if (isWorkerView(prefs.viewAs)) return workerIdOf(prefs.viewAs);
   return data.users.find((u) => u.role === prefs.viewAs && u.active !== false)?.id ?? data.users[0]?.id ?? 'u1';
 }
-export const ctx = (): Ctx => ({ pack: currentPack(), lang: prefs.lang, t: currentT(), actor: actorId() });
+export const ctx = (): Ctx => ({ pack: currentPack(), lang: prefs.lang, t: currentT(), actor: actorId(), ...(isLive() ? {} : { links: demoCtxLinks }) });
 
 /**
  * Whether whoever is looking may do something. Office roles are resolved through the company's configuration; a field
@@ -266,6 +275,7 @@ export function resetDemo() {
   const id = prefs.pack;
   if (!seedReady(id)) { void loadSeed(id).then(() => { if (prefs.pack === id) resetDemo(); }, () => undefined); return; }
   storage.del(dataKey(id));
+  demoClearLinks();
   prefs = { ...prefs, viewAs: 'owner' };
   data = freshData(id, prefs.lang);
   sampleLoaded = true;
@@ -344,7 +354,11 @@ export function bootLive(live: WorkspaceData, who: WorkspaceSession, sync: SyncF
   const role: ViewAs = who.role === 'worker' ? `worker:${who.actorId}` : who.role;
   const pack = DEPLOY.lockedEdition ?? who.industry;
   // the plan is the company's: the plan picker of the demo has no say here
-  const tier = plansFor(pack).find((p) => p.id === who.planId)?.tier;
+  // Trial shows the edition's highest exploration tier; live provider permissions remain server-side.
+  const plans = plansFor(pack);
+  const tier = who.planId === 'trial'
+    ? plans.length ? plans[plans.length - 1].tier : prefs.planTier
+    : plans.find((p) => p.id === who.planId)?.tier;
   prefs = { ...prefs, pack, viewAs: role, lang: who.lang && offered(who.lang) ? who.lang : prefs.lang, planTier: tier ?? prefs.planTier };
   data = liveData(live);
   acked = clone(data);

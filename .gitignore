@@ -4,7 +4,7 @@
 !.env.example
 
 # Installed packages and build output (both are recreated by commands in README.md).
-node_modules/
+node_modules
 dist/
 dist-lbs/
 

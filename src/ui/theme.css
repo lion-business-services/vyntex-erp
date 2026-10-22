@@ -18,8 +18,8 @@
 .tt:hover .tt-track{border-color:rgba(10,111,207,.5)}
 .tt:hover .tt-sun{transform:rotate(45deg) scale(1)}
 .tt:active .tt-knob{width:26px}
-.tt:focus-visible{outline:none}
-.tt:focus-visible .tt-track{outline:2px solid var(--accent);outline-offset:2px}
+.tt:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:999px}
+.tt:focus-visible .tt-track{outline:none}
 :root[data-theme="dark"] .tt-track{background:linear-gradient(180deg,#0A1120,#16203A);border-color:rgba(0,221,255,.34);box-shadow:inset 0 1px 3px rgba(0,0,0,.55),0 0 12px rgba(0,190,255,.14)}
 :root[data-theme="dark"] .tt-track::after{right:auto;left:9px;background:#C4F1FF;opacity:.35;box-shadow:7px -5px 0 -1px #C4F1FF,4px 6px 0 -1.5px #C4F1FF}
 :root[data-theme="dark"] .tt-knob{transform:translateX(24px);background:linear-gradient(160deg,#4A5873 0%,#26314A 55%,#1A2336 100%);box-shadow:0 0 0 1px rgba(200,210,225,.28),0 2px 8px rgba(0,0,0,.5),0 0 10px rgba(0,221,255,.25)}

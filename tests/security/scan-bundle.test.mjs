@@ -47,7 +47,7 @@ test('finds scripts written inside the page, and allows data blocks', (t) => {
 });
 
 test('finds the other deployment\'s brand, as words and as files', (t) => {
-  const withVyntex = build(t, { 'assets/chunk-a.js': 'const n="VYNTEX ' + 'Command";', 'brand/vyntex-logo.jpg': 'x' });
+  const withVyntex = build(t, { 'assets/chunk-a.js': 'const n="VYNTEX ' + 'ERP";', 'brand/vyntex-logo.jpg': 'x' });
   assert.deepEqual(rules(withVyntex, { deploy: 'vyntex' }), [], 'its own brand is fine');
   const lbs = scanBundle(withVyntex, { deploy: 'lbs' }).findings;
   assert.deepEqual([...new Set(lbs.map((f) => f.rule))], ['other-brand']);

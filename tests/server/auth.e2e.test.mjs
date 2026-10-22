@@ -252,16 +252,20 @@ test('invitations: an address that already has an account must prove it with its
   assert.deepEqual([dup.status, dup.json], [409, { ok: false, error: 'conflict', reason: 'already_member' }]);
 });
 
-test('invitations: when email is not set up, no invitation is left open and the answer says why', async () => {
+test('invitations: when email is not set up, the inviter is handed the one-time link once, and only its hash is stored', async () => {
   await st.stepUp(co.owner, co.password);
   const keep = { key: process.env.RESEND_API_KEY, env: process.env.VX_ENV };
   const email = `noemail-${Date.now()}@example.com`;
   delete process.env.RESEND_API_KEY; process.env.VX_ENV = 'local';
   let r;
   try { r = await co.owner.post('/api/ws/rpc/member_invite', { tenant: co.tenantId, args: { email, role: 'staff' } }); } finally { process.env.RESEND_API_KEY = keep.key; process.env.VX_ENV = keep.env; }
-  assert.deepEqual([r.status, r.json], [409, { ok: false, error: 'email_not_configured' }]);
-  assert.equal(await count(`select count(*) from app.invitations where email = (select v from _in where k = 'e') and revoked_at is null`, { e: email }), 0);
-  // the email provider failing has the same effect
+  assert.equal(r.status, 200);
+  assert.equal(r.json.delivery, 'manual', 'no email provider: the inviter passes the link on');
+  assert.match(r.json.link, /\/invite\/[A-Za-z0-9_-]{40,}$/);
+  const token = r.json.link.split('/invite/')[1];
+  assert.equal(await count(`select count(*) from app.invitations where email = (select v from _in where k = 'e') and revoked_at is null and used_at is null`, { e: email }), 1, 'the invitation stays open for the person');
+  assert.equal(await count(`select count(*) from app.invitations where token_hash = (select v from _in where k = 't')`, { t: token }), 0, 'the token itself is never stored');
+  // the email provider failing: the link is handed back too, and the answer says the email did not arrive
   st.mail.status = 500;
   const failed = await co.owner.post('/api/ws/rpc/member_invite', { tenant: co.tenantId, args: { email, role: 'staff' } });
   st.mail.status = 200;
@@ -269,7 +273,9 @@ test('invitations: when email is not set up, no invitation is left open and the 
   process.env.VX_ENV = 'local';
   let failedLive;
   try { st.mail.status = 500; failedLive = await co.owner.post('/api/ws/rpc/member_invite', { tenant: co.tenantId, args: { email: 'b-' + email, role: 'staff' } }); } finally { st.mail.status = 200; process.env.VX_ENV = keep.env; }
-  assert.deepEqual([failedLive.status, failedLive.json], [502, { ok: false, error: 'delivery_failed' }]);
+  assert.equal(failedLive.status, 200);
+  assert.equal(failedLive.json.delivery, 'manual_failed');
+  assert.match(failedLive.json.link, /\/invite\//);
 });
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -279,7 +285,7 @@ test('second sign-in step: enrol, recovery codes shown once, and a password alon
   const start = await b.post('/api/auth/mfa/enroll', {});
   assert.equal(start.status, 200);
   assert.match(start.json.secret, /^[A-Z2-7]{32}$/);
-  assert.match(start.json.uri, /^otpauth:\/\/totp\/VYNTEX%20Command:/);
+  assert.match(start.json.uri, /^otpauth:\/\/totp\/VYNTEX%20ERP:/);
   secrets.delete(start.json.secret);
   const wrong = await b.post('/api/auth/mfa/confirm', { factorId: start.json.factorId, code: '000000' });
   assert.deepEqual([wrong.status, wrong.json], [401, { ok: false, error: 'invalid_code' }]);

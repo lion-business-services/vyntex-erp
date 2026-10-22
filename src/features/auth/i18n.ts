@@ -6,6 +6,7 @@ import type { Dict } from '@/i18n';
 
 export const dict: Dict = {
   en: {
+    'auth.paused.title': 'Workspace paused', 'auth.paused.body': 'The {company} workspace is paused. Your records are kept safe. Please contact VYNTEX USA at 609-780-3218 or info@vyntexusa.com to reactivate it.', 'auth.paused.other': 'Sign in with another account',
     'auth.signin.title': 'Sign in', 'auth.invite.title': 'Accept your invitation', 'auth.reset.title': 'Reset your password', 'auth.mfa.title': 'Confirm it is you',
     'auth.noSignup': 'There is no public sign-up. Accounts are opened by invitation from a workspace owner.',
     'auth.openDemo': 'Open the demo', 'auth.openPreview': 'Open the sample preview', 'auth.back': 'Back to sign in', 'auth.home': 'Back to the overview',
@@ -92,6 +93,7 @@ export const dict: Dict = {
     'auth.password.failed': 'The password could not be changed. Try again.',
   },
   es: {
+    'auth.paused.title': 'Espacio en pausa', 'auth.paused.body': 'El espacio de {company} está en pausa. Sus registros se conservan de forma segura. Comuníquese con VYNTEX USA al 609-780-3218 o a info@vyntexusa.com para reactivarlo.', 'auth.paused.other': 'Entrar con otra cuenta',
     'auth.signin.title': 'Iniciar sesión', 'auth.invite.title': 'Acepte su invitación', 'auth.reset.title': 'Restablezca su contraseña', 'auth.mfa.title': 'Confirme que es usted',
     'auth.noSignup': 'No hay registro público. Las cuentas se abren por invitación del dueño de un espacio de trabajo.',
     'auth.openDemo': 'Abrir la demo', 'auth.openPreview': 'Abrir la vista de muestra', 'auth.back': 'Volver a iniciar sesión', 'auth.home': 'Volver al inicio',
@@ -178,6 +180,7 @@ export const dict: Dict = {
     'auth.password.failed': 'No se pudo cambiar la contraseña. Inténtelo de nuevo.',
   },
   zh: {
+    'auth.paused.title': '工作区已暂停', 'auth.paused.body': '{company} 的工作区已暂停。您的记录会被安全保存。请致电 609-780-3218 或发送邮件至 info@vyntexusa.com 联系 VYNTEX USA 重新启用。', 'auth.paused.other': '使用其他账户登录',
     'auth.signin.title': '登录', 'auth.invite.title': '接受邀请', 'auth.reset.title': '重置密码', 'auth.mfa.title': '确认是您本人',
     'auth.noSignup': '不开放公开注册。账户由工作区所有者邀请开通。',
     'auth.back': '返回登录', 'auth.language': '语言', 'auth.support': '需要帮助？请发邮件至 {email} 或致电 {phone}。',

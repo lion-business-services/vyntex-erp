@@ -3,7 +3,8 @@
 // answers with `sample: true`, and never sends, charges, reveals or connects anything real. A tax ID in particular does not
 // exist here: only its type and last four digits are in the sample, so a "reveal" has no value to show and says so.
 // Each operation checks the viewer's capability first, the way the server does, so the screens behave the same in both modes.
-import type { Appointment, AuditEntry, CashClose, Credit, DemoState, ISODate, OfficeRole } from '@/domain/types';
+import { demoConnect, demoDisconnect, demoLinks, demoRecord, isDemoLinked } from './demo-links';
+import type { Appointment, AuditEntry, CashClose, Connection, Credit, DemoState, ISODate, OfficeRole, ProviderId } from '@/domain/types';
 import type { Permission } from '@/domain/permissions';
 import { assignNextLead, handoffLead } from '@/domain/actions';
 import { findClientMatches } from '@/domain/actions/clients';
@@ -208,18 +209,29 @@ const sampleFiles: FileOperations = {
   }),
   url: async (ref) => (ref.dataUrl ? ok(ref.dataUrl) : no('not_found')),
 };
-/** In a sample workspace nothing is ever connected: every provider answers "not connected" and connecting is refused. */
+/**
+ * In a sample workspace nothing is ever really connected. A visitor can simulate a connection (src/platform/demo-links.ts)
+ * to see what it does with the sample records: such a row is `demo`, never `connected`, and the screen labels it as a
+ * simulation. Without one, every provider answers "not connected" with `reason: 'sample'`.
+ */
+const SAMPLE_PROVIDERS: ProviderId[] = ['gmail', 'outlook', 'resend', 'gcal', 'gmeet', 'gdrive', 'gsheets', 'gcontacts', 'gforms', 'gbp', 'gmaps', 'galerts', 'square', 'stripe', 'quickbooks',
+  'whatsapp', 'sms', 'dialpad', 'slack', 'meta', 'ai', 'zapier'];
 const sampleIntegrations: IntegrationOperations = {
-  // One row per provider, none of them connected: a sample workspace has no account to connect to. `reason: 'sample'` tells
-  // the Integrations screen to say so. A connection row a sample happens to carry is ignored, so nothing can read as connected.
   list: async () => {
-    const ids = ['gmail', 'resend', 'gcal', 'gmeet', 'gbp', 'gmaps', 'square', 'quickbooks', 'whatsapp', 'meta', 'dialpad', 'sms', 'ai'] as const;
-    return ids.map((id) => { const row = { id, state: 'not_connected' as const, reason: 'sample' }; return row; });
+    const links = demoLinks();
+    return SAMPLE_PROVIDERS.map((id): Connection & { reason?: string } => {
+      const l = links[id];
+      return l ? { id, state: 'demo', connectedAt: l.at, lastSyncAt: l.lastSyncAt, reason: 'demo' } : { id, state: 'not_connected', reason: 'sample' };
+    });
   },
-  connect: async () => no(NOT_HERE),
-  disconnect: async () => no(NOT_HERE),
-  sync: async () => no(NOT_HERE),
-  test: async () => no(NOT_HERE),
+  connect: async (id) => { demoConnect([id]); return { ok: true, data: {}, sample: true }; },
+  disconnect: async (id) => { if (!isDemoLinked(id)) return no(NOT_HERE); demoDisconnect(id); return { ok: true, data: { id, state: 'not_connected' }, sample: true }; },
+  sync: async (id) => {
+    if (!isDemoLinked(id)) return no(NOT_HERE);
+    demoRecord(id, { key: 'integrations.demo.synced' });
+    return { ok: true, data: { id, state: 'demo', lastSyncAt: new Date().toISOString() }, sample: true };
+  },
+  test: async (id) => (isDemoLinked(id) ? { ok: true, data: { healthy: true, detail: 'demo' }, sample: true } : no(NOT_HERE)),
 };
 
 export const sampleGateway: WorkspaceGateway = {

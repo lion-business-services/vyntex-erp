@@ -128,6 +128,25 @@ export function PeopleCard({ ids = 'security', note }: { ids?: 'security' | 'set
   );
 }
 
+/** The one-time invitation link, when email is not set up (or refused the message): copy it and send it yourself. */
+function InviteLinkModal({ url, failed, name, email, onClose }: { url: string; failed: boolean; name: string; email: string; onClose: () => void }) {
+  const { t } = useApp();
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(url); setCopied(true); } catch { (document.getElementById('security-inv-link') as HTMLInputElement | null)?.select(); }
+  };
+  return (
+    <Modal title={t('security.invite.linkTitle')} onClose={onClose} labelClose={t('common.close')}>
+      <div className="stack tight" data-testid="security-invite-link">
+        <p className="small">{t(failed ? 'security.invite.linkFailed' : 'security.invite.linkBody', { name, email, hours: INVITE_HOURS })}</p>
+        <input id="security-inv-link" readOnly value={url} onFocus={(e) => e.currentTarget.select()} aria-label={t('security.invite.linkTitle')} data-testid="security-invite-link-url" />
+        <p className="xs dim">{t('security.invite.linkNote')}</p>
+        <div className="row"><span className="grow" /><Button onClick={onClose}>{t('common.close')}</Button><Button variant="primary" onClick={() => void copy()} data-autofocus>{t(copied ? 'security.invite.linkCopied' : 'security.invite.linkCopy')}</Button></div>
+      </div>
+    </Modal>
+  );
+}
+
 function InviteModal({ onClose }: { onClose: () => void }) {
   const { t, data, pack, lang, user, live } = useApp();
   // the invitation is written in the company's default language unless the inviter picks another
@@ -135,7 +154,10 @@ function InviteModal({ onClose }: { onClose: () => void }) {
   const [offices, setOffices] = useState<string[]>(() => { const main = data.offices.find((o) => o.main); return main ? [main.id] : []; });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  // the one-time link, when no email could go out: shown once, for the inviter to pass on
+  const [link, setLink] = useState<{ url: string; failed: boolean; name: string; email: string } | null>(null);
   useEffect(() => { setErr(''); }, [f, offices]);
+  if (link) return <InviteLinkModal {...link} onClose={onClose} />;
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!f.name.trim()) { setErr(t('security.invite.needName')); return; }
@@ -144,6 +166,8 @@ function InviteModal({ onClose }: { onClose: () => void }) {
     const res = await ops.memberInvite({ name: f.name, email: f.email, role: f.role, title: f.title || undefined, officeIds: offices.length ? offices : undefined, lang: f.lang });
     setBusy(false);
     if (!res.ok) { setErr(res.reason === 'conflict' ? t('security.invite.taken') : reasonText(t, res.reason)); return; }
+    const handed = res.data as typeof res.data & { inviteLink?: string; inviteDelivery?: string };
+    if (handed.inviteLink) { setLink({ url: handed.inviteLink, failed: handed.inviteDelivery === 'manual_failed', name: res.data.name, email: res.data.email }); return; }
     toast(t(res.sample ? 'security.invite.sentSample' : 'security.invite.sent', { name: res.data.name, email: res.data.email, hours: INVITE_HOURS }));
     onClose();
   };

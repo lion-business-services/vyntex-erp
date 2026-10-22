@@ -3,7 +3,7 @@
 // codes shown once, and, for someone who belongs to several companies, which one to open.
 // There is no sign-up anywhere in it: accounts are opened by invitation (src/features/auth/invite.tsx).
 // Each step asks the server and shows what the server said. Wrong email and wrong password read the same.
-import { useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { LuEye, LuEyeOff, LuCopy, LuDownload, LuCheck, LuBuilding2, LuArrowRight } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Link, SAMPLE_BASE, navigate } from '@/app/router';
@@ -18,11 +18,15 @@ import { openWorkspace } from '@/platform/live/workspace';
 import { AuthFrame } from './frame';
 import { qrPath } from './qr';
 
+// Read straight from the build constant so the bundler leaves billing out of a deployment without it.
+declare const __VX_DEPLOY__: string | undefined;
+const PausedBilling = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/billing/panel').then((m) => ({ default: m.BillingPanel })));
+
 type Stage =
   | { at: 'checking' } | { at: 'unconfigured' } | { at: 'offline' }
   | { at: 'form'; error?: string } | { at: 'forgot' }
   | { at: 'verify' } | { at: 'recovery' } | { at: 'enroll' } | { at: 'codes'; codes: string[]; email: string }
-  | { at: 'picker'; list: Membership[] };
+  | { at: 'picker'; list: Membership[] } | { at: 'paused'; name: string; tenantId: string; role: string };
 
 const quiet = { stepUp: false, session: false } as const;
 
@@ -309,7 +313,7 @@ function Foot() {
  * `slug`: the company address the page stands at (`/acme` or `/app`), when it does. Without one (the sign-in page itself)
  * the person lands in their company, or chooses when they have several.
  */
-export function AuthFlow({ slug }: { slug?: string }) {
+export function AuthFlow({ slug, onReady }: { slug?: string; /** A page that is not a workspace (the operator console): signed in and past every step, hand back instead of moving on. */ onReady?: () => void }) {
   const { t } = useApp();
   const [stage, setStage] = useState<Stage>({ at: 'checking' });
   const alive = useRef(true);
@@ -326,8 +330,12 @@ export function AuthFlow({ slug }: { slug?: string }) {
     if (!s.signedIn) { show({ at: 'form' }); return; }
     if (s.mfa?.state === 'verify') { show({ at: 'verify' }); return; }
     if (s.mfa?.state === 'enroll') { show({ at: 'enroll' }); return; }
+    if (onReady) { onReady(); return; }
     const list = usable(s);
-    if (slug && membershipFor(s, slug)) {
+    const mine = slug ? membershipFor(s, slug) : undefined;
+    // a company VYNTEX has paused: say so, instead of a workspace that refuses every request
+    if (mine && mine.status === 'suspended') { show({ at: 'paused', name: mine.name, tenantId: mine.tenantId, role: mine.role }); return; }
+    if (slug && mine) {
       const gate = await openWorkspace(slug);
       if (gate.state === 'ready') return;   // the session is set: the page above draws the workspace
       if (gate.state === 'mfa') { show({ at: gate.step === 'enroll' ? 'enroll' : 'verify' }); return; }
@@ -340,7 +348,7 @@ export function AuthFlow({ slug }: { slug?: string }) {
     if (!list.length) { show({ at: 'form', error: t('auth.err.invalid') }); return; }
     if (list.length === 1 || DEPLOY.liveBase === 'app') { navigate(workspaceAddress(list[0]), { replace: true }); return; }
     show({ at: 'picker', list });
-  }, [slug, t]);
+  }, [slug, t, onReady]);
   useEffect(() => { void advance(); }, [advance]);
 
   const other = async () => { await post('/api/auth/signout', {}, quiet); setSessionEnd(null); setStage({ at: 'form' }); };
@@ -362,6 +370,13 @@ export function AuthFlow({ slug }: { slug?: string }) {
     case 'recovery': title = t('auth.mfa.title'); sub = t('auth.recovery.sub'); body = <VerifyForm key="recovery" recovery onDone={() => { void advance(true); }} onSwitch={() => setStage({ at: 'verify' })} onOther={() => { void other(); }} />; break;
     case 'enroll': title = t('auth.enroll.title'); sub = t('auth.enroll.sub'); body = <EnrollForm onCodes={(codes) => { void toCodes(codes); }} onDone={() => { void advance(true); }} onOther={() => { void other(); }} />; break;
     case 'codes': title = t('auth.codes.title'); sub = t('auth.codes.sub'); body = <RecoveryCodes codes={stage.codes} email={stage.email} onDone={() => { void advance(true); }} />; break;
+    case 'paused':
+      title = t('auth.paused.title');
+      body = <><div className="note warn" role="status" data-testid="auth-paused" tabIndex={-1} data-autofocus><p className="small">{t('auth.paused.body', { company: stage.name })}</p></div>
+        {/* an owner or manager can see why and pay right here (VYNTEX ERP): the workspace opens as soon as Stripe confirms */}
+        {PausedBilling && (stage.role === 'owner' || stage.role === 'manager') && <Suspense fallback={null}><PausedBilling tenantId={stage.tenantId} compact /></Suspense>}
+        <div className="row"><Button onClick={() => { void other(); }}>{t('auth.paused.other')}</Button></div></>;
+      break;
     case 'picker': title = t('auth.picker.title'); sub = t('auth.picker.sub'); body = <Picker list={stage.list} />; break;
   }
   return <AuthFrame title={title} sub={sub} testId="auth-signin" step={stage.at}>{body}</AuthFrame>;

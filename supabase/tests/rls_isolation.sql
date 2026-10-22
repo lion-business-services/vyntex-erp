@@ -655,10 +655,14 @@ begin
     -- a row of company A, preferably one where the link is already set (a link that is still empty is attacked the same way)
     execute format('select id from public.%I where tenant_id = $1 order by (%I is null), id limit 1', k.src, k.col) into row_id using test.id('a');
     perform test.ok(target is not null and row_id is not null, format('sample rows exist to test %s.%s -> %s', k.src, k.col, k.dst));
-    if k.src in ('consent_records', 'lead_handoffs') then
-      -- consent records and handoffs cannot be updated at all, so the attempt is a new record that points at company B
+    if k.src in ('consent_records', 'lead_handoffs', 'payouts') then
+      -- consent records, handoffs and payouts cannot be updated at all, so the attempt is a new record that points at company B
       execute format('select to_jsonb(t) from public.%I t where id = $1', k.src) into sample using row_id;
       sample := jsonb_set(jsonb_set(sample, '{id}', to_jsonb(gen_random_uuid())), array[k.col], to_jsonb(target));
+      -- a payout is one per barber and week: the copy is for an earlier week, so only the link can be what is refused
+      if k.src = 'payouts' then
+        sample := jsonb_set(jsonb_set(sample, '{period_from}', to_jsonb((sample ->> 'period_from')::date - 70)), '{period_to}', to_jsonb((sample ->> 'period_to')::date - 70));
+      end if;
       select string_agg(quote_ident(a.attname), ', ') into cols from pg_attribute a
         where a.attrelid = format('public.%I', k.src)::regclass and a.attnum > 0 and not a.attisdropped;
       res := test.as('service', format('insert into public.%I (%s) select %s from jsonb_populate_record(null::public.%I, %L::jsonb)', k.src, cols, cols, k.src, sample));
@@ -768,7 +772,7 @@ select test.is(test.as('c_owner', 'select 1 from public.my_workspaces()'), 'rows
 select test.is(test.as('a_disabled', 'select 1 from public.clients'), 'rows:0', 'a disabled member reads nothing') \g /dev/null
 select test.is(test.as('a_disabled', 'select 1 from public.my_workspaces()'), 'rows:0', 'a disabled member has no workspace') \g /dev/null
 select test.is(test.as('nobody', 'select 1 from public.clients'), 'rows:0', 'a signed-in person without a company reads nothing') \g /dev/null
-select test.is(test.as('nobody', 'select 1 from public.industries'), 'rows:9', 'reference data (the nine editions) is readable when signed in') \g /dev/null
+select test.is(test.as('nobody', 'select 1 from public.industries'), 'rows:10', 'reference data (the ten editions) is readable when signed in') \g /dev/null
 select test.is(test.as('a_owner', $q$update public.industries set product_name = 'X'$q$), 'error:42501', 'reference data cannot be changed from the app') \g /dev/null
 
 -- ---- a closed company locks everyone out

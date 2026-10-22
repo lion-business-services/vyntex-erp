@@ -30,6 +30,7 @@ import { visibleLeads } from '@/domain/access';
 import { effectiveRules, shippedRules } from '@/domain/rules/engine';
 import { VISIT_DAYS, WEEKS, collectedByMonth, figures, recommendations, stateParts, trends, type RecIcon } from './insights';
 import { Quiet, Spark, Swap, TrendMark } from './parts';
+import { SetupChecklist } from './setup';
 import './dashboard.css';
 
 /** Where each tile drills in, and which permission its number needs. */
@@ -68,11 +69,12 @@ const TASKS_SHOWN = 3, JOBS_SHOWN = 5, EVENTS_SHOWN = 5;
 
 /** The home screen of an office that serves clients through engagements and appointments (./practice.tsx). */
 const PracticeDashboard = lazy(() => import('./practice'));
+const BarberDashboard = lazy(() => import('./barber'));
 
 /** Which home screen an edition gets is the edition's own choice (`family` in its pack): field work, or a practice. */
 export default function DashboardPage(props: PageProps) {
   const { pack } = useApp();
-  return pack.family === 'practice' ? <PracticeDashboard /> : <FieldDashboard {...props} />;
+  return pack.id === 'barber' ? <BarberDashboard /> : pack.family === 'practice' ? <PracticeDashboard /> : <FieldDashboard {...props} />;
 }
 
 function FieldDashboard(_: PageProps) {
@@ -281,6 +283,9 @@ function FieldDashboard(_: PageProps) {
           {can('jobs') && <CanWrite><A to="/jobs?new=1" className="btn primary" data-testid="dash-new-job"><LuBriefcase aria-hidden="true" />{t('newProject')}</A></CanWrite>}
         </div>
       </header>
+
+      {/* a new client workspace: the steps that make it theirs, until done or put away */}
+      <SetupChecklist />
 
       {/* the guided tour exists only in the public demo */}
       {DEPLOY.publicDemo && !live && !prefs.tourSeen && (

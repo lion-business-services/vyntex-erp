@@ -76,7 +76,9 @@ export function DocDetail({ doc }: { doc: DocRecord }) {
   const isVoid = doc.status === 'void';
   const signed = doc.esign?.status === 'signed';
   // an edition with the Signatures screen sends through a request with signers and boxes; the others keep the one-signer demo
-  const envelopes = moduleOn(data, pack, 'esign');
+  // the full signature request (boxes, several signers, certificate) where the edition is built around it, or where this
+  // document already has one; the field editions keep the one-step demo signature on a document of their own
+  const envelopes = moduleOn(data, pack, 'esign') && (pack.family === 'practice' || !!doc?.envelopeId);
   const env = byId(data.envelopes, doc.envelopeId) as EnvelopeX | undefined;
   // what was sent is what gets signed: while a request is out, or once it is complete, the text stays as it is
   const frozen = !!env && (isOpenEnvelope(env) || env.status === 'completed');

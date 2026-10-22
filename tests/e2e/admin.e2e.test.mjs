@@ -103,7 +103,10 @@ test('the operator creates a client workspace; the address is checked; the owner
   await p.fill('[data-testid=admin-f-slug]', 'greenline');
   await p.selectOption('[data-testid=admin-f-industry]', 'landscape');
   const plans = await p.locator('[data-testid=admin-f-plan] option').evaluateAll((els) => els.map((e) => e.value));
-  assert.ok(plans.length === 3, 'a priced edition offers its three plans: ' + plans.join());
+  assert.ok(plans.length === 4 && plans[3] === 'trial', 'a priced edition offers its three plans and the invitation-only trial: ' + plans.join());
+  await p.selectOption('[data-testid=admin-f-plan]', 'trial');
+  await p.waitForSelector('[data-testid=admin-f-trial-note]');
+  await p.selectOption('[data-testid=admin-f-plan]', plans[1]);
   await p.fill('[data-testid=admin-f-owner-name]', 'Gina Sample');
   await p.fill('[data-testid=admin-f-owner-email]', 'gina@greenline.example');
   await p.click('[data-testid=admin-f-submit]');

@@ -15,6 +15,9 @@
     if (q === 'light' || q === 'dark') theme = q;
   } catch (e) { /* no URLSearchParams: keep night */ }
   document.documentElement.setAttribute('data-theme', theme);
+  // The app is about to start: the readable copy of the page that the server sent for readers without scripts
+  // (scripts/prerender.mjs) stays hidden, so the first thing a visitor sees is the app, exactly as before.
+  document.documentElement.setAttribute('data-js', '');
   var meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', theme === 'dark' ? '#111829' : '#D6E8F8');
 })();

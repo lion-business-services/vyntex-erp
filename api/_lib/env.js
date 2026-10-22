@@ -28,6 +28,8 @@ export const VARIABLES = {
   SYSTEM_EMAIL_FROM: { need: 'feature', secret: false, about: 'Sender of system email, on a domain verified in Resend.' },
   DEMO_REQUEST_TO: { need: 'feature', secret: false, about: 'Where demo requests are sent (vyntex only).' },
   DEMO_REQUEST_FROM: { need: 'feature', secret: false, about: 'Sender of the demo request email (vyntex only).' },
+  FORMSUBMIT_EMAIL: { need: 'feature', secret: false, about: 'Inbox that FormSubmit notifies on every demo request (vyntex only). Default info@vyntexusa.com. FormSubmit asks that inbox to confirm once before the first notification arrives.' },
+  FORMSUBMIT_ENABLED: { need: 'feature', secret: false, about: 'Set to false to stop the FormSubmit demo request notification. On by default on the vyntex deployment; off on lbs unless set to true.' },
   ANTHROPIC_API_KEY: { need: 'feature', secret: true, about: 'Assistant, connected mode.' },
   ASSISTANT_MODEL: { need: 'optional', secret: false, about: 'Model id for the assistant.' },
   AI_TIMEOUT_MS: { need: 'optional', secret: false, about: 'Time limit of one model call in milliseconds. Default 25000.' },

@@ -8,6 +8,7 @@ import { json, isSet } from './_lib/request.js';
 import { deployId, runtimeEnv, problems, env } from './_lib/env.js';
 import { sameString } from './_lib/crypto.js';
 import { serviceRpc } from './_lib/supabase.js';
+import { formSubmitTarget } from './_lib/formsubmit.js';
 
 export async function GET(request) {
   const issues = problems();
@@ -20,7 +21,8 @@ export async function GET(request) {
     commit: (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7) || null,
     configured: {
       database: isSet('SUPABASE_URL') && isSet('SUPABASE_SERVICE_ROLE_KEY'),
-      demoRequestEmail: isSet('RESEND_API_KEY') && isSet('DEMO_REQUEST_TO'),
+      // Resend, or the FormSubmit notification (on unless FORMSUBMIT_ENABLED=false; off on lbs unless set to true)
+      demoRequestEmail: (isSet('RESEND_API_KEY') && isSet('DEMO_REQUEST_TO')) || formSubmitTarget(process.env) !== '',
       assistant: isSet('ANTHROPIC_API_KEY'),
       // sign-in and the live workspace: every core setting present, and no rule against mixing test and production broken
       workspace: issues.length === 0,

@@ -113,7 +113,8 @@ export function App() {
   else if (LandingPage && PricingPage && RequestDemoPage) {
     if (top === '') page = <Sales><LandingPage /></Sales>;
     else if (top === 'pricing') page = <Sales><PricingPage /></Sales>;
-    else if (top === 'request-demo') page = <Sales><RequestDemoPage /></Sales>;
+    // trials are given by VYNTEX through an invitation: an old /signup link lands on the request form
+    else if (top === 'request-demo' || top === 'signup') page = <Sales><RequestDemoPage /></Sales>;
     else page = <Sales><LandingPage notFound /></Sales>;
   }
   // a deployment without sales pages: its home page is the sign-in page

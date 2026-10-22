@@ -40,6 +40,10 @@
       "destination": "/api/public?vxpath=:path*"
     },
     {
+      "source": "/api/billing/:path*",
+      "destination": "/api/billing?vxpath=:path*"
+    },
+    {
       "source": "/((?!api/|assets/|brand/|brand-lbs/)[^.]*)",
       "destination": "/index.html"
     }

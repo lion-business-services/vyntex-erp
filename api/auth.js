@@ -1,6 +1,6 @@
 // /api/auth/*: sign-in, the second sign-in step, fresh identity checks, sign-out, invitations and passwords.
 //
-// There is NO sign-up route. An account exists only because a member with the "users" capability invited that
+// There is NO sign-up route (a seven-day trial is given by VYNTEX through an operator invitation). An account exists only because a member with the "users" capability invited that
 // address (invite/accept below), or because the platform operator invited the first owner of a company.
 // The browser never talks to Supabase: it talks to these routes, and the Supabase tokens stay inside a sealed,
 // HttpOnly cookie (api/_lib/session.js).
@@ -87,7 +87,7 @@ function publicSession(session, ctx) {
     idleMinutes: session.idle,
     expiresAt: new Date((session.iat + envInt('SESSION_MAX_HOURS', 12, 1, 72) * 3600) * 1000).toISOString(),
     memberships: (ctx.memberships || []).map((m) => ({
-      tenantId: m.tenant_id, slug: m.slug, name: m.name, industry: m.industry, plan: m.plan, status: m.status,
+      tenantId: m.tenant_id, slug: m.slug, name: m.name, industry: m.industry, plan: m.plan, status: m.status, trialExpiresAt: m.trial_expires_at ?? null,
       role: m.role, memberId: m.member_id, workerId: m.worker_id, memberName: m.member_name,
       capabilities: m.capabilities || [], mfaRequired: !!m.mfa_required || (deployId() === 'lbs' && m.role !== 'worker'),
     })),

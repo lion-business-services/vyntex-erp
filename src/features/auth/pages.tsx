@@ -26,7 +26,8 @@ type InviteState = { at: 'checking' } | { at: 'unconfigured' } | { at: 'offline'
 export function Invite({ token: fromAddress }: { token?: string }) {
   const { t, dateTime } = useApp();
   // kept in memory; the address bar loses it right away
-  const [token] = useState(fromAddress ?? '');
+  // Also accept new trial links in the URL fragment: the token never travels in HTTP requests.
+  const [token] = useState(() => fromAddress ?? new URLSearchParams(window.location.hash.slice(1)).get('token') ?? '');
   const [state, setState] = useState<InviteState>({ at: 'checking' });
   const [name, setName] = useState(''); const [password, setPassword] = useState(''); const [again, setAgain] = useState('');
   const [existing, setExisting] = useState(false);
@@ -36,7 +37,7 @@ export function Invite({ token: fromAddress }: { token?: string }) {
 
   useEffect(() => {
     if (asked.current) return; asked.current = true;
-    if (fromAddress) navigate('/invite', { replace: true });
+    if (fromAddress || window.location.hash.startsWith('#token=')) navigate('/invite', { replace: true });
     void (async () => {
       const there = await deploymentState();
       if (there !== 'yes') { setState({ at: there === 'no' ? 'unconfigured' : 'offline' }); return; }

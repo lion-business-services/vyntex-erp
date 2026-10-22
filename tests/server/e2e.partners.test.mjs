@@ -172,7 +172,9 @@ test('offers and the public proposal: prices from the server, a private link, th
   const p = await visitor.get('/api/partners/proposal/' + token);
   assert.equal(p.status, 200);
   assert.equal(p.headers.get('cache-control'), 'no-store');
-  assert.deepEqual([p.json.proposal.client_name, p.json.proposal.setup_cents, p.json.proposal.status], ['Harbor Dental', 149700, 'viewed']);
+  assert.deepEqual([p.json.proposal.client_name, p.json.proposal.setup_cents, p.json.proposal.status], ['Harbor Dental', 149700, 'sent'], 'reading changes nothing');
+  assert.deepEqual((await visitor.post(`/api/partners/proposal/${token}/viewed`, {})).json, { ok: true, recorded: true }, 'the page reports the view');
+  assert.equal((await people.a.b.get('/api/partners/offers/' + offer.id)).json.offer.status, 'viewed');
   assert.doesNotMatch(p.text, /est_once|estimate|partner|policy|discount_bps/);
   assert.equal((await visitor.get('/api/partners/proposal/' + 'x'.repeat(43))).json.error, 'cannot_be_opened');
   const other = await visitor.post(`/api/partners/proposal/${token}/respond`, { decision: 'accepted', name: 'Dr. Lane' }, { origin: 'https://evil.example' });

@@ -16078,7 +16078,15 @@ var dict41 = {
     "pp.err.name_required": "Type the full name.",
     "pp.err.not_draft_policy": "Only a draft can be approved.",
     "pp.err.invalid": "Something in the form is not valid.",
-    "pp.prop.gone": "This proposal link does not work: it may have expired or been turned off. Ask your VYNTEX contact for a new one."
+    "pp.prop.gone": "This proposal link does not work: it may have expired or been turned off. Ask your VYNTEX contact for a new one.",
+    "pp.offer.clientAccepts": "The client accepts on the proposal page. If they accepted another way, ask VYNTEX to record it.",
+    "pp.offer.staffAccept": "Record client acceptance",
+    "pp.offer.staffAcceptNote": "For an acceptance the client gave outside the proposal page. The reason is kept in the history.",
+    "pp.offer.staffAcceptHow": "How the client accepted (signed document, email, date)",
+    "pp.order.liveNote": "Go-live starts partner pay. Today is used unless you set an earlier date, which needs a reason.",
+    "pp.err.client_accepts": "Only the client accepts, on the proposal page. VYNTEX can record an acceptance given another way.",
+    "pp.err.admin_only": "Only a partner administrator can do this.",
+    "pp.err.bad_live_date": "The go-live date cannot be in the future or before the order and its first payment."
   },
   es: {
     "pp.brand": "Portal de Socios de VYNTEX",
@@ -16635,7 +16643,15 @@ var dict41 = {
     "pp.err.name_required": "Escriba el nombre completo.",
     "pp.err.not_draft_policy": "Solo un borrador se puede aprobar.",
     "pp.err.invalid": "Algo en el formulario no es v\xE1lido.",
-    "pp.prop.gone": "Este enlace de propuesta no funciona: puede haber vencido o estar desactivado. Pida uno nuevo a su contacto de VYNTEX."
+    "pp.prop.gone": "Este enlace de propuesta no funciona: puede haber vencido o estar desactivado. Pida uno nuevo a su contacto de VYNTEX.",
+    "pp.offer.clientAccepts": "El cliente acepta en la p\xE1gina de la propuesta. Si acept\xF3 de otra forma, pida a VYNTEX que lo registre.",
+    "pp.offer.staffAccept": "Registrar la aceptaci\xF3n del cliente",
+    "pp.offer.staffAcceptNote": "Para una aceptaci\xF3n que el cliente dio fuera de la p\xE1gina de la propuesta. El motivo queda en el historial.",
+    "pp.offer.staffAcceptHow": "C\xF3mo acept\xF3 el cliente (documento firmado, correo, fecha)",
+    "pp.order.liveNote": "El lanzamiento inicia la ganancia del socio. Se usa la fecha de hoy salvo que indique una anterior, que requiere un motivo.",
+    "pp.err.client_accepts": "Solo el cliente acepta, en la p\xE1gina de la propuesta. VYNTEX puede registrar una aceptaci\xF3n dada de otra forma.",
+    "pp.err.admin_only": "Solo un administrador de socios puede hacer esto.",
+    "pp.err.bad_live_date": "La fecha de lanzamiento no puede ser futura ni anterior al pedido y su primer pago."
   }
 };
 

@@ -183,6 +183,7 @@ function OfferView({ ctx, offer: o, reload, setOffer }: { ctx: Context; offer: O
   const [preview, setPreview] = useState(false);
   const [link, setLink] = useState<{ link: string; expiresAt: string; delivery: string } | null>(null);
   const [ordering, setOrdering] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const act = async (action: string, body: Record<string, unknown> = {}) => {
     const r = await api.offerAction(o.id, action, body);
     if (r.ok) { setOffer(r.data.offer); toast(t('pp.done')); if (action === 'duplicate') navigate('/partners/catalog/offers/' + r.data.offer.id); } else toast(errText(r), true);
@@ -228,7 +229,9 @@ function OfferView({ ctx, offer: o, reload, setOffer }: { ctx: Context; offer: O
             <Button variant="ghost" icon={<LuEye />} onClick={() => setPreview(true)}>{t('pp.offer.preview')}</Button>
             {!staff && ['approved', 'sent', 'viewed'].includes(o.status) && <Button variant="primary" icon={<LuLink />} onClick={() => void share(false)} data-testid="ob-share">{t('pp.offer.share')}</Button>}
             {!staff && ['approved', 'sent', 'viewed'].includes(o.status) && o.client_email && <Button icon={<LuSend />} onClick={() => void share(true)}>{t('pp.offer.email', { email: o.client_email })}</Button>}
-            {!staff && ['approved', 'sent', 'viewed'].includes(o.status) && <><Button size="sm" onClick={() => void decide('accepted')}>{t('pp.offer.markAccepted')}</Button><Button size="sm" variant="ghost" onClick={() => void decide('declined')}>{t('pp.offer.markDeclined')}</Button></>}
+            {!staff && ['approved', 'sent', 'viewed'].includes(o.status) && <Button size="sm" variant="ghost" onClick={() => void decide('declined')}>{t('pp.offer.markDeclined')}</Button>}
+            {!staff && ['sent', 'viewed'].includes(o.status) && <p className="xs dim">{t('pp.offer.clientAccepts')}</p>}
+            {staff && ['sent', 'viewed'].includes(o.status) && <Button size="sm" onClick={() => setAccepting(true)} data-testid="ob-staff-accept">{t('pp.offer.staffAccept')}</Button>}
             {!staff && o.status === 'accepted' && <Button variant="primary" onClick={() => setOrdering(true)} data-testid="ob-order">{t('pp.offer.toOrder')}</Button>}
             {!staff && o.order_id && <Link to={'/partners/orders/' + o.order_id} className="btn">{t('pp.offer.seeOrder')}</Link>}
             {!staff && <Button size="sm" variant="ghost" icon={<LuCopy />} onClick={() => void act('duplicate')}>{t('pp.offer.duplicate')}</Button>}
@@ -244,7 +247,28 @@ function OfferView({ ctx, offer: o, reload, setOffer }: { ctx: Context; offer: O
       </div>
       {preview && <Modal title={t('pp.offer.preview')} onClose={() => setPreview(false)} size="wide" labelClose={t('pp.close')}><ProposalDocument p={{ ...o, terms: o.terms ?? [] }} /></Modal>}
       {ordering && <OrderFromOffer offer={o} onClose={() => setOrdering(false)} />}
+      {accepting && <StaffAccept offer={o} onClose={() => setAccepting(false)} onDone={(x) => { setAccepting(false); setOffer(x); }} />}
     </div>
+  );
+}
+
+/** VYNTEX staff: record an acceptance the client gave outside the proposal page, with how it was given. */
+function StaffAccept({ offer, onClose, onDone }: { offer: Offer; onClose: () => void; onDone: (o: Offer) => void }) {
+  const { t } = useApp();
+  const errText = useErrorText();
+  const [name, setName] = useState(''); const [reason, setReason] = useState(''); const [err, setErr] = useState('');
+  const go = async () => {
+    const r = await api.admin.post<{ offer: Offer }>(`offers/${offer.id}/accept`, { name, reason });
+    if (r.ok) { toast(t('pp.done')); onDone(r.data.offer); } else setErr(errText(r));
+  };
+  return (
+    <Modal title={t('pp.offer.staffAccept')} onClose={onClose} labelClose={t('pp.cancel')}>
+      <p className="small muted">{t('pp.offer.staffAcceptNote')}</p>
+      <Field label={t('pp.mg.personName')} htmlFor="sa-n"><input id="sa-n" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+      <Field label={t('pp.offer.staffAcceptHow')} htmlFor="sa-r"><textarea id="sa-r" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+      {err && <p className="small neg" role="alert">{err}</p>}
+      <div className="row"><span className="grow" /><Button variant="ghost" onClick={onClose}>{t('pp.cancel')}</Button><Button variant="primary" onClick={() => void go()}>{t('pp.confirm')}</Button></div>
+    </Modal>
   );
 }
 

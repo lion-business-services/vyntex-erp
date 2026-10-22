@@ -115,7 +115,10 @@ export default function ProposalPage({ token: fromAddress }: { token?: string })
     void (async () => {
       if (!/^[A-Za-z0-9_-]{43}$/.test(token)) { setState({ at: 'gone' }); return; }
       const a = await get<{ proposal: ProposalData }>('/api/partners/proposal/' + token, { session: false, passive: true });
-      if (a.ok) { setState({ at: 'ready', p: a.data.proposal }); document.title = `${W[a.data.proposal.lang === 'es' ? 'es' : 'en'].proposal} ${a.data.proposal.ref} · VYNTEX`; }
+      if (a.ok) {
+        // the view is recorded by this script once the page is drawn, never by fetching the link
+        void post('/api/partners/proposal/' + token + '/viewed', {}, { session: false, stepUp: false });
+        setState({ at: 'ready', p: a.data.proposal }); document.title = `${W[a.data.proposal.lang === 'es' ? 'es' : 'en'].proposal} ${a.data.proposal.ref} · VYNTEX`; }
       else setState({ at: a.status === 0 || a.status >= 500 ? 'offline' : 'gone' });
     })();
   }, [token]);

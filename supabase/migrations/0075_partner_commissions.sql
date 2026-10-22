@@ -122,6 +122,22 @@ begin
 end
 $$;
 
+/** Takes a commission out of any payout that is still a draft (it was held, disputed or reversed) and fixes that payout's total. */
+create or replace function partner.leave_draft_payouts(p_commission uuid) returns void
+language plpgsql security definer
+set search_path = ''
+as $$
+declare b uuid;
+begin
+  for b in update partner.payout_lines pl set active = false
+            where pl.commission_id = p_commission and pl.active
+              and exists (select 1 from partner.payout_batches x where x.id = pl.batch_id and x.status = 'draft')
+          returning pl.batch_id loop
+    update partner.payout_batches x set total_cents = coalesce((select sum(l.amount_cents) from partner.payout_lines l where l.batch_id = x.id and l.active), 0) where x.id = b;
+  end loop;
+end
+$$;
+
 create or replace function partner.usd(p_cents bigint) returns text
 language sql immutable
 set search_path = ''
@@ -137,7 +153,7 @@ as $$
 declare
   o partner.orders; l record; v record; pay record; c record;
   v_paid_once bigint; v_paid_all bigint; v_order_once bigint; v_new integer := 0; v_fee bigint := 0; v_fee_version uuid; v_fee_days integer;
-  v_amount bigint; v_base bigint; v_versions uuid[];
+  v_amount bigint; v_base bigint; v_versions uuid[]; v_returned bigint; v_net_once bigint; v_active boolean;
 begin
   select * into o from partner.orders where id = p_order for update;
   if not found then return 0; end if;
@@ -147,10 +163,15 @@ begin
 
   select coalesce(sum(amount_cents) filter (where kind in ('deposit', 'balance', 'one_time')), 0), coalesce(sum(amount_cents) filter (where kind in ('deposit', 'balance', 'one_time', 'monthly')), 0)
     into v_paid_once, v_paid_all from partner.order_payments where order_id = o.id;
+  select coalesce(sum(amount_cents), 0) into v_returned from partner.order_payments where order_id = o.id and kind in ('refund', 'chargeback');
   v_order_once := o.setup_cents + o.one_time_cents;
+  -- what VYNTEX actually kept for the one-time charges: payments minus every refund and chargeback recorded so far
+  v_net_once := v_paid_once - v_returned;
+  -- a suspended or revoked partner earns nothing new (reversals and clawbacks below still apply)
+  select o2.status = 'active' into v_active from partner.organizations o2 where o2.id = o.partner_id;
 
   -- 1. one-time pay: go-live recorded, the order active, and the setup and one-time charges paid in full
-  if o.live_at is not null and o.status in ('live', 'completed', 'disputed') and v_paid_once >= v_order_once then
+  if v_active and o.live_at is not null and o.status in ('live', 'completed', 'disputed') and v_net_once > 0 and v_net_once >= v_order_once then
     for l in select * from partner.order_lines where order_id = o.id order by line_no loop
       for v in select * from partner.policy_versions pv where pv.id = any (v_versions) and l.item_id = any (pv.applies_to) loop
         if v.model = 'referral_flat_fee' then
@@ -178,8 +199,9 @@ begin
   end if;
 
   -- 2. monthly shares: each month VYNTEX collected, after go-live
-  if o.live_at is not null and o.recurring_cents > 0 then
-    for pay in select * from partner.order_payments where order_id = o.id and kind = 'monthly' order by period loop
+  if v_active and o.live_at is not null and o.recurring_cents > 0 then
+    -- only months from the go-live month on
+    for pay in select * from partner.order_payments where order_id = o.id and kind = 'monthly' and period >= pg_catalog.date_trunc('month', o.live_at)::date order by period loop
       for l in select * from partner.order_lines where order_id = o.id and recurring_cents > 0 loop
         for v in select * from partner.policy_versions pv where pv.id = any (v_versions) and pv.model = 'revenue_share_recurring' and l.item_id = any (pv.applies_to) loop
           -- the line's part of what was collected, never more than the line's monthly
@@ -369,6 +391,7 @@ begin
   elsif p_action in ('hold', 'dispute') then
     if v_st not in ('eligible', 'approved') then raise exception 'Cannot hold now' using errcode = '22023', hint = 'bad_state'; end if;
     perform partner.commission_set(x.id, case when p_action = 'hold' then 'held' else 'disputed' end, 'staff', p_note);
+    perform partner.leave_draft_payouts(x.id);
   elsif p_action = 'release' then
     if v_st not in ('held', 'disputed') then raise exception 'Not held' using errcode = '22023', hint = 'bad_state'; end if;
     perform partner.commission_set(x.id, 'eligible', 'staff', p_note);
@@ -381,6 +404,8 @@ begin
         pg_catalog.format('Reversed by VYNTEX: %s', partner.usd(v_rem)), x.id, null, p_note, 'reverse:' || x.id);
     end if;
     if v_st <> 'paid' then perform partner.commission_set(x.id, 'reversed', 'staff', p_note); end if;
+    -- a reversed line never stays in a payout: it is not paid and deducted at once
+    perform partner.leave_draft_payouts(x.id);
   elsif p_action = 'reply' then
     perform partner.commission_set(x.id, 'reply', 'staff', p_note);
   else
@@ -411,6 +436,18 @@ begin
 end
 $$;
 
+/** Money goes only to an active partner with a verified W-9 and a signed agreement: checked at every payout step. */
+create or replace function partner.payout_gate(p_partner uuid) returns void
+language plpgsql stable security definer
+set search_path = ''
+as $$
+begin
+  if not exists (select 1 from partner.organizations o where o.id = p_partner and o.status = 'active' and o.w9_status = 'verified' and o.agreement_status = 'signed') then
+    raise exception 'An active partner with a verified W-9 and a signed agreement is required for any payment' using errcode = '22023', hint = 'not_payout_eligible';
+  end if;
+end
+$$;
+
 /** A payout for one partner: every approved line (deductions included). Needs W-9 verified and agreement signed. */
 create or replace function public.partner_admin_payout_create(p_partner uuid, p_note text default '') returns jsonb
 language plpgsql security definer
@@ -422,9 +459,7 @@ begin
   perform app.require_stepup();
   select * into o from partner.organizations where id = p_partner for update;
   if not found then raise exception 'Unknown partner' using errcode = '22023'; end if;
-  if o.w9_status <> 'verified' or o.agreement_status <> 'signed' then
-    raise exception 'W-9 verified and a signed agreement are required before any payment' using errcode = '22023', hint = 'not_payout_eligible';
-  end if;
+  perform partner.payout_gate(p_partner);
   select coalesce(sum(x.amount_cents), 0) into v_total from partner.commissions x
    where x.partner_id = p_partner and partner.commission_status(x.id) = 'approved'
      and not exists (select 1 from partner.payout_lines pl where pl.commission_id = x.id and pl.active);
@@ -446,7 +481,7 @@ create or replace function public.partner_admin_payout_step(p_id uuid, p_step te
 language plpgsql security definer
 set search_path = ''
 as $$
-declare b partner.payout_batches; r record;
+declare b partner.payout_batches; r record; v_total bigint;
 begin
   perform partner.require_staff(true);
   perform app.require_stepup();
@@ -454,10 +489,17 @@ begin
   if not found then raise exception 'Unknown payout' using errcode = '22023'; end if;
   if p_step = 'approve' then
     if b.status <> 'draft' then raise exception 'Not a draft' using errcode = '22023', hint = 'bad_state'; end if;
+    perform partner.payout_gate(b.partner_id);
+    -- only lines still approved: a line held, disputed or reversed since the draft leaves the payout
+    update partner.payout_lines pl set active = false where pl.batch_id = b.id and pl.active and partner.commission_status(pl.commission_id) <> 'approved';
+    update partner.payout_batches set total_cents = coalesce((select sum(l.amount_cents) from partner.payout_lines l where l.batch_id = b.id and l.active), 0) where id = b.id
+      returning total_cents into v_total;
+    if v_total <= 0 then raise exception 'Nothing approved to pay in this payout' using errcode = '22023', hint = 'nothing_payable'; end if;
     update partner.payout_batches set status = 'approved', approved_by = (select auth.uid()), approved_at = pg_catalog.now() where id = b.id;
     for r in select commission_id from partner.payout_lines where batch_id = b.id and active loop perform partner.commission_set(r.commission_id, 'payable', 'staff', b.ref); end loop;
   elsif p_step = 'sent' then
     if b.status <> 'approved' then raise exception 'Approve it first' using errcode = '22023', hint = 'bad_state'; end if;
+    perform partner.payout_gate(b.partner_id);
     if coalesce(pg_catalog.btrim(p ->> 'method'), '') = '' or coalesce(pg_catalog.btrim(p ->> 'reference'), '') = '' then
       raise exception 'Method and reference are required' using errcode = '22023', hint = 'reference_required';
     end if;
@@ -465,6 +507,7 @@ begin
            sent_on = coalesce(nullif(p ->> 'date', '')::date, current_date), sent_by = (select auth.uid()) where id = b.id;
   elsif p_step = 'settled' then
     if b.status <> 'sent' then raise exception 'Mark it sent first' using errcode = '22023', hint = 'bad_state'; end if;
+    perform partner.payout_gate(b.partner_id);
     if coalesce(pg_catalog.btrim(p ->> 'reference'), '') = '' then raise exception 'A settlement reference is required' using errcode = '22023', hint = 'reference_required'; end if;
     update partner.payout_batches set status = 'settled', settlement_reference = pg_catalog.left(p ->> 'reference', 200),
            settled_on = coalesce(nullif(p ->> 'date', '')::date, current_date), settled_by = (select auth.uid()) where id = b.id;

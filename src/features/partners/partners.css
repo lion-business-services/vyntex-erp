@@ -1,0 +1,121 @@
+/* VYNTEX Partner Portal (/partners) and client proposals (/proposal). Dark first; tokens only (src/ui/styles.css). */
+.pp-shell{min-height:100vh;background:radial-gradient(1200px 500px at 10% -10%,var(--cobalt-soft),transparent 60%),var(--bg);color:var(--text)}
+.pp-pad{padding:22px}
+.pp-wait{display:grid;place-items:center;min-height:40vh;color:var(--text-3)}
+.pp-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:10px max(16px,calc((100vw - 1320px)/2));border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(12px);flex-wrap:wrap}
+.pp-logo{text-decoration:none;display:inline-flex}
+.pp-tag{font-size:11.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent-line);background:var(--accent-soft);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.pp-nav{display:flex;gap:2px;flex-wrap:wrap}
+.pp-nav-a,.pp-util{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:var(--radius-s);color:var(--text-2);text-decoration:none;font-weight:650;font-size:14px;border:1px solid transparent}
+.pp-nav-a svg,.pp-util svg{width:16px;height:16px}
+.pp-nav-a:hover,.pp-util:hover{color:var(--text);background:var(--neutral-soft)}
+.pp-nav-a.on,.pp-util.on{color:var(--text);background:var(--surface-3);border-color:var(--line-strong);box-shadow:inset 0 -2px 0 var(--accent)}
+.pp-who{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-lang button{padding:4px 9px;font-size:12px}
+.pp-main{max-width:1320px;margin:0 auto;padding:26px 16px 72px}
+.pp-stack{display:grid;gap:16px;min-width:0}
+.pp-hero h1{font-size:clamp(24px,3.2vw,34px);margin:0 0 4px;letter-spacing:-.01em}
+.pp-hero p{margin:0 0 6px}
+.pp-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.pp-stats.six{grid-template-columns:repeat(6,minmax(0,1fr))}
+.pp-todo{margin:0;padding-left:18px;display:grid;gap:6px}
+.pp-quick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.pp-q{display:grid;gap:6px;text-decoration:none;color:var(--text);transition:border-color var(--motion-fast) var(--ease-vyntex),transform var(--motion-fast) var(--ease-vyntex)}
+.pp-q:hover{border-color:var(--accent-line);transform:translateY(-1px)}
+.pp-q svg{width:22px;height:22px;color:var(--accent)}
+.pp-filters{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pp-search{min-width:min(100%,260px)}
+.pp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.pp-item{display:flex;flex-direction:column;gap:8px}
+.pp-item h3{margin:0;font-size:17px}
+.pp-item.popular{border-color:var(--accent-line);box-shadow:var(--shadow-2),var(--glow-soft)}
+.pp-item footer{margin-top:auto;padding-top:6px}
+.pp-tagline{margin:0;color:var(--text-2)}
+.pp-prices{margin:4px 0;display:grid;gap:4px}
+.pp-price-row{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);padding:3px 0}
+.pp-price-row dt{color:var(--text-2);font-size:13.5px}
+.pp-price-row dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+.pp-price-row.strong dd,.pp-price-row.strong dt{color:var(--text);font-weight:800}
+.pp-price b{font-size:16px}
+.pp-inc{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.pp-inc li{display:flex;gap:7px;align-items:flex-start;font-size:13.5px}
+.pp-inc svg{width:14px;height:14px;color:var(--ok);flex:none;margin-top:3px}
+.pp-exc{margin:0;padding-left:16px}
+.pp-check{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.pp-earn{border:1px solid var(--accent-line);background:var(--accent-soft);border-radius:var(--radius-s);padding:10px 12px;display:grid;gap:4px}
+.pp-earn ul{margin:0;padding-left:16px}
+.pp-earn p{margin:0}
+.pp-link{display:inline-flex;align-items:center;gap:5px;color:var(--accent)}
+.pp-link svg{width:13px;height:13px}
+.pp-section{display:grid;gap:12px;margin-top:10px}
+.pp-section-h{display:flex;justify-content:space-between;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.pp-section-h h2{margin:0;font-size:20px}
+.pp-section-h p{margin:2px 0 0}
+.pp-present-lead{font-size:clamp(18px,2.4vw,24px);font-weight:650;margin:0 0 14px}
+.pp-present-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+.pp-present h3{margin:0 0 8px}
+.pp-compare th{vertical-align:top}
+.pp-compare td{vertical-align:top}
+.pp-res-h{all:unset;cursor:pointer;display:flex;gap:8px;align-items:center;width:100%}
+.pp-res-h:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.pp-res-body p{margin:6px 0}
+.pp-builder{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+.pp-side{position:sticky;top:74px}
+.pp-side-actions{display:grid;gap:8px}
+.pp-lines{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}
+.pp-lines li{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:var(--radius-s);padding:8px 10px;background:var(--surface-2)}
+.pp-qty{width:64px}
+.pp-timeline{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.pp-timeline li{border-left:2px solid var(--line-strong);padding-left:10px}
+.pp-timeline li.internal{border-left-color:var(--violet,var(--accent));background:var(--neutral-soft)}
+.pp-timeline p{margin:4px 0 0}
+.pp-msg{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.pp-kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:0}
+.pp-kv dt{color:var(--text-3)}
+.pp-kv dd{margin:0}
+.pp-line-detail{display:grid;gap:10px;padding:6px 4px}
+.pp-edit-prices input,.pp-edit-prices select{width:100%}
+/* sign-in */
+.pp-auth{min-height:100vh;background:var(--bg);display:grid;align-content:start;justify-items:center;padding-top:28px}
+.pp-auth-tag{display:inline-flex;gap:6px;align-items:center;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0}
+.pp-auth-tag svg{width:14px;height:14px}
+.pp-auth-note{text-align:center;max-width:420px;margin:0 16px 30px}
+/* the client proposal */
+.pp-doc-page{min-height:100vh;background:var(--bg);padding:28px 16px 60px}
+.pp-doc{max-width:880px;margin:0 auto;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--radius);padding:clamp(20px,4vw,44px);box-shadow:var(--shadow-2);display:grid;gap:22px}
+.pp-doc-h{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:16px}
+.pp-doc-meta{text-align:right}
+.pp-doc-meta p{margin:2px 0}
+.pp-doc-kicker{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.pp-doc-title{margin:0;font-size:clamp(24px,3.4vw,34px)}
+.pp-doc h2{margin:0 0 8px;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.pp-doc h3{margin:0 0 4px;font-size:18px}
+.pp-doc section p{margin:4px 0}
+.pp-doc-line{border:1px solid var(--line);border-radius:var(--radius-s);padding:14px;margin-bottom:10px;background:var(--surface-2)}
+.pp-doc-money tfoot th{text-align:left;font-weight:650}
+.pp-doc-due th,.pp-doc-due td{font-weight:800;font-size:16px;color:var(--text)}
+.pp-doc-actions{display:grid;gap:10px;margin-top:12px}
+.pp-doc-f{border-top:1px solid var(--line);padding-top:12px}
+@media print{
+  .pp-top,.no-print,.skip{display:none!important}
+  .pp-doc-page,.pp-shell{background:#fff;padding:0}
+  .pp-doc{box-shadow:none;border:0;color:#111;background:#fff;max-width:none}
+  .pp-doc *{color:#111!important;background:transparent!important;border-color:#ccc!important}
+}
+@media (max-width:1000px){
+  .pp-builder{grid-template-columns:1fr}
+  .pp-side{position:static}
+  .pp-stats.six{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  .pp-stats,.pp-stats.six{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pp-quick{grid-template-columns:1fr}
+  .pp-present-grid{grid-template-columns:1fr}
+  .pp-who{display:none}
+  .pp-nav{width:100%;order:5;overflow-x:auto;flex-wrap:nowrap}
+  .pp-doc-meta{text-align:left}
+}
+/* controls that sit outside a Field */
+.pp-shell .row > select,.pp-shell .card-h select,.pp-qty,.pp-shell .pp-edit-prices input,.pp-shell .pp-edit-prices select,.pp-shell .row.nowrap > input{background:var(--surface-2);color:var(--text);border:1px solid var(--line-strong);border-radius:var(--radius-s);padding:7px 10px;min-height:36px;font:inherit;font-size:14px}
+.pp-shell .row.nowrap > input{flex:1;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+@media (max-width:1480px){ .pp-who{display:none} .pp-nav-a{padding:8px 9px} }

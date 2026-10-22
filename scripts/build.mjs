@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeServerDomain } from './build-server-domain.mjs';
+import { prerender } from './prerender.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outArg = process.argv.indexOf('--out');
@@ -26,6 +27,8 @@ function copyDir(from, to) {
     if (e.isDirectory()) copyDir(a, b); else fs.copyFileSync(a, b);
   }
 }
+/** The entry files of the build in progress, for the summary line. */
+let built = { js: '', css: '' };
 function finish(meta) {
   copyDir(path.join(root, 'public'), stage);
   // the LBS deployment has its own page shell, icons and brand files; the VYNTEX brand files are not shipped with it
@@ -41,6 +44,7 @@ function finish(meta) {
     if (info.entryPoint && /src[\\/]main\.tsx$/.test(info.entryPoint) && file.endsWith('.js')) { js = path.basename(file); css = info.cssBundle ? path.basename(info.cssBundle) : ''; }
   }
   if (!js || !css) throw new Error('build: entry files not found in the output');
+  built = { js, css };
   const lbsShell = path.join(root, 'public-lbs/index.html');
   let html = fs.readFileSync(deploy === 'lbs' && fs.existsSync(lbsShell) ? lbsShell : path.join(root, 'public/index.html'), 'utf8');
   html = html.replace('/assets/app.css', `/assets/${css}`).replace('/assets/app.js', `/assets/${js}`);
@@ -55,9 +59,12 @@ function finish(meta) {
   fs.writeFileSync(path.join(stage, 'index.html'), html);
   // the entry stylesheet already contains every page's styles; the per-page copies esbuild also writes are never loaded
   for (const f of fs.readdirSync(path.join(stage, 'assets'))) if (/^chunk-.*\.css$/.test(f)) fs.rmSync(path.join(stage, 'assets', f));
-  // swap the finished build in
+}
+/** Swaps the finished build in. A build that failed before this point leaves the working dist/ alone. */
+function swapIn() {
   fs.rmSync(dist, { recursive: true, force: true });
   fs.renameSync(stage, dist);
+  const { js, css } = built;
   const kb = (f) => (fs.statSync(path.join(dist, 'assets', f)).size / 1024).toFixed(0);
   const chunks = fs.readdirSync(path.join(dist, 'assets')).filter((f) => f.endsWith('.js')).length;
   console.log(`built ${path.relative(root, dist) || dist} [${deploy}${samplePreview ? ', sample preview' : ''}] (${js} ${kb(js)} KB, ${css} ${kb(css)} KB, ${chunks} script files)`);
@@ -92,12 +99,18 @@ const options = {
 };
 const prepare = () => { fs.rmSync(stage, { recursive: true, force: true }); fs.mkdirSync(path.join(stage, 'assets'), { recursive: true }); };
 if (watch) {
-  const ctx = await context({ ...options, plugins: [{ name: 'finish', setup(b) { b.onStart(prepare); b.onEnd((r) => { if (!r.errors.length) finish(r.metafile); }); } }] });
+  const ctx = await context({ ...options, plugins: [{ name: 'finish', setup(b) { b.onStart(prepare); b.onEnd((r) => { if (!r.errors.length) { finish(r.metafile); swapIn(); } }); } }] });
   await ctx.watch();
   console.log('watching…');
 } else {
   await writeServerDomain();   // the signing rules the server functions run (api/_lib/domain.bundle.mjs), from the same sources
   prepare();
-  try { const r = await build(options); finish(r.metafile); }
+  try {
+    const r = await build(options); finish(r.metafile);
+    // the public pages as readable HTML, robots.txt, sitemap.xml and llms.txt (scripts/prerender.mjs)
+    const seo = await prerender({ dir: stage, root, deploy });
+    swapIn();
+    if (seo.pages) console.log(`  + ${seo.pages} public pages as HTML, robots.txt, sitemap.xml, llms.txt`);
+  }
   catch (e) { fs.rmSync(stage, { recursive: true, force: true }); throw e; }
 }

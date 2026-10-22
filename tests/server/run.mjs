@@ -47,6 +47,8 @@ if (unitOnly) process.exit(status);
   try {
     console.log('== end-to-end tests of the public endpoints (e2e.public.test.mjs) against the local stand-ins');
     run(['e2e.public.test.mjs'], { ...process.env, VX_PG_PUBLIC_READY: '1' });
+    console.log('== end-to-end tests of the VYNTEX Partner Portal (e2e.partners.test.mjs) on the same database');
+    run(['e2e.partners.test.mjs'], { ...process.env, VX_PG_PUBLIC_READY: '1' });
   } finally {
     spawnSync('bash', [path.join(here, 'pg_local.sh'), 'stop'], { env: publicEnv });
   }

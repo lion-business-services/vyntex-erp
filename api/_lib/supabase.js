@@ -8,7 +8,7 @@
 //   service role key  bypasses row level security. Used only by the functions in the "service" part below, and each
 //                     one says why a person's token cannot do that job. Everything else goes through userRpc().
 //
-// A failed call returns { ok: false, status, sqlstate, code, word }. Nothing else from the upstream answer is kept:
+// A failed call returns { ok: false, status, sqlstate, code, word, hint }. Nothing else from the upstream answer is kept:
 // its text can describe tables, accounts and keys, so it is not returned, not logged, and never reaches a browser.
 import { need, env } from './env.js';
 
@@ -29,7 +29,9 @@ function failure(status, payload) {
   const code = [p.error_code, p.code, p.error].find((v) => typeof v === 'string' && /^[a-z][a-z0-9_]{2,60}$/.test(v)) || '';
   const message = typeof p.message === 'string' ? p.message : typeof p.msg === 'string' ? p.msg : '';
   const word = KNOWN_WORDS.has(message) ? message : '';
-  return { ok: false, status, sqlstate, code, word };
+  // The HINT of a refusal raised on purpose: one snake_case word chosen by our own functions (never upstream text).
+  const hint = typeof p.hint === 'string' && /^[a-z][a-z0-9_]{2,40}$/.test(p.hint) ? p.hint : '';
+  return { ok: false, status, sqlstate, code, word, hint };
 }
 
 async function call(path, { method = 'GET', key = 'anon', token, body, raw, contentType, headers } = {}) {

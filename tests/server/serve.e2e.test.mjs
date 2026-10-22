@@ -70,7 +70,7 @@ test('vercel.json: few functions, a rewrite for each, scheduled calls, and the s
 });
 
 test('over HTTP: sign in, cookies, load, sign out (the address style Vercel hands to a function is the original one)', async () => {
-  const origin = await serve(PORTS.serve);
+  const origin = await serve(PORTS.serve, { FORMSUBMIT_ENABLED: 'false' });
   const c = client(origin);
   const health = await c.call('GET', '/api/health');
   assert.equal(health.json.ok, true); assert.equal(health.json.configured.workspace, true);
@@ -137,7 +137,7 @@ test('the functions that existed before this build still answer', async () => {
   assert.equal((await demo.json()).error, 'invalid');
   const valid = { name: 'Sample Person', business: 'Sample Company', industry: 'build', phone: '555-555-0100', email: 'person@example.com', language: 'en', contactMethod: 'email', teamSize: '2-5', consent: true };
   const sent = await fetch(origin + '/api/demo-request', { method: 'POST', headers: { 'content-type': 'application/json', 'x-real-ip': '198.51.100.44' }, body: JSON.stringify(valid) });
-  assert.deepEqual(await sent.json(), { ok: true, delivered: false, reason: 'not_configured' }, 'DEMO_REQUEST_TO is not set in the test run: nothing is sent, and the answer says so');
+  assert.deepEqual(await sent.json(), { ok: true, delivered: false, reason: 'not_configured' }, 'DEMO_REQUEST_TO is not set and FormSubmit is switched off in this run: nothing is sent, and the answer says so');
   assert.equal((await fetch(origin + '/api/demo-request')).status, 405);
   const health = await (await fetch(origin + '/api/health')).json();
   for (const k of ['database', 'demoRequestEmail', 'assistant']) assert.equal(typeof health.configured[k], 'boolean', 'the keys the deployment checklist reads are still there');

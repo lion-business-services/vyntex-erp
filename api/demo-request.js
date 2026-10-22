@@ -1,21 +1,29 @@
 // POST /api/demo-request: receives the "Request a demo" form from the sales pages.
 //
 // What it does, in order: limits requests per address, checks and cleans the input, and then
-//   1. sends one plain-text email through Resend when RESEND_API_KEY, DEMO_REQUEST_TO and DEMO_REQUEST_FROM are set
+//   1. notifies VYNTEX through FormSubmit on every valid request (owner decision): a JSON POST to
+//      https://formsubmit.co/ajax/<FORMSUBMIT_EMAIL, default info@vyntexusa.com>. FORMSUBMIT_ENABLED=false turns it off;
+//      on the LBS deployment (no sales pages) it is off unless FORMSUBMIT_ENABLED=true;
+//   2. also sends one plain-text email through Resend when RESEND_API_KEY, DEMO_REQUEST_TO and DEMO_REQUEST_FROM are set
 //      (sender: DEMO_REQUEST_FROM, reply-to: the visitor), and
-//   2. also stores the request in the `demo_requests` table when SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.
-// When email delivery is not configured it still stores the request (when the database is set) and says it was not sent:
-// { ok: true, delivered: false, reason: 'not_configured' }.
+//   3. stores the request in the `demo_requests` table when SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.
+// The request counts as delivered when EITHER FormSubmit or Resend accepted it (stored as email_delivered).
+// When neither channel is on it still stores the request (when the database is set), so a lead is never lost, and says it
+// was not sent: { ok: true, delivered: false, reason: 'not_configured' }.
 // The page then tells the visitor the truth and offers email, phone and WhatsApp instead.
+// Hidden-field (honeypot) submissions never notify anyone and are never stored.
 //
 // Secrets are read from the environment only. They are never returned, never logged, and upstream error bodies are never echoed.
 import { clientAddress, hashAddress } from './_lib/request.js';
+import { formSubmitTarget } from './_lib/formsubmit.js';
 
 const MAX_BODY_BYTES = 8 * 1024;
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_PER_WINDOW = 5;
 const MAX_TRACKED_ADDRESSES = 5000;
 const RESEND_URL = 'https://api.resend.com/emails';
+const FORMSUBMIT_BASE = 'https://formsubmit.co/ajax/';
+const FORMSUBMIT_TIMEOUT_MS = 6000;
 const DEFAULT_CONSENT_TEXT = 'I agree to be contacted by VYNTEX USA about this request.';
 
 const LANGUAGES = ['en', 'es'];
@@ -156,6 +164,46 @@ async function sendEmail(env, r, at) {
   }
 }
 
+/** The JSON FormSubmit receives: its control fields, then the request with readable labels (shown as a table). */
+function formSubmitPayload(r, at) {
+  return {
+    _subject: `New VYNTEX ERP demo request: ${r.business} (${r.industry})`,
+    _template: 'table',
+    _captcha: 'false',
+    _replyto: r.email,
+    Name: r.name,
+    Business: r.business,
+    Industry: r.industry,
+    Phone: r.phone,
+    Email: r.email,
+    'Preferred language': r.language === 'es' ? 'Spanish' : 'English',
+    'Contact by': r.contactMethod,
+    'Team size': r.teamSize,
+    Message: r.message || '(none)',
+    Consent: `Given at ${at}: "${r.consentText}"`,
+    Source: 'VYNTEX ERP, Request a demo (erp.vyntexusa.com)',
+  };
+}
+
+async function sendFormSubmit(target, r, at) {
+  try {
+    const res = await fetch(FORMSUBMIT_BASE + target, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json', origin: 'https://erp.vyntexusa.com', referer: 'https://erp.vyntexusa.com/request-demo' },
+      body: JSON.stringify(formSubmitPayload(r, at)),
+      signal: AbortSignal.timeout(FORMSUBMIT_TIMEOUT_MS),
+    });
+    let body = null;
+    try { body = await res.json(); } catch { /* not JSON */ }
+    const ok = res.ok && !!body && (body.success === true || body.success === 'true');
+    if (!ok) console.error('demo-request: FormSubmit did not accept the notification, status', res.status);
+    return ok;
+  } catch (e) {
+    console.error('demo-request: FormSubmit could not be reached', e && e.name ? e.name : 'Error');
+    return false;
+  }
+}
+
 async function storeRequest(env, r, at, emailDelivered, source) {
   const row = {
     name: r.name, business: r.business, industry: r.industry, phone: r.phone, email: r.email,
@@ -201,19 +249,26 @@ export async function POST(request) {
   const r = checked.value;
 
   const env = process.env;
-  // all three are needed: without a verified sender the email would not reach the team, so that counts as not configured
+  // Resend needs all three: without a verified sender the email would not reach the team
+  const resendReady = !!(env.RESEND_API_KEY && env.DEMO_REQUEST_TO && env.DEMO_REQUEST_FROM);
+  const formSubmitTo = formSubmitTarget(env);
   const at = new Date().toISOString();
+  const dbReady = !!(env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
   const source = () => ({ ipHash: hashAddress(clientAddress(request), env.IP_HASH_SALT), userAgent: (request.headers.get('user-agent') || '').slice(0, 500) || null });
-  if (!env.RESEND_API_KEY || !env.DEMO_REQUEST_TO || !env.DEMO_REQUEST_FROM) {
-    // No email yet: the request is still kept in the database, so a lead is never lost (the page tells the visitor it
-    // was not sent and shows the phone and email that work right now).
-    if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) await storeRequest(env, r, at, false, source());
+  if (!resendReady && !formSubmitTo) {
+    // No notification channel: the request is still kept in the database, so a lead is never lost (the page tells the
+    // visitor it was not sent and shows the phone and email that work right now).
+    if (dbReady) await storeRequest(env, r, at, false, source());
     return json(200, { ok: true, delivered: false, reason: 'not_configured' });
   }
 
-  const delivered = await sendEmail(env, r, at);
-  // The database copy is extra: if it fails, an email that went out still counts as delivered.
-  if (env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) await storeRequest(env, r, at, delivered, source());
+  const [viaResend, viaFormSubmit] = await Promise.all([
+    resendReady ? sendEmail(env, r, at) : false,
+    formSubmitTo ? sendFormSubmit(formSubmitTo, r, at) : false,
+  ]);
+  const delivered = viaResend || viaFormSubmit;
+  // The database copy is extra: if it fails, a notification that went out still counts as delivered.
+  if (dbReady) await storeRequest(env, r, at, delivered, source());
   if (!delivered) return json(502, { ok: false, error: 'delivery_failed' });
   return json(200, { ok: true, delivered: true });
 }

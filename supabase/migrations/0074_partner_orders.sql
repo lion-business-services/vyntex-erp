@@ -245,17 +245,17 @@ begin
     if not found or o.partner_id <> v_partner then raise exception 'Offer not found' using errcode = '42501'; end if;
     if o.status <> 'accepted' then raise exception 'Only an accepted offer becomes an order' using errcode = '22023', hint = 'offer_not_accepted'; end if;
   end if;
-  if coalesce(pg_catalog.btrim(coalesce(p ->> 'client_name', o.client_name)), '') = '' then raise exception 'Client' using errcode = '22023', hint = 'client_required'; end if;
+  if coalesce(pg_catalog.btrim(coalesce(nullif(pg_catalog.btrim(p ->> 'client_name'), ''), o.client_name)), '') = '' then raise exception 'Client' using errcode = '22023', hint = 'client_required'; end if;
   if coalesce(pg_catalog.btrim(p ->> 'contact_name'), '') = '' then raise exception 'Contact' using errcode = '22023', hint = 'contact_required'; end if;
   if v_email = '' and coalesce(pg_catalog.btrim(p ->> 'contact_phone'), '') = '' then raise exception 'Email or phone' using errcode = '22023', hint = 'contact_way_required'; end if;
   if not coalesce((p ->> 'consent')::boolean, false) then raise exception 'The client must agree to be contacted by VYNTEX' using errcode = '22023', hint = 'consent_required'; end if;
   insert into partner.orders (ref, partner_id, offer_id, created_by, idem_key, client_name, client_key, contact_name, contact_email, contact_phone, industry, lead_source,
                               timeline, requirements, consent, consent_note)
-  values (partner.next_ref('OR'), v_partner, o.id, (select auth.uid()), v_idem, pg_catalog.left(pg_catalog.btrim(coalesce(p ->> 'client_name', o.client_name)), 200),
-          partner.client_key(coalesce(p ->> 'client_name', o.client_name), v_email),
+  values (partner.next_ref('OR'), v_partner, o.id, (select auth.uid()), v_idem, pg_catalog.left(pg_catalog.btrim(coalesce(nullif(pg_catalog.btrim(p ->> 'client_name'), ''), o.client_name)), 200),
+          partner.client_key(coalesce(nullif(pg_catalog.btrim(p ->> 'client_name'), ''), o.client_name), v_email),
           pg_catalog.left(pg_catalog.btrim(p ->> 'contact_name'), 200), v_email, pg_catalog.left(coalesce(p ->> 'contact_phone', ''), 40),
-          pg_catalog.left(coalesce(p ->> 'industry', o.industry, ''), 80), pg_catalog.left(coalesce(p ->> 'lead_source', ''), 200),
-          pg_catalog.left(coalesce(p ->> 'timeline', ''), 400), pg_catalog.left(coalesce(p ->> 'requirements', o.requirements, ''), 4000),
+          pg_catalog.left(coalesce(nullif(p ->> 'industry', ''), o.industry, ''), 80), pg_catalog.left(coalesce(p ->> 'lead_source', ''), 200),
+          pg_catalog.left(coalesce(p ->> 'timeline', ''), 400), pg_catalog.left(coalesce(nullif(p ->> 'requirements', ''), o.requirements, ''), 4000),
           true, pg_catalog.left(coalesce(p ->> 'consent_note', ''), 400))
   returning id into v_id;
   if o.id is not null then

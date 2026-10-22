@@ -221,3 +221,8 @@ registerFinance({ register, hooks });
 import { messagingTick, messagingDaily } from './messaging.js';
 hooks.tick.push(({ enqueue: q }) => messagingTick({ enqueue: (kind, ...rest) => (kind === 'messaging.send' ? false : q(kind, ...rest)) }));
 hooks.daily.push(messagingDaily);
+
+// ---------------------------------------------------------------------------------------------------------------------
+// VYNTEX Partner Portal (api/_lib/partners/jobs.js): the notification outbox on every tick, offers and follow-ups daily.
+import { registerPartnerJobs } from '../partners/jobs.js';
+registerPartnerJobs({ register, hooks, JobError });

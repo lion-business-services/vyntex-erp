@@ -499,7 +499,8 @@ as $$
     'eligible_cents', coalesce((select sum(amount_cents) from partner.commissions x where partner.commission_status(x.id) = 'eligible'), 0),
     'approved_cents', coalesce((select sum(amount_cents) from partner.commissions x where partner.commission_status(x.id) = 'approved'), 0),
     'open_payouts', (select count(*) from partner.payout_batches where status in ('draft', 'approved', 'sent')),
-    'overdue', public.partner_orders_overdue())
+    'overdue', public.partner_orders_overdue(),
+    'staff', coalesce((select pg_catalog.jsonb_agg(st.email) from partner.staff st where st.active), '[]'::jsonb))
 $$;
 
 revoke all on function public.partner_commissions(uuid), public.partner_commission_inquiry(uuid, text), public.partner_admin_commissions(uuid, text),

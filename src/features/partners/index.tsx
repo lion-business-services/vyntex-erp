@@ -217,7 +217,7 @@ function Overview({ ctx }: { ctx: Context }) {
             ))}</ul>
           )}
         </Panel>
-        <Panel title={t('pp.home.shortcuts')} className="pp-quick-panel">
+        <Panel title={t('pp.home.shortcuts')} flush className="pp-quick-panel">
           <div className="pp-quick">
             <Link to="/partners/catalog" className="pp-q"><span className="pp-q-ic" aria-hidden="true"><LuBookOpen /></span><span><b>{t('pp.nav.catalog')}</b><small>{t('pp.home.qCatalog')}</small></span><LuArrowRight className="pp-go" aria-hidden="true" /></Link>
             <Link to="/partners/orders" className="pp-q"><span className="pp-q-ic" aria-hidden="true"><LuBriefcase /></span><span><b>{t('pp.nav.orders')}</b><small>{t('pp.home.qOrders')}</small></span><LuArrowRight className="pp-go" aria-hidden="true" /></Link>

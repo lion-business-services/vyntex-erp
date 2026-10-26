@@ -43,10 +43,10 @@ export default function ManagePage({ ctx }: { ctx: Context }) {
         ) : !list.length ? (
           <EmptyState icon={<LuSearchX />} title={t('pp.noMatch')} action={<Button size="sm" onClick={() => { setQ(''); setShow('all'); }}>{t('pp.clearFilters')}</Button>} />
         ) : (
-          <div className="pp-tw"><table className="tbl pp-table stackable" data-testid="pp-partners">
+          <div className="pp-tw"><table className="tbl pp-table stackable stack-md" data-testid="pp-partners">
             <thead><tr>
               <SortTh k="name" sort={sort} onSort={toggle} className="w-partner">{t('pp.col.partner')}</SortTh>
-              <SortTh k="lane" sort={sort} onSort={toggle}>{t('pp.mg.lane')}</SortTh>
+              <SortTh k="lane" sort={sort} onSort={toggle} className="w-lane">{t('pp.mg.lane')}</SortTh>
               <SortTh k="people" sort={sort} onSort={toggle} className="w-people">{t('pp.mg.people')}</SortTh>
               <th>{t('pp.mg.compliance')}</th>
               <SortTh k="status" sort={sort} onSort={toggle}>{t('pp.col.status')}</SortTh>
@@ -59,7 +59,7 @@ export default function ManagePage({ ctx }: { ctx: Context }) {
                       <div className="pp-who-t"><span className="pp-who-n"><b>{p.name}</b><span className="pp-code">{p.code}</span></span>
                         <span className="xs dim pp-who-c">{[p.contact_name, p.contact_email, p.contact_phone].filter(Boolean).join(' · ')}</span></div></div>
                   </td>
-                  <td data-label={t('pp.mg.lane')}><span className="pp-lane" data-lane={p.kind}>{t('pp.lane.' + p.kind)}</span></td>
+                  <td className="w-lane" data-label={t('pp.mg.lane')}><span className="pp-lane" data-lane={p.kind}>{t('pp.lane.' + p.kind)}</span></td>
                   <td className="w-people" data-label={t('pp.mg.people')}>
                     {p.users.length ? (
                       <div className="pp-people"><AvatarStack names={p.users.map((u) => u.name || u.email)} />

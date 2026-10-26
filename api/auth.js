@@ -521,7 +521,10 @@ async function passwordReset(request) {
   const weak = passwordProblem(password, pending.email);
   if (weak) return fail(400, 'weak_password', { reason: weak }, { cookies: [resetCookie(sealWith(resetKeys(), pending, 'vx-reset', 'r1'), 600)] });
 
-  const changed = await auth.updateUser(pending.at, { password });
+  // Service role, by user id: see admin.setPassword. The id comes from Supabase's own answer to the one-time token.
+  if (!pending.uid) return fail(400, 'reset_invalid', {}, { cookies: [resetCookie('', 0)] });
+  const changed = await admin.setPassword(pending.uid, password);
+  if (!changed.ok && changed.status === 422) return fail(400, 'weak_password', { reason: 'too_short' }, { cookies: [resetCookie(sealWith(resetKeys(), pending, 'vx-reset', 'r1'), 600)] });
   if (!changed.ok) return fail(changed.status === 0 || changed.status >= 500 ? 503 : 400, changed.status === 0 || changed.status >= 500 ? 'auth_unavailable' : 'reset_invalid', {}, { cookies: [resetCookie('', 0)] });
   // A reset ends every session, including the one the link created. The person signs in again (with the second step, if they have one).
   await auth.logout(pending.at, 'global');

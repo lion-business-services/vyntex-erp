@@ -251,3 +251,7 @@ hooks.daily.push(async ({ enqueue: q }) => {
   if (deployId() !== 'vyntex') return;
   await q('billing.daily', {}, { idem: 'billing:' + new Date().toISOString().slice(0, 10), maxAttempts: 3 });
 });
+
+// VYNTEX Partner Portal (api/_lib/partners/jobs.js): the notification outbox on every tick, offers and follow-ups daily.
+import { registerPartnerJobs } from '../partners/jobs.js';
+registerPartnerJobs({ register, hooks, JobError });

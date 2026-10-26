@@ -40,6 +40,7 @@ import { dict as auth } from '@/features/auth/i18n';
 import { dict as publicPages } from '@/features/public/i18n';
 import { dict as settingsLbs } from '@/features/settings/i18n-lbs';
 import { dict as admin } from '@/features/admin/i18n';
+import { dict as partners } from '@/features/partners/i18n';
 import { dict as floor } from '@/features/floor/i18n';
 import { dict as memberships } from '@/features/memberships/i18n';
 import { dict as commissions } from '@/features/commissions/i18n';
@@ -49,7 +50,7 @@ import { dict as billing } from '@/features/billing/i18n';
 declare const __VX_DEPLOY__: string | undefined;
 
 /** Wording of the sales pages, the guided tour and the plans: only in a deployment that has them. */
-const sales: Dict[] = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? [] : [marketing, tour, pricingCopy, marketingSections, marketingPages, admin, billing];
+const sales: Dict[] = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? [] : [marketing, tour, pricingCopy, marketingSections, marketingPages, admin, billing, partners];
 
 /** Lines that read differently in LBS Command. They come last, so they replace the shared line of the same key. */
 const lbsOnly: Dict[] = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? [settingsLbs] : [];

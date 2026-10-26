@@ -12,6 +12,7 @@ import { post } from '@/platform/live/http';
 import { setSessionEnd } from '@/platform/session';
 import { setPrefs } from '@/store/store';
 import { AuthFlow } from '@/features/auth/flow';
+import { AuthLookProvider, type AuthLook } from '@/features/auth/frame';
 import { StepUpHost } from '@/features/auth/stepup';
 import { Invite } from '@/features/auth/pages';
 import { api, type Context } from './api';
@@ -32,20 +33,41 @@ export default function PartnersApp() {
   const { t } = useApp();
   const [, sub = '', id, more] = route.parts;
   useEffect(() => { document.title = `${t('pp.brand')} · VYNTEX`; }, [t]);
-  if (sub === 'signin') return <SignInPage />;
-  if (sub === 'invite') return <Invite token={id} kind="partner" />;
+  if (sub === 'signin') return <PortalLook><AuthFlow onReady={() => navigate('/partners', { replace: true })} /></PortalLook>;
+  if (sub === 'invite') return <PortalLook><Invite token={id} kind="partner" /></PortalLook>;
   return <Portal sub={sub} id={id} more={more} />;
 }
 
-function SignInPage() {
-  const { t } = useApp();
-  return (
-    <div className="pp-auth">
-      <p className="pp-auth-tag"><LuShieldCheck aria-hidden="true" />{t('pp.signin.tag')}</p>
-      <AuthFlow onReady={() => navigate('/partners', { replace: true })} />
-      <p className="xs dim pp-auth-note">{t('pp.signin.note')}</p>
-    </div>
-  );
+const SITE = 'https://www.vyntexusa.com';
+
+/**
+ * The sign-in, invitation and reset screens in the Partner Portal's own dress: the portal named over the heading and in
+ * the brand panel with its three modules, and fine print that says how partner accounts come to exist.
+ * The `pp-auth` wrapper only scopes the portal's colours (see partners.css); it draws no box of its own.
+ */
+function PortalLook({ children }: { children: ReactNode }) {
+  const { t, lang } = useApp();
+  const modules = [
+    { label: t('pp.nav.catalog'), icon: <LuBookOpen aria-hidden="true" /> },
+    { label: t('pp.nav.orders'), icon: <LuBriefcase aria-hidden="true" /> },
+    { label: t('pp.nav.commissions'), icon: <LuWallet aria-hidden="true" /> },
+  ];
+  const look: AuthLook = {
+    className: 'pp-signin',
+    eyebrow: <><LuShieldCheck aria-hidden="true" />{t('pp.signin.tag')}</>,
+    panel: (
+      <div className="pp-signin-panel">
+        <span className="pp-signin-badge"><LuShieldCheck aria-hidden="true" />{t('pp.signin.panel')}</span>
+        <ul className="pp-signin-mods">{modules.map((m) => <li key={m.label}>{m.icon}<span>{m.label}</span></li>)}</ul>
+      </div>
+    ),
+    fine: t('pp.signin.fine'),
+    links: <>
+      <a className="linkbtn" href={`${SITE}${lang === 'es' ? '/es/socios' : '/partners'}`} data-testid="pp-become">{t('pp.signin.become')}</a>
+      <a className="linkbtn" href={lang === 'es' ? `${SITE}/es` : SITE}>{t('pp.signin.site')}</a>
+    </>,
+  };
+  return <div className="pp-auth"><AuthLookProvider look={look}>{children}</AuthLookProvider></div>;
 }
 
 function Portal({ sub, id, more }: { sub: string; id?: string; more?: string }) {
@@ -74,7 +96,7 @@ function Portal({ sub, id, more }: { sub: string; id?: string; more?: string }) 
   const signOut = async () => { await post('/api/auth/signout', {}, { session: false, stepUp: false }); setSessionEnd(null); navigate('/partners/signin', { replace: true }); };
 
   if (gate.at === 'checking') return <div className="pp-shell pp-gate"><Loading /></div>;
-  if (gate.at === 'auth') return <div className="pp-auth"><p className="pp-auth-tag"><LuShieldCheck aria-hidden="true" />{t('pp.signin.tag')}</p><AuthFlow onReady={() => { void check(); }} /></div>;
+  if (gate.at === 'auth') return <PortalLook><AuthFlow onReady={() => { void check(); }} /></PortalLook>;
   if (gate.at === 'offline') return <div className="pp-shell pp-gate"><div className="pp-gate-card"><Lockup size="sm" /><Failed text={t('pp.err.offline')} retry={() => void check()} /></div></div>;
   if (gate.at === 'denied') {
     return (

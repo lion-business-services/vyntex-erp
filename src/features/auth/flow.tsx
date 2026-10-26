@@ -15,7 +15,7 @@ import { onSession, sessionEnd, setSessionEnd } from '@/platform/session';
 import { post, type Fail } from '@/platform/live/http';
 import { deploymentState, fetchSession, membershipFor, usable, workspaceAddress, type Membership } from '@/platform/live/auth';
 import { openWorkspace } from '@/platform/live/workspace';
-import { AuthFrame } from './frame';
+import { AuthFrame, useAuthLook } from './frame';
 import { qrPath } from './qr';
 
 // Read straight from the build constant so the bundler leaves billing out of a deployment without it.
@@ -296,6 +296,9 @@ function Picker({ list }: { list: Membership[] }) {
 /** The lines every sign-in page ends with: how accounts come to exist, and the way to the sample workspace when the build has one. */
 function Foot() {
   const { t } = useApp();
+  const look = useAuthLook();
+  // a page with its own look (the Partner Portal) says how its own accounts come to exist, and links where it belongs
+  if (look?.fine || look?.links) return <>{look.fine && <p className="auth-fine" data-testid="auth-invite-only">{look.fine}</p>}{look.links && <div className="auth-links">{look.links}</div>}</>;
   return (
     <>
       <p className="auth-fine" data-testid="auth-invite-only">{t('auth.noSignup')}</p>

@@ -58,6 +58,27 @@ after(async () => {
   await st?.stop();
 });
 
+test('the sign-in page fills the screen in the portal\'s dress, and an email VYNTEX never invited cannot get in', async () => {
+  for (const [w, h] of [[1440, 900], [390, 844]]) {
+    const p = await guy(st.vyntex.origin, { width: w, height: h });
+    await p.go('/partners/signin');
+    await p.page.waitForSelector('[data-testid=auth-signin] form');
+    // the brand frame is the page: nothing sits above it or beside it
+    const box = await p.page.locator('.auth').boundingBox();
+    assert.equal(Math.round(box.x), 0); assert.equal(Math.round(box.y), 0); assert.equal(Math.round(box.width), w);
+    assert.ok(box.height >= h - 1, 'the frame is at least one screen tall');
+    assert.match(await p.page.locator('.auth-eyebrow').innerText(), /partner portal/i);
+    assert.match(await p.page.locator('[data-testid=auth-invite-only]').innerText(), /invited/);
+    assert.equal(await p.page.getAttribute('[data-testid=pp-become]', 'href'), 'https://www.vyntexusa.com/partners');
+    await p.page.fill('input[type=email]', 'not-invited@example.com');
+    await p.page.fill('input[type=password]', 'Some-long-password-123');
+    await p.page.click('[data-testid=auth-submit]');
+    await p.page.waitForSelector('[data-testid=auth-error]');
+    assert.equal(await p.page.locator('[data-testid=partners]').count(), 0);
+    noErrors(p, 'sign-in ' + w);
+  }
+});
+
 test('staff: bootstrapped in SQL, invited, the authenticator is required, the portal opens as administrator', async () => {
   const token = await st.vyntex.sql(String.raw`select '@@R@@' || to_jsonb(partner.staff_invite_bootstrap('partners@vyntex.example', 'partner_admin'))::text;`);
   staff = await guy(st.vyntex.origin);

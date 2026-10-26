@@ -451,10 +451,40 @@ a:hover>.pp-go{transform:translateX(3px);color:var(--accent)}
 .pp-shell .pp-add select:focus,.pp-qty:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 
 /* ---------- sign-in ---------- */
-.pp-auth{min-height:100vh;display:grid;align-content:start;justify-items:center;padding-top:32px}
-.pp-auth-tag{display:inline-flex;gap:8px;align-items:center;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0}
-.pp-auth-tag svg{width:14px;height:14px}
-.pp-auth-note{text-align:center;max-width:420px;margin:0 16px 32px}
+/* the sign-in, invitation and reset screens: the shared brand frame, dressed as the Partner Portal.
+   .pp-auth only scopes the colours above (:has(.pp-auth)); it must not draw a box, or the frame stops filling the screen */
+.pp-auth{display:contents}
+.pp-signin .auth-eyebrow{color:var(--accent)}
+.pp-signin-panel{display:grid;justify-items:center;gap:22px;margin-top:22px}
+.pp-signin-badge{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:8px;padding:7px 14px 7px 12px;border-radius:999px;font:800 12px/1 var(--font-body);letter-spacing:.16em;text-transform:uppercase;color:#E9EDF3;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.02));border:1px solid rgba(200,210,225,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 0 0 1px rgba(0,221,255,.06),0 10px 28px rgba(0,0,0,.35)}
+.pp-signin-badge svg{width:14px;height:14px;color:#00DDFF;filter:drop-shadow(0 0 6px rgba(0,221,255,.65))}
+.pp-signin-badge::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.22) 48%,transparent 66%);transform:translateX(-120%);animation:pp-sheen 5.5s var(--ease-vyntex) 1.2s infinite}
+.pp-signin-mods{list-style:none;margin:0;padding:0;display:grid;gap:8px;width:min(300px,100%)}
+.pp-signin-mods li{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;border:1px solid rgba(200,210,225,.12);background:rgba(8,12,22,.42);color:#C9D1DC;font-size:14px;font-weight:600;text-align:left;
+  backdrop-filter:blur(6px);animation:pp-rise var(--motion-reveal) var(--ease-vyntex) both}
+.pp-signin-mods li:nth-child(2){animation-delay:.08s}.pp-signin-mods li:nth-child(3){animation-delay:.16s}
+.pp-signin-mods svg{flex:none;width:17px;height:17px;color:#00DDFF}
+.pp-signin .auth-form>*{animation:pp-rise var(--motion-reveal) var(--ease-vyntex) both}
+.pp-signin .auth-form>:nth-child(2){animation-delay:.05s}.pp-signin .auth-form>:nth-child(3){animation-delay:.1s}.pp-signin .auth-form>:nth-child(n+4){animation-delay:.15s}
+/* wide screens: the form sits on its own glass card with the chrome-to-cyan edge the portal uses on its panels */
+@media (min-width:901px){
+  .pp-signin .auth-form{position:relative;max-width:476px;padding:36px 36px 32px;margin:auto;border-radius:18px;border:1px solid var(--line-strong);
+    background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.008) 40%),var(--surface);box-shadow:0 24px 60px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.05)}
+  .pp-signin .auth-form::before{content:"";position:absolute;left:36px;right:36px;top:-1px;height:2px;border-radius:2px;background:linear-gradient(90deg,rgba(163,166,174,.0),rgba(228,231,236,.85) 30%,#00DDFF 70%,rgba(0,221,255,0))}
+  .pp-signin .auth-foot{max-width:476px}
+}
+:root[data-theme="light"] .pp-signin .auth-form{box-shadow:0 18px 44px rgba(16,24,40,.10)}
+@keyframes pp-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pp-sheen{0%{transform:translateX(-120%)}22%,100%{transform:translateX(120%)}}
+@media (max-width:900px){
+  .pp-signin-panel{margin-top:0;gap:0}
+  .pp-signin-mods{display:none}
+  .pp-signin-badge{padding:5px 10px;font-size:10.5px;letter-spacing:.12em}
+}
+@media (prefers-reduced-motion:reduce){
+  .pp-signin-badge::after,.pp-signin-mods li,.pp-signin .auth-form>*{animation:none}
+}
 
 /* ---------- the client proposal ---------- */
 .pp-doc-page{min-height:100vh;padding:40px 16px 64px}

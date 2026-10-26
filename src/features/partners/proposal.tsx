@@ -2,7 +2,7 @@
 // and the preview a partner sees before sharing. It shows only what the server put in the frozen, client-safe snapshot:
 // never partner pay, floors, notes, policies or partner identifiers. Printable to PDF from the browser.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { LuCheck, LuPrinter } from 'react-icons/lu';
+import { LuCheck, LuCircleCheck, LuLink2Off, LuPrinter, LuX } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Lockup } from '@/brand';
 import { BRAND } from '@/config/brand';
@@ -11,6 +11,7 @@ import { get, post } from '@/platform/live/http';
 import type { Lang } from '@/domain/types';
 import type { L10n, L10nList } from './api';
 import { tl, tx, usd } from './shared';
+import { Skeleton } from './ui';
 import './partners.css';
 
 export interface ProposalData {
@@ -30,7 +31,7 @@ const W = {
     third: 'Third-party usage (phone numbers, carrier registration, messages, call minutes and AI usage) is billed at cost and is not included above.',
     print: 'Print or save as PDF', accept: 'Accept this proposal', decline: 'Decline', name: 'Your full name', submit: 'Confirm', accepted: 'Accepted. Thank you: VYNTEX will contact you shortly.',
     declined: 'Declined. Thank you for letting us know.', expired: 'This proposal has expired. Ask your VYNTEX contact for an updated one.', contact: 'Questions? Call or WhatsApp {phone}, or write to {email}.',
-    quantity: '{n} x', nameNeeded: 'Type your full name to confirm.', failed: 'That did not work. Try again in a moment.' },
+    quantity: '{n} x', nameNeeded: 'Type your full name to confirm.', failed: 'That did not work. Try again in a moment.', back: 'Back' },
   es: { proposal: 'Propuesta', for: 'Preparada para', valid: 'Válida hasta', context: 'Su negocio', solution: 'Solución recomendada', scope: 'Qué incluye',
     excluded: 'No incluye', investment: 'Inversión', setup: 'Instalación única', once: 'Trabajo único', monthly: 'Mensual', perMonth: 'al mes', first: 'Para empezar (anticipo)',
     discount: 'Descuento aplicado a los cargos únicos', quote: 'VYNTEX lo cotiza a pedido', term: 'Plazo mínimo: {n} meses', lead: 'Entrega: {time}', terms: 'Condiciones', next: 'Siguientes pasos',
@@ -38,7 +39,7 @@ const W = {
     third: 'El uso de terceros (números de teléfono, registro con la operadora, mensajes, minutos de llamada y uso de IA) se cobra al costo y no está incluido arriba.',
     print: 'Imprimir o guardar como PDF', accept: 'Aceptar esta propuesta', decline: 'Rechazar', name: 'Su nombre completo', submit: 'Confirmar', accepted: 'Aceptada. Gracias: VYNTEX le contactará muy pronto.',
     declined: 'Rechazada. Gracias por avisarnos.', expired: 'Esta propuesta venció. Pida una actualizada a su contacto de VYNTEX.', contact: '¿Preguntas? Llame o escriba por WhatsApp al {phone}, o escriba a {email}.',
-    quantity: '{n} x', nameNeeded: 'Escriba su nombre completo para confirmar.', failed: 'No funcionó. Intente de nuevo en un momento.' },
+    quantity: '{n} x', nameNeeded: 'Escriba su nombre completo para confirmar.', failed: 'No funcionó. Intente de nuevo en un momento.', back: 'Volver' },
 };
 const fill = (s: string, p: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k) => String(p[k] ?? ''));
 
@@ -51,7 +52,7 @@ export function ProposalDocument({ p, actions }: { p: ProposalData; actions?: Re
       <header className="pp-doc-h">
         <Lockup size="md" />
         <div className="pp-doc-meta">
-          <p className="pp-doc-kicker">{w.proposal} {p.ref}</p>
+          <p className="pp-doc-kicker"><span>{w.proposal}</span> {p.ref}</p>
           <p>{w.for} <b>{p.client_name}</b>{p.client_contact ? `, ${p.client_contact}` : ''}</p>
           <p className="small">{w.valid} {date(p.valid_until)}</p>
         </div>
@@ -122,8 +123,8 @@ export default function ProposalPage({ token: fromAddress }: { token?: string })
       else setState({ at: a.status === 0 || a.status >= 500 ? 'offline' : 'gone' });
     })();
   }, [token]);
-  if (state.at === 'loading') return <div className="pp-wait" role="status">{t('pp.loading')}</div>;
-  if (state.at !== 'ready') return <div className="pp-doc-page"><Note tone="warn"><span role="alert">{t(state.at === 'gone' ? 'pp.prop.gone' : 'pp.err.offline')}</span></Note></div>;
+  if (state.at === 'loading') return <div className="pp-doc-page"><div className="pp-doc"><Skeleton kind="doc" /></div></div>;
+  if (state.at !== 'ready') return <div className="pp-doc-page"><div className="pp-doc pp-doc-gone"><Lockup size="sm" /><span className="pp-empty-ic" aria-hidden="true"><LuLink2Off /></span><p role="alert">{t(state.at === 'gone' ? 'pp.prop.gone' : 'pp.err.offline')}</p></div></div>;
   const p = state.p; const w = W[p.lang === 'es' ? 'es' : 'en'];
   const decided = p.status === 'accepted' || p.status === 'declined';
   const submit = async (e: FormEvent) => {
@@ -137,21 +138,24 @@ export default function ProposalPage({ token: fromAddress }: { token?: string })
   const actions = (
     <div className="pp-doc-actions no-print">
       {p.expired && !decided && <Note tone="warn">{w.expired}</Note>}
-      {decided && <Note><span role="status">{p.status === 'accepted' ? w.accepted : w.declined}</span></Note>}
+      {decided && <div className={'pp-doc-done ' + (p.status === 'accepted' ? 'ok' : '')}>{p.status === 'accepted' ? <LuCircleCheck aria-hidden="true" /> : <LuX aria-hidden="true" />}<span role="status">{p.status === 'accepted' ? w.accepted : w.declined}</span></div>}
       {!decided && !p.expired && !deciding && (
-        <div className="row">
-          <Button variant="primary" onClick={() => setDeciding('accepted')} data-testid="pp-accept">{w.accept}</Button>
+        <div className="pp-doc-cta">
+          <Button variant="primary" size="lg" icon={<LuCheck />} onClick={() => setDeciding('accepted')} data-testid="pp-accept">{w.accept}</Button>
           <Button variant="ghost" onClick={() => setDeciding('declined')}>{w.decline}</Button>
         </div>
       )}
       {deciding && !decided && (
-        <form onSubmit={submit} className="row top" noValidate>
-          <Field label={w.name} htmlFor="pp-sign"><input id="pp-sign" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={200} /></Field>
-          <Button type="submit" variant={deciding === 'accepted' ? 'primary' : 'danger'} disabled={busy}>{w.submit}: {deciding === 'accepted' ? w.accept : w.decline}</Button>
-          {err && <p className="small neg" role="alert">{err}</p>}
+        <form onSubmit={submit} className="pp-doc-sign" noValidate>
+          <Field label={w.name} htmlFor="pp-sign" error={!!err}><input id="pp-sign" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={200} autoFocus aria-invalid={!!err || undefined} /></Field>
+          <div className="pp-doc-cta">
+            <Button type="submit" variant={deciding === 'accepted' ? 'primary' : 'danger'} disabled={busy} aria-busy={busy || undefined}>{w.submit}: {deciding === 'accepted' ? w.accept : w.decline}</Button>
+            <Button variant="ghost" onClick={() => { setDeciding(null); setErr(''); }}>{w.back}</Button>
+          </div>
+          {err && <p className="pp-err" role="alert">{err}</p>}
         </form>
       )}
-      <Button variant="ghost" icon={<LuPrinter />} onClick={() => window.print()}>{w.print}</Button>
+      <div><Button variant="ghost" size="sm" icon={<LuPrinter />} onClick={() => window.print()}>{w.print}</Button></div>
     </div>
   );
   return <div className="pp-doc-page"><ProposalDocument p={p} actions={actions} /></div>;

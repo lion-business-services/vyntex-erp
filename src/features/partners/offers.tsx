@@ -3,13 +3,14 @@
 // Nothing typed here is a price. Approved offers are shared by a private link (or emailed to the client), and an
 // accepted offer becomes an order without retyping it.
 import { useEffect, useMemo, useState } from 'react';
-import { LuCopy, LuEye, LuLink, LuPlus, LuSend, LuTrash2 } from 'react-icons/lu';
+import { LuArrowLeft, LuCopy, LuEye, LuLink, LuLoaderCircle, LuMinus, LuPackage, LuPlus, LuSend, LuTrash2, LuUndo2, LuX } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Link, navigate, useRoute } from '@/app/router';
-import { Badge, Button, Card, Field, Modal, Note, confirmDialog, toast } from '@/ui';
+import { Badge, Button, Field, IconButton, Modal, Note, confirmDialog, toast } from '@/ui';
 import { api, type CatalogItem, type Context, type Offer } from './api';
 import { ProposalDocument } from './proposal';
 import { Failed, Loading, Status, isoDate, newKey, pct, tx, usd, useErrorText, useLoad } from './shared';
+import { AsyncButton, CopyField, EmptyState, PageHead, Panel, RowMenu } from './ui';
 
 interface Draft {
   title: string; summary: string; client_name: string; client_contact: string; client_email: string; client_phone: string; industry: string; requirements: string;
@@ -22,9 +23,9 @@ export function OfferPage({ id, ctx }: { id: string; ctx: Context }) {
   const offer = useLoad(() => (isNew ? Promise.resolve({ ok: true as const, status: 200, data: { offer: null as unknown as Offer } }) : api.offer(id)), [id]);
   const cat = useLoad(() => api.catalog('partner'), []);
   if (offer.error) return <Failed text={offer.error} retry={offer.reload} />;
-  if (!offer.data || !cat.data) return <Loading />;
+  if (!offer.data || !cat.data) return <Loading kind="page" />;
   const o = offer.data.offer;
-  if (!isNew && !o) return <Loading />;
+  if (!isNew && !o) return <Loading kind="page" />;
   const editable = ctx.kind === 'partner' && (isNew || ['draft', 'changes_requested'].includes(o.status));
   return editable
     ? <Builder ctx={ctx} offer={isNew ? null : o} items={cat.data.catalog.items} onSaved={(x) => { if (isNew) navigate('/partners/catalog/offers/' + x.id, { replace: true }); else offer.setData({ offer: x }); }} />
@@ -78,20 +79,19 @@ function Builder({ ctx, offer, items, onSaved }: { ctx: Context; offer: Offer | 
     onSaved(r.data.offer);
   };
   const addLine = () => { if (!pick || d.lines.some((l) => l.item === pick)) return; set({ lines: [...d.lines, { item: pick, quantity: 1 }] }); setPick(''); };
+  const qty = (n: number, q: number) => set({ lines: d.lines.map((x, i) => (i === n ? { ...x, quantity: Math.max(1, Math.min(50, q || 1)) } : x)) });
+  const spin = busy ? <LuLoaderCircle className="pp-spin" aria-hidden="true" /> : undefined;
 
   return (
     <div className="pp-stack" data-testid="pp-builder">
-      <div className="pp-hero">
-        <p className="xs"><Link to="/partners/catalog/offers">{t('pp.cat.offers')}</Link></p>
-        <h1>{saved ? `${t('pp.offer.title')} ${saved.ref}` : t('pp.offer.new')}</h1>
-        <p className="muted">{t('pp.offer.builderSub')}</p>
-        {saved && <div className="row"><Status value={saved.status} />{saved.status === 'changes_requested' && <span className="small">{saved.events.filter((e) => e.kind === 'changes_requested').slice(-1)[0]?.note}</span>}</div>}
-      </div>
+      <PageHead back={<Link to="/partners/catalog/offers" className="crumb"><LuArrowLeft aria-hidden="true" />{t('pp.cat.offers')}</Link>}
+        title={saved ? `${t('pp.offer.title')} ${saved.ref}` : t('pp.offer.new')} sub={t('pp.offer.builderSub')}
+        meta={saved ? <><Status value={saved.status} />{saved.status === 'changes_requested' && <span className="small pp-said">{saved.events.filter((e) => e.kind === 'changes_requested').slice(-1)[0]?.note}</span>}</> : undefined} />
       <div className="pp-builder">
         <div className="pp-stack">
-          <Card title={t('pp.offer.client')}>
+          <Panel title={t('pp.offer.client')}>
             <div className="fgrid">
-              <Field label={t('pp.f.clientName')} htmlFor="ob-cn" error={!!err && !d.client_name.trim()}><input id="ob-cn" value={d.client_name} maxLength={200} onChange={(e) => set({ client_name: e.target.value })} data-testid="ob-client" /></Field>
+              <Field label={<>{t('pp.f.clientName')}<span className="pp-req" aria-hidden="true"> *</span></>} htmlFor="ob-cn" error={!!err && !d.client_name.trim()} hint={!!err && !d.client_name.trim() ? t('pp.v.required') : undefined}><input id="ob-cn" value={d.client_name} maxLength={200} onChange={(e) => set({ client_name: e.target.value })} data-testid="ob-client" /></Field>
               <Field label={t('pp.f.contact')} htmlFor="ob-cc"><input id="ob-cc" value={d.client_contact} maxLength={200} onChange={(e) => set({ client_contact: e.target.value })} /></Field>
               <Field label={t('pp.f.email')} htmlFor="ob-ce"><input id="ob-ce" type="email" value={d.client_email} maxLength={320} onChange={(e) => set({ client_email: e.target.value })} /></Field>
               <Field label={t('pp.f.phone')} htmlFor="ob-cp"><input id="ob-cp" value={d.client_phone} maxLength={40} onChange={(e) => set({ client_phone: e.target.value })} /></Field>
@@ -99,45 +99,48 @@ function Builder({ ctx, offer, items, onSaved }: { ctx: Context; offer: Offer | 
               <Field label={t('pp.f.lang')} htmlFor="ob-cl"><select id="ob-cl" value={d.lang} onChange={(e) => set({ lang: e.target.value as 'en' | 'es' })}><option value="en">English</option><option value="es">Español</option></select></Field>
               <Field label={t('pp.f.requirements')} htmlFor="ob-cr" full hint={t('pp.f.requirementsHint')}><textarea id="ob-cr" rows={3} maxLength={4000} value={d.requirements} onChange={(e) => set({ requirements: e.target.value })} /></Field>
             </div>
-          </Card>
-          <Card title={t('pp.offer.services')}>
-            {!d.lines.length && <p className="small muted">{t('pp.offer.noLines')}</p>}
+          </Panel>
+          <Panel title={t('pp.offer.services')} count={d.lines.length}>
+            {!d.lines.length && <EmptyState compact icon={<LuPackage />} title={t('pp.offer.noLines')} />}
             <ul className="pp-lines">
               {d.lines.map((l, n) => {
                 const it = byId.get(l.item);
                 return (
                   <li key={l.item}>
-                    <div className="grow"><b>{it ? tx(it.name, lang) : l.item}</b>{it?.quote && <> <Badge tone="warn">{t('pp.cat.quote')}</Badge></>}<br /><span className="xs dim">{it ? tx(it.tagline, lang) : ''}</span></div>
-                    <label className="xs">{t('pp.f.qty')} <input type="number" min={1} max={50} value={l.quantity} className="pp-qty"
-                      onChange={(e) => set({ lines: d.lines.map((x, i) => (i === n ? { ...x, quantity: Math.max(1, Math.min(50, Number(e.target.value) || 1)) } : x)) })} /></label>
-                    <Button size="sm" variant="ghost" icon={<LuTrash2 />} aria-label={t('pp.remove')} onClick={() => set({ lines: d.lines.filter((_, i) => i !== n) })} />
+                    <div className="grow pp-cell2"><b>{it ? tx(it.name, lang) : l.item}{it?.quote && <> <Badge tone="warn">{t('pp.cat.quote')}</Badge></>}</b><span className="xs dim">{it ? tx(it.tagline, lang) : ''}</span></div>
+                    <div className="pp-stepper" role="group" aria-label={t('pp.f.qty')}>
+                      <IconButton size="sm" label={t('pp.qty.less')} disabled={l.quantity <= 1} onClick={() => qty(n, l.quantity - 1)}><LuMinus /></IconButton>
+                      <input type="number" min={1} max={50} value={l.quantity} className="pp-qty" aria-label={t('pp.f.qty')} onChange={(e) => qty(n, Number(e.target.value))} />
+                      <IconButton size="sm" label={t('pp.qty.more')} disabled={l.quantity >= 50} onClick={() => qty(n, l.quantity + 1)}><LuPlus /></IconButton>
+                    </div>
+                    <IconButton size="sm" label={t('pp.remove')} className="pp-del" onClick={() => set({ lines: d.lines.filter((_, i) => i !== n) })}><LuTrash2 /></IconButton>
                   </li>
                 );
               })}
             </ul>
-            <div className="row">
+            <div className="row nowrap pp-add">
               <select aria-label={t('pp.offer.add')} value={pick} onChange={(e) => setPick(e.target.value)} data-testid="ob-pick">
                 <option value="">{t('pp.offer.choose')}</option>
                 {items.filter((i) => !d.lines.some((l) => l.item === i.id)).map((i) => <option key={i.id} value={i.id}>{tx(i.name, lang)}{i.quote ? ` (${t('pp.cat.quote')})` : ''}</option>)}
               </select>
               <Button icon={<LuPlus />} onClick={addLine} disabled={!pick} data-testid="ob-add">{t('pp.offer.add')}</Button>
             </div>
-          </Card>
-          <Card title={t('pp.offer.presentation')}>
+          </Panel>
+          <Panel title={t('pp.offer.presentation')}>
             <div className="fgrid">
               <Field label={t('pp.f.title')} htmlFor="ob-t" full><input id="ob-t" value={d.title} maxLength={200} onChange={(e) => set({ title: e.target.value })} placeholder={t('pp.f.titlePh')} /></Field>
               <Field label={t('pp.f.summary')} htmlFor="ob-s" full hint={t('pp.f.summaryHint')}><textarea id="ob-s" rows={4} maxLength={4000} value={d.summary} onChange={(e) => set({ summary: e.target.value })} /></Field>
               <Field label={t('pp.f.discount')} htmlFor="ob-d" hint={t('pp.f.discountHint')}><input id="ob-d" inputMode="decimal" value={d.discount} onChange={(e) => set({ discount: e.target.value })} placeholder="0" /></Field>
               <Field label={t('pp.f.validDays')} htmlFor="ob-v"><input id="ob-v" type="number" min={1} max={90} value={d.valid_days} onChange={(e) => set({ valid_days: Math.max(1, Math.min(90, Number(e.target.value) || 30)) })} /></Field>
             </div>
-          </Card>
+          </Panel>
         </div>
-        <aside className="pp-stack pp-side">
+        <aside className="pp-stack pp-aside">
           <Totals offer={saved} dirty={dirty} partner />
           {err && <Note tone="bad"><span role="alert" data-testid="ob-error">{err}</span></Note>}
-          <div className="pp-side-actions">
+          <div className="pp-aside-actions">
+            <Button variant="primary" icon={spin ?? <LuSend />} onClick={() => void submit()} disabled={busy || !d.lines.length} aria-busy={busy || undefined} data-testid="ob-submit">{t('pp.offer.submit')}</Button>
             <Button onClick={() => void save(true)} disabled={busy} data-testid="ob-save">{t('pp.offer.save')}</Button>
-            <Button variant="primary" icon={<LuSend />} onClick={() => void submit()} disabled={busy || !d.lines.length} data-testid="ob-submit">{t('pp.offer.submit')}</Button>
             {saved && !dirty && <Button variant="ghost" icon={<LuEye />} onClick={() => setPreview(true)}>{t('pp.offer.preview')}</Button>}
           </div>
           <p className="xs dim">{t('pp.offer.serverNote')}</p>
@@ -151,11 +154,11 @@ function Builder({ ctx, offer, items, onSaved }: { ctx: Context; offer: Offer | 
 
 function Totals({ offer, dirty, partner }: { offer: Offer | null; dirty?: boolean; partner: boolean }) {
   const { t } = useApp();
-  if (!offer) return <Card title={t('pp.offer.totals')}><p className="small muted">{t('pp.offer.saveToPrice')}</p></Card>;
+  if (!offer) return <Panel title={t('pp.offer.totals')} className="pp-totals"><p className="small muted">{t('pp.offer.saveToPrice')}</p></Panel>;
   const blocking = offer.approval_reasons.filter((r) => r.blocking !== false);
   const uncovered = offer.approval_reasons.find((r) => r.code === 'pay_not_approved');
   return (
-    <Card title={t('pp.offer.totals')}>
+    <Panel title={t('pp.offer.totals')} className="pp-totals">
       {dirty && <Note tone="warn">{t('pp.offer.dirty')}</Note>}
       <dl className="pp-prices">
         <div className="pp-price-row"><dt>{t('pp.price.setup')}</dt><dd>{usd(offer.setup_cents + offer.one_time_cents)}</dd></div>
@@ -165,14 +168,14 @@ function Totals({ offer, dirty, partner }: { offer: Offer | null; dirty?: boolea
       </dl>
       {partner && (
         <div className="pp-earn">
-          <p className="xs strong">{t('pp.earn.estimateTitle')}</p>
-          <p><b data-testid="ob-est">{usd(offer.estimate?.once_cents ?? 0)}</b>{(offer.estimate?.monthly_cents ?? 0) > 0 && <> + <b>{usd(offer.estimate.monthly_cents)}</b> {t('pp.per.month')}</>}</p>
+          <p className="pp-earn-t">{t('pp.earn.estimateTitle')}</p>
+          <p className="pp-earn-v"><b data-testid="ob-est">{usd(offer.estimate?.once_cents ?? 0)}</b>{(offer.estimate?.monthly_cents ?? 0) > 0 && <> + <b>{usd(offer.estimate.monthly_cents)}</b> <small>{t('pp.per.month')}</small></>}</p>
           {uncovered && <p className="xs"><Badge tone="warn">{t('pp.st.needs_approval')}</Badge> {t('pp.earn.uncovered', { items: (uncovered.items ?? []).join(', ') })}</p>}
           <p className="xs dim">{t('pp.earn.disclaimer')}</p>
         </div>
       )}
       {blocking.length > 0 && <Note tone="warn"><b>{t('pp.offer.needsApproval')}</b><ul className="xs">{blocking.map((r, n) => <li key={n}>{t('pp.reason.' + r.code, { item: r.item ?? '' })}</li>)}</ul></Note>}
-    </Card>
+    </Panel>
   );
 }
 
@@ -192,56 +195,57 @@ function OfferView({ ctx, offer: o, reload, setOffer }: { ctx: Context; offer: O
     const r = await api.offerAction<{ link: string; expiresAt: string; delivery: string }>(o.id, 'share', { email, days: 30 });
     if (r.ok) { setLink(r.data); reload(); } else toast(errText(r), true);
   };
-  const copy = async (v: string) => { try { await navigator.clipboard.writeText(v); toast(t('pp.copied')); } catch { toast(t('pp.copyFailed'), true); } };
   const decide = async (decision: 'accepted' | 'declined') => {
     if (!(await confirmDialog(t(decision === 'accepted' ? 'pp.offer.recordAccepted' : 'pp.offer.recordDeclined'), t('pp.confirm'), t('pp.cancel'), decision === 'declined'))) return;
     void act('decision', { decision });
   };
   return (
     <div className="pp-stack" data-testid="pp-offer">
-      <div className="pp-hero">
-        <p className="xs"><Link to="/partners/catalog/offers">{t('pp.cat.offers')}</Link></p>
-        <h1>{t('pp.offer.title')} {o.ref}</h1>
-        <div className="row"><Status value={o.status} /><span className="small muted">{o.client_name}{staff ? ` · ${o.partner.name} (${o.partner.code})` : ''}</span></div>
-      </div>
+      <PageHead back={<Link to="/partners/catalog/offers" className="crumb"><LuArrowLeft aria-hidden="true" />{t('pp.cat.offers')}</Link>}
+        title={<>{t('pp.offer.title')} {o.ref}</>}
+        meta={<><Status value={o.status} /><span className="small muted">{o.client_name}{staff ? ` · ${o.partner.name} (${o.partner.code})` : ''}</span></>} />
       <div className="pp-builder">
         <div className="pp-stack">
-          <Card title={t('pp.offer.services')}>
+          <Panel title={t('pp.offer.services')} count={o.lines.length}>
             <ul className="pp-lines">{o.lines.map((l, n) => <li key={n}><div className="grow"><b>{l.quantity > 1 ? `${l.quantity} x ` : ''}{tx(l.name, o.lang)}</b>{l.quote && <> <Badge tone="warn">{t('pp.cat.quote')}</Badge></>}</div>
-              <span className="small">{[l.setup_cents + l.one_time_cents ? usd(l.setup_cents + l.one_time_cents) : '', l.recurring_cents ? `${usd(l.recurring_cents)} ${t('pp.per.month')}` : ''].filter(Boolean).join(' + ')}</span></li>)}</ul>
-          </Card>
+              <span className="small pp-money">{[l.setup_cents + l.one_time_cents ? usd(l.setup_cents + l.one_time_cents) : '', l.recurring_cents ? `${usd(l.recurring_cents)} ${t('pp.per.month')}` : ''].filter(Boolean).join(' + ')}</span></li>)}</ul>
+          </Panel>
           {staff && o.status === 'pending_approval' && <Decide offer={o} onDone={setOffer} />}
-          <Card title={t('pp.offer.history')}>
-            <ol className="pp-timeline">{o.events.map((e, n) => <li key={n}><span className="xs dim">{dateTime(e.at)}</span> <b>{t('pp.ev.' + e.kind) !== 'pp.ev.' + e.kind ? t('pp.ev.' + e.kind) : e.kind}</b>{e.note ? `: ${e.note}` : ''}</li>)}</ol>
-          </Card>
+          <Panel title={t('pp.offer.history')}>
+            <ol className="pp-timeline">{o.events.map((e, n) => <li key={n}><span className="xs dim">{dateTime(e.at)}</span><b>{t('pp.ev.' + e.kind) !== 'pp.ev.' + e.kind ? t('pp.ev.' + e.kind) : e.kind}</b>{e.note ? <p>{e.note}</p> : null}</li>)}</ol>
+          </Panel>
           {!!o.shares.length && (
-            <Card title={t('pp.offer.links')}>
-              <ul className="small">{o.shares.map((s) => <li key={s.id} className="row between">
-                <span>{t('pp.offer.linkMade', { date: dateTime(s.created_at) })} · {t('pp.offer.views', { n: s.views })}{s.revoked ? ` · ${t('pp.offer.revoked')}` : ` · ${t('pp.offer.until', { date: dateTime(s.expires_at) })}`}</span>
-                {!s.revoked && !staff && <Button size="sm" variant="ghost" onClick={() => void act('share-revoke', { share: s.id }).then(reload)}>{t('pp.offer.revoke')}</Button>}
+            <Panel title={t('pp.offer.links')} count={o.shares.length} flush>
+              <ul className="pp-mini">{o.shares.map((s) => <li key={s.id} className="pp-mini-a static">
+                <span className="pp-mini-t"><b>{t('pp.offer.linkMade', { date: dateTime(s.created_at) })}</b><small>{t('pp.offer.views', { n: s.views })}{s.revoked ? '' : ` · ${t('pp.offer.until', { date: dateTime(s.expires_at) })}`}</small></span>
+                <span className="pp-mini-r">{s.revoked ? <Status value="revoked" /> : !staff ? <AsyncButton size="sm" variant="ghost" icon={<LuX />} onClick={() => act('share-revoke', { share: s.id }).then(reload)}>{t('pp.offer.revoke')}</AsyncButton> : <Status value="active" />}</span>
               </li>)}</ul>
-            </Card>
+            </Panel>
           )}
         </div>
-        <aside className="pp-stack pp-side">
+        <aside className="pp-stack pp-aside">
           <Totals offer={o} partner />
-          <div className="pp-side-actions">
-            <Button variant="ghost" icon={<LuEye />} onClick={() => setPreview(true)}>{t('pp.offer.preview')}</Button>
-            {!staff && ['approved', 'sent', 'viewed'].includes(o.status) && <Button variant="primary" icon={<LuLink />} onClick={() => void share(false)} data-testid="ob-share">{t('pp.offer.share')}</Button>}
-            {!staff && ['approved', 'sent', 'viewed'].includes(o.status) && o.client_email && <Button icon={<LuSend />} onClick={() => void share(true)}>{t('pp.offer.email', { email: o.client_email })}</Button>}
-            {!staff && ['approved', 'sent', 'viewed'].includes(o.status) && <Button size="sm" variant="ghost" onClick={() => void decide('declined')}>{t('pp.offer.markDeclined')}</Button>}
-            {!staff && ['sent', 'viewed'].includes(o.status) && <p className="xs dim">{t('pp.offer.clientAccepts')}</p>}
-            {staff && ['sent', 'viewed'].includes(o.status) && <Button size="sm" onClick={() => setAccepting(true)} data-testid="ob-staff-accept">{t('pp.offer.staffAccept')}</Button>}
+          <div className="pp-aside-actions">
+            {!staff && ['approved', 'sent', 'viewed'].includes(o.status) && <AsyncButton variant="primary" icon={<LuLink />} onClick={() => share(false)} data-testid="ob-share">{t('pp.offer.share')}</AsyncButton>}
             {!staff && o.status === 'accepted' && <Button variant="primary" onClick={() => setOrdering(true)} data-testid="ob-order">{t('pp.offer.toOrder')}</Button>}
+            {staff && ['sent', 'viewed'].includes(o.status) && <Button onClick={() => setAccepting(true)} data-testid="ob-staff-accept">{t('pp.offer.staffAccept')}</Button>}
+            {!staff && ['approved', 'sent', 'viewed'].includes(o.status) && o.client_email && <AsyncButton icon={<LuSend />} onClick={() => share(true)}>{t('pp.offer.email', { email: o.client_email })}</AsyncButton>}
             {!staff && o.order_id && <Link to={'/partners/orders/' + o.order_id} className="btn">{t('pp.offer.seeOrder')}</Link>}
-            {!staff && <Button size="sm" variant="ghost" icon={<LuCopy />} onClick={() => void act('duplicate')}>{t('pp.offer.duplicate')}</Button>}
-            {!staff && !['accepted', 'ordered', 'withdrawn', 'declined', 'expired'].includes(o.status) && <Button size="sm" variant="ghost" onClick={() => void act('withdraw')}>{t('pp.offer.withdraw')}</Button>}
+            <div className="pp-aside-row">
+              <Button variant="ghost" icon={<LuEye />} onClick={() => setPreview(true)}>{t('pp.offer.preview')}</Button>
+              {!staff && <RowMenu label={t('pp.more')} items={[
+                { label: t('pp.offer.duplicate'), icon: <LuCopy aria-hidden="true" />, onSelect: () => void act('duplicate') },
+                { label: t('pp.offer.withdraw'), icon: <LuUndo2 aria-hidden="true" />, onSelect: () => void act('withdraw'), hidden: ['accepted', 'ordered', 'withdrawn', 'declined', 'expired'].includes(o.status) },
+                { label: t('pp.offer.markDeclined'), icon: <LuX aria-hidden="true" />, danger: true, onSelect: () => void decide('declined'), hidden: !['approved', 'sent', 'viewed'].includes(o.status) },
+              ]} />}
+            </div>
+            {!staff && ['sent', 'viewed'].includes(o.status) && <p className="xs dim">{t('pp.offer.clientAccepts')}</p>}
           </div>
           {link && (
-            <Card title={t('pp.offer.linkTitle')}>
+            <Panel title={t('pp.offer.linkTitle')} className="pp-linkcard">
               <p className="xs muted">{t(link.delivery === 'sent' ? 'pp.offer.linkSent' : 'pp.offer.linkOnce', { date: dateTime(link.expiresAt) })}</p>
-              <div className="row nowrap"><input readOnly value={link.link} aria-label={t('pp.offer.linkTitle')} onFocus={(e) => e.currentTarget.select()} data-testid="ob-link" /><Button size="sm" icon={<LuCopy />} onClick={() => void copy(link.link)}>{t('pp.copy')}</Button></div>
-            </Card>
+              <CopyField value={link.link} label={t('pp.offer.linkTitle')} testId="ob-link" />
+            </Panel>
           )}
         </aside>
       </div>
@@ -262,12 +266,12 @@ function StaffAccept({ offer, onClose, onDone }: { offer: Offer; onClose: () => 
     if (r.ok) { toast(t('pp.done')); onDone(r.data.offer); } else setErr(errText(r));
   };
   return (
-    <Modal title={t('pp.offer.staffAccept')} onClose={onClose} labelClose={t('pp.cancel')}>
+    <Modal title={t('pp.offer.staffAccept')} onClose={onClose} labelClose={t('pp.cancel')}
+      footer={<><Button variant="ghost" onClick={onClose}>{t('pp.cancel')}</Button><AsyncButton variant="primary" onClick={go}>{t('pp.confirm')}</AsyncButton></>}>
       <p className="small muted">{t('pp.offer.staffAcceptNote')}</p>
       <Field label={t('pp.mg.personName')} htmlFor="sa-n"><input id="sa-n" value={name} onChange={(e) => setName(e.target.value)} /></Field>
       <Field label={t('pp.offer.staffAcceptHow')} htmlFor="sa-r"><textarea id="sa-r" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
-      {err && <p className="small neg" role="alert">{err}</p>}
-      <div className="row"><span className="grow" /><Button variant="ghost" onClick={onClose}>{t('pp.cancel')}</Button><Button variant="primary" onClick={() => void go()}>{t('pp.confirm')}</Button></div>
+      {err && <p className="pp-err" role="alert">{err}</p>}
     </Modal>
   );
 }
@@ -287,8 +291,8 @@ function Decide({ offer, onDone }: { offer: Offer; onDone: (o: Offer) => void })
     if (r.ok) { onDone(r.data.offer); toast(t('pp.done')); } else setErr(errText(r));
   };
   return (
-    <Card title={t('pp.offer.decideTitle')}>
-      <ul className="xs">{offer.approval_reasons.map((r, n) => <li key={n}>{t('pp.reason.' + r.code, { item: r.item ?? '' })}</li>)}</ul>
+    <Panel title={t('pp.offer.decideTitle')} className="pp-decide">
+      <ul className="xs pp-reasons">{offer.approval_reasons.map((r, n) => <li key={n}>{t('pp.reason.' + r.code, { item: r.item ?? '' })}</li>)}</ul>
       {quotes.map((q) => {
         const line = offer.lines[offer.line_ids.indexOf(q)];
         const p = prices[q.id];
@@ -301,9 +305,9 @@ function Decide({ offer, onDone }: { offer: Offer; onDone: (o: Offer) => void })
         );
       })}
       <Field label={t('pp.offer.decideNote')} htmlFor="od-note"><textarea id="od-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
-      {err && <p className="small neg" role="alert">{err}</p>}
-      <div className="row"><Button variant="primary" onClick={() => void go('approve')} data-testid="od-approve">{t('pp.offer.approve')}</Button><Button onClick={() => void go('changes')}>{t('pp.offer.changes')}</Button></div>
-    </Card>
+      {err && <p className="pp-err" role="alert">{err}</p>}
+      <div className="pp-btnrow"><AsyncButton variant="primary" onClick={() => go('approve')} data-testid="od-approve">{t('pp.offer.approve')}</AsyncButton><AsyncButton onClick={() => go('changes')}>{t('pp.offer.changes')}</AsyncButton></div>
+    </Panel>
   );
 }
 
@@ -323,11 +327,11 @@ function OrderFromOffer({ offer, onClose }: { offer: Offer; onClose: () => void 
     if (r.ok) { toast(t('pp.order.submitted', { ref: r.data.order.ref })); navigate('/partners/orders/' + r.data.order.id); } else setErr(errText(r));
   };
   return (
-    <Modal title={t('pp.offer.toOrder')} onClose={onClose} labelClose={t('pp.cancel')}>
+    <Modal title={t('pp.offer.toOrder')} onClose={onClose} labelClose={t('pp.cancel')}
+      footer={<><Button variant="ghost" onClick={onClose}>{t('pp.cancel')}</Button><Button variant="primary" disabled={busy} aria-busy={busy || undefined} icon={busy ? <LuLoaderCircle className="pp-spin" aria-hidden="true" /> : undefined} onClick={() => void go()} data-testid="oo-submit">{t('pp.order.submit')}</Button></>}>
       <p className="small muted">{t('pp.order.fromOffer', { ref: offer.ref, client: offer.client_name })}</p>
       <OrderContactFields f={f} setF={(p) => setF({ ...f, ...p })} />
-      {err && <p className="small neg" role="alert">{err}</p>}
-      <div className="row"><span className="grow" /><Button variant="ghost" onClick={onClose}>{t('pp.cancel')}</Button><Button variant="primary" disabled={busy} onClick={() => void go()} data-testid="oo-submit">{t('pp.order.submit')}</Button></div>
+      {err && <p className="pp-err" role="alert">{err}</p>}
     </Modal>
   );
 }
@@ -341,7 +345,7 @@ export function OrderContactFields({ f, setF }: { f: { contact_name: string; con
       <Field label={t('pp.f.phone')} htmlFor="oc-p"><input id="oc-p" value={f.contact_phone} maxLength={40} onChange={(e) => setF({ contact_phone: e.target.value })} /></Field>
       <Field label={t('pp.f.source')} htmlFor="oc-s"><input id="oc-s" value={f.lead_source} maxLength={200} onChange={(e) => setF({ lead_source: e.target.value })} /></Field>
       <Field label={t('pp.f.timeline')} htmlFor="oc-t" full><input id="oc-t" value={f.timeline} maxLength={400} onChange={(e) => setF({ timeline: e.target.value })} /></Field>
-      <label className="pp-check small full"><input type="checkbox" checked={f.consent} onChange={(e) => setF({ consent: e.target.checked })} data-testid="oc-consent" /> {t('pp.f.consent')}</label>
+      <label className="check full pp-consent"><input type="checkbox" checked={f.consent} onChange={(e) => setF({ consent: e.target.checked })} data-testid="oc-consent" /><span>{t('pp.f.consent')}</span></label>
       <Field label={t('pp.f.consentNote')} htmlFor="oc-cn" full><input id="oc-cn" value={f.consent_note} maxLength={400} onChange={(e) => setF({ consent_note: e.target.value })} placeholder={t('pp.f.consentNotePh')} /></Field>
     </div>
   );

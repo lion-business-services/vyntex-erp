@@ -26,11 +26,11 @@ function LbsPanel() {
   );
 }
 /** The V mark above the VYNTEX ERP lockup. */
-function VyntexPanel() {
+function VyntexPanel({ extra }: { extra?: ReactNode }) {
   return (
     <div className="auth-id">
       <VMark size={280} className="auth-v" />
-      <div className="auth-id-t"><Lockup size="lg" mark={false} /></div>
+      <div className="auth-id-t"><Lockup size="lg" mark={false} />{extra}</div>
     </div>
   );
 }
@@ -47,17 +47,26 @@ function VyntexPanel() {
 export function AuthFrame(props: AuthFrameProps) {
   return typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs'
     ? <Layout brand="auth-lbs" panel={<LbsPanel />} {...props} />
-    : <Layout brand="auth-vx" panel={<VyntexPanel />} {...props} />;
+    : <Layout brand="auth-vx" panel={<VyntexPanel extra={props.panelExtra} />} {...props} />;
 }
-export interface AuthFrameProps { children: ReactNode; title?: ReactNode; sub?: ReactNode; tools?: ReactNode; footer?: ReactNode }
+export interface AuthFrameProps {
+  children: ReactNode; title?: ReactNode; sub?: ReactNode; tools?: ReactNode; footer?: ReactNode;
+  /** a short label over the heading (the Partner Portal names itself here) */
+  eyebrow?: ReactNode;
+  /** lines under the lockup in the brand panel (VYNTEX only) */
+  panelExtra?: ReactNode;
+  /** an extra class on the frame, for a page that adds its own touches */
+  className?: string;
+}
 
-function Layout({ brand, panel, children, title, sub, tools, footer }: AuthFrameProps & { brand: string; panel: ReactNode }) {
+function Layout({ brand, panel, children, title, sub, tools, footer, eyebrow, className }: AuthFrameProps & { brand: string; panel: ReactNode }) {
   return (
-    <div className={`auth ${brand}`}>
+    <div className={className ? `auth ${brand} ${className}` : `auth ${brand}`}>
       <div className="auth-brand">{panel}</div>
       <div className="auth-main">
         {tools && <div className="auth-tools">{tools}</div>}
         <main className="auth-form" id="main">
+          {eyebrow && <p className="auth-eyebrow">{eyebrow}</p>}
           {title && <h1>{title}</h1>}
           {sub && <p className="auth-sub">{sub}</p>}
           {children}

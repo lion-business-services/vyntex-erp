@@ -2,12 +2,12 @@
 // Three business modules (Catalog & Offers, Client Orders, Commissions & Payouts); VYNTEX partner staff see the same three
 // with their administration inside, plus the Partners utility. Every screen reads from /api/partners, where the
 // database decides what the person may see and do; hiding a button here is never the protection.
-import { Suspense, lazy, useCallback, useEffect, useState } from 'react';
-import { LuBookOpen, LuBriefcase, LuGauge, LuLogOut, LuShieldCheck, LuUsers, LuWallet } from 'react-icons/lu';
+import { Suspense, lazy, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { LuArrowRight, LuBookOpen, LuBriefcase, LuChevronDown, LuCircleCheck, LuFileText, LuGauge, LuHandCoins, LuLogOut, LuMenu, LuPlus, LuShieldCheck, LuUsers, LuWallet, LuX } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Link, navigate, useRoute } from '@/app/router';
 import { Lockup } from '@/brand';
-import { Badge, Button, Card, Note, Stat, cx } from '@/ui';
+import { Button, Note, cx } from '@/ui';
 import { post } from '@/platform/live/http';
 import { setSessionEnd } from '@/platform/session';
 import { setPrefs } from '@/store/store';
@@ -15,7 +15,8 @@ import { AuthFlow } from '@/features/auth/flow';
 import { StepUpHost } from '@/features/auth/stepup';
 import { Invite } from '@/features/auth/pages';
 import { api, type Context } from './api';
-import { Loading, usd, useLoad } from './shared';
+import { Failed, Loading, Status, usd, useLoad } from './shared';
+import { EmptyState, Initials, Kpi, Panel, PageHead, RowMenu, count } from './ui';
 import './partners.css';
 
 const CatalogPage = lazy(() => import('./catalog'));
@@ -50,6 +51,7 @@ function SignInPage() {
 function Portal({ sub, id, more }: { sub: string; id?: string; more?: string }) {
   const { t } = useApp();
   const [gate, setGate] = useState<Gate>({ at: 'checking' });
+  const [drawer, setDrawer] = useState(false);
   const check = useCallback(async () => {
     const c = await api.context();
     if (c.ok) {
@@ -60,16 +62,25 @@ function Portal({ sub, id, more }: { sub: string; id?: string; more?: string }) 
     setGate({ at: 'auth' });
   }, []);
   useEffect(() => { void check(); }, [check]);
+  // the drawer closes when the page changes, and with Esc
+  useEffect(() => { setDrawer(false); }, [sub, id, more]);
+  useEffect(() => {
+    if (!drawer) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawer(false); };
+    document.addEventListener('keydown', esc);
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('.pp-side.open .pp-side-nav a')?.focus());
+    return () => document.removeEventListener('keydown', esc);
+  }, [drawer]);
   const signOut = async () => { await post('/api/auth/signout', {}, { session: false, stepUp: false }); setSessionEnd(null); navigate('/partners/signin', { replace: true }); };
 
-  if (gate.at === 'checking') return <div className="pp-shell"><Loading /></div>;
+  if (gate.at === 'checking') return <div className="pp-shell pp-gate"><Loading /></div>;
   if (gate.at === 'auth') return <div className="pp-auth"><p className="pp-auth-tag"><LuShieldCheck aria-hidden="true" />{t('pp.signin.tag')}</p><AuthFlow onReady={() => { void check(); }} /></div>;
-  if (gate.at === 'offline') return <div className="pp-shell pp-pad"><Card><p role="alert">{t('pp.err.offline')}</p><Button onClick={() => void check()}>{t('pp.retry')}</Button></Card></div>;
+  if (gate.at === 'offline') return <div className="pp-shell pp-gate"><div className="pp-gate-card"><Lockup size="sm" /><Failed text={t('pp.err.offline')} retry={() => void check()} /></div></div>;
   if (gate.at === 'denied') {
     return (
-      <div className="pp-shell pp-pad">
-        <Card><Note tone="warn"><span role="alert" data-testid="pp-denied">{t('pp.denied')}</span></Note>
-          <div className="row"><Button variant="primary" icon={<LuLogOut />} onClick={() => void signOut()}>{t('pp.signout')}</Button></div></Card>
+      <div className="pp-shell pp-gate">
+        <div className="pp-gate-card"><Lockup size="sm" /><Note tone="warn"><span role="alert" data-testid="pp-denied">{t('pp.denied')}</span></Note>
+          <div className="row"><Button variant="primary" icon={<LuLogOut />} onClick={() => void signOut()}>{t('pp.signout')}</Button></div></div>
       </div>
     );
   }
@@ -89,27 +100,49 @@ function Portal({ sub, id, more }: { sub: string; id?: string; more?: string }) 
   else if (sub === 'orders') body = <OrdersPage key={id || 'list'} ctx={ctx} id={id} />;
   else if (sub === 'commissions') body = <CommissionsPage ctx={ctx} />;
   else if (sub === 'manage' && staff) body = <ManagePage ctx={ctx} />;
-  else body = <Card><p>{t('pp.notFound')}</p><Link to="/partners" className="btn">{t('pp.nav.home')}</Link></Card>;
+  else body = <EmptyState title={t('pp.notFound')} action={<Link to="/partners" className="btn">{t('pp.nav.home')}</Link>} />;
+  const who = ctx.name || ctx.email || '';
+  const role = staff ? t(admin ? 'pp.role.admin' : 'pp.role.manager') : ctx.partner?.name ?? '';
+  const navLink = (n: { to: string; id: string; label: string; icon: ReactNode }) => (
+    <Link key={n.id} to={n.to} className="pp-nav-a" aria-current={sub === n.id ? 'page' : undefined}>{n.icon}<span>{n.label}</span></Link>
+  );
 
   return (
-    <div className="pp-shell" data-testid="partners">
+    <div className={cx('pp-shell pp-app', drawer && 'drawer')} data-testid="partners">
       <a href="#pp-main" className="skip">{t('pp.skip')}</a>
-      <header className="pp-top">
-        <Link to="/partners" className="pp-logo" aria-label="VYNTEX"><Lockup size="sm" /></Link>
-        <span className="pp-tag">{t('pp.brand')}</span>
-        {staff && <Badge tone="accent">{t(admin ? 'pp.role.admin' : 'pp.role.manager')}</Badge>}
-        <nav className="pp-nav" aria-label={t('pp.nav.label')}>
-          {nav.map((n) => <Link key={n.id} to={n.to} className={cx('pp-nav-a', sub === n.id && 'on')} aria-current={sub === n.id ? 'page' : undefined}>{n.icon}<span>{n.label}</span></Link>)}
+      <aside className={cx('pp-side', drawer && 'open')} aria-label={t('pp.nav.label')}>
+        <div className="pp-side-top">
+          <Link to="/partners" className="pp-logo" aria-label="VYNTEX"><Lockup size="sm" /></Link>
+          <button type="button" className="iconbtn pp-side-x" aria-label={t('pp.close')} onClick={() => setDrawer(false)}><LuX aria-hidden="true" /></button>
+        </div>
+        <p className="pp-side-tag"><i aria-hidden="true" />{t('pp.nav.label')}</p>
+        <nav className="pp-side-nav" aria-label={t('pp.nav.label')}>
+          <p className="pp-side-cap">{t('pp.nav.workspace')}</p>
+          {nav.map(navLink)}
+          {staff && <><p className="pp-side-cap">{t('pp.nav.admin')}</p>{navLink({ to: '/partners/manage', id: 'manage', label: t('pp.nav.partners'), icon: <LuUsers aria-hidden="true" /> })}</>}
         </nav>
-        <span className="grow" />
-        {staff && <Link to="/partners/manage" className={cx('pp-util', sub === 'manage' && 'on')} aria-current={sub === 'manage' ? 'page' : undefined}><LuUsers aria-hidden="true" />{t('pp.nav.partners')}</Link>}
-        <LangSwitch />
-        <span className="small muted pp-who" title={ctx.email}>{ctx.partner ? ctx.partner.name : ctx.name || ctx.email}</span>
-        <Button size="sm" variant="ghost" icon={<LuLogOut />} onClick={() => void signOut()} data-testid="pp-signout">{t('pp.signout')}</Button>
-      </header>
-      <main className="pp-main" id="pp-main">
-        <Suspense fallback={<Loading />}>{body}</Suspense>
-      </main>
+        <div className="pp-side-foot">
+          {ctx.partner
+            ? <div className="pp-org"><Initials name={ctx.partner.name} size="sm" /><div><b>{ctx.partner.name}</b><small>{ctx.partner.code} · {t('pp.lane.' + ctx.partner.kind)}</small></div></div>
+            : <div className="pp-org"><span className="pp-org-dot" aria-hidden="true"><LuShieldCheck /></span><div><b>VYNTEX</b><small>{t('pp.nav.staffArea')}</small></div></div>}
+        </div>
+      </aside>
+      <div className="pp-scrim" aria-hidden="true" onClick={() => setDrawer(false)} />
+      <div className="pp-body">
+        <header className="pp-top">
+          <button type="button" className="iconbtn pp-hamb" aria-label={t('pp.nav.open')} aria-expanded={drawer} onClick={() => setDrawer(true)}><LuMenu aria-hidden="true" /></button>
+          <Link to="/partners" className="pp-top-logo" aria-label="VYNTEX"><Lockup size="sm" /></Link>
+          <span className="grow" />
+          <LangSwitch />
+          <RowMenu label={t('pp.user.menu')} buttonClass="pp-user" width={260}
+            button={<><Initials name={who} size="sm" /><span className="pp-user-t"><b>{who}</b><small>{role}</small></span><LuChevronDown className="pp-user-c" aria-hidden="true" /></>}
+            header={<><b>{who}</b>{ctx.email && ctx.email !== who && <span>{ctx.email}</span>}<span className="pp-menu-role">{role}</span></>}
+            items={[{ label: t('pp.signout'), icon: <LuLogOut aria-hidden="true" />, onSelect: () => void signOut(), testId: 'pp-signout' }]} />
+        </header>
+        <main className="pp-main" id="pp-main" tabIndex={-1}>
+          <Suspense fallback={<Loading />}><div className="pp-page" key={sub + (id ?? '')}>{body}</div></Suspense>
+        </main>
+      </div>
       <StepUpHost />
     </div>
   );
@@ -118,15 +151,19 @@ function Portal({ sub, id, more }: { sub: string; id?: string; more?: string }) 
 function LangSwitch() {
   const { lang } = useApp();
   return (
-    <div className="seg pp-lang" role="group" aria-label="Language / Idioma">
-      <button type="button" aria-pressed={lang === 'en'} onClick={() => setPrefs({ lang: 'en' })}>EN</button>
-      <button type="button" aria-pressed={lang === 'es'} onClick={() => setPrefs({ lang: 'es' })}>ES</button>
+    <div className="pp-lang" role="group" aria-label="Language / Idioma">
+      <button type="button" aria-pressed={lang === 'en'} onClick={() => setPrefs({ lang: 'en' })} lang="en" title="English">EN</button>
+      <button type="button" aria-pressed={lang === 'es'} onClick={() => setPrefs({ lang: 'es' })} lang="es" title="Español">ES</button>
     </div>
   );
 }
 
+const OPEN_OFFERS = ['draft', 'pending_approval', 'changes_requested', 'approved', 'sent', 'viewed'];
+const CLOSED_ORDERS = ['draft', 'completed', 'rejected', 'cancelled', 'refunded'];
+const recent = <T extends { updated_at: string }>(list: T[]) => [...list].sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1)).slice(0, 5);
+
 function Overview({ ctx }: { ctx: Context }) {
-  const { t } = useApp();
+  const { t, dateTime } = useApp();
   const staff = ctx.kind === 'staff';
   const offers = useLoad(() => api.offers(), []);
   const orders = useLoad(() => api.orders(), []);
@@ -139,33 +176,76 @@ function Overview({ ctx }: { ctx: Context }) {
     return (d.commissions?.liability ?? []).reduce((a, x) => a + (Number(x[k]) || 0), 0);
   };
   const todo = staff
-    ? [...o.filter((x) => x.status === 'pending_approval').map((x) => ({ to: `/partners/catalog/offers/${x.id}`, text: t('pp.todo.approveOffer', { ref: x.ref, client: x.client_name, partner: x.partner }) })),
-       ...r.filter((x) => x.status === 'submitted').map((x) => ({ to: `/partners/orders/${x.id}`, text: t('pp.todo.reviewOrder', { ref: x.ref, client: x.client_name, partner: x.partner }) }))]
-    : [...o.filter((x) => x.status === 'changes_requested').map((x) => ({ to: `/partners/catalog/offers/${x.id}`, text: t('pp.todo.changes', { ref: x.ref, client: x.client_name }) })),
-       ...o.filter((x) => x.status === 'accepted').map((x) => ({ to: `/partners/catalog/offers/${x.id}`, text: t('pp.todo.toOrder', { ref: x.ref, client: x.client_name }) })),
-       ...r.filter((x) => x.status === 'info_required').map((x) => ({ to: `/partners/orders/${x.id}`, text: t('pp.todo.info', { ref: x.ref, client: x.client_name }) }))];
+    ? [...o.filter((x) => x.status === 'pending_approval').map((x) => ({ to: `/partners/catalog/offers/${x.id}`, status: x.status, icon: <LuFileText />, text: t('pp.todo.approveOffer', { ref: x.ref, client: x.client_name, partner: x.partner }) })),
+       ...r.filter((x) => x.status === 'submitted').map((x) => ({ to: `/partners/orders/${x.id}`, status: x.status, icon: <LuBriefcase />, text: t('pp.todo.reviewOrder', { ref: x.ref, client: x.client_name, partner: x.partner }) }))]
+    : [...o.filter((x) => x.status === 'changes_requested').map((x) => ({ to: `/partners/catalog/offers/${x.id}`, status: x.status, icon: <LuFileText />, text: t('pp.todo.changes', { ref: x.ref, client: x.client_name }) })),
+       ...o.filter((x) => x.status === 'accepted').map((x) => ({ to: `/partners/catalog/offers/${x.id}`, status: x.status, icon: <LuFileText />, text: t('pp.todo.toOrder', { ref: x.ref, client: x.client_name }) })),
+       ...r.filter((x) => x.status === 'info_required').map((x) => ({ to: `/partners/orders/${x.id}`, status: x.status, icon: <LuBriefcase />, text: t('pp.todo.info', { ref: x.ref, client: x.client_name }) }))];
+  const openOffers = offers.data ? o.filter((x) => OPEN_OFFERS.includes(x.status)).length : null;
+  const openOrders = orders.data ? r.filter((x) => !CLOSED_ORDERS.includes(x.status)).length : null;
+  const loading = !offers.data || !orders.data;
+  const failed = offers.error || orders.error;
   return (
     <div className="pp-stack">
-      <div className="pp-hero">
-        <h1>{staff ? t('pp.home.staffTitle') : t('pp.home.title', { name: ctx.partner?.name ?? '' })}</h1>
-        <p className="muted">{staff ? t('pp.home.staffSub') : t('pp.home.sub')}</p>
+      <PageHead
+        eyebrow={staff ? t('pp.home.eyebrowStaff') : ctx.partner ? `${ctx.partner.code} · ${t('pp.lane.' + ctx.partner.kind)}` : undefined}
+        title={staff ? t('pp.home.staffTitle') : t('pp.home.title', { name: ctx.partner?.name ?? '' })}
+        sub={staff ? t('pp.home.staffSub') : t('pp.home.sub')}
+        actions={!staff ? <><Button icon={<LuBriefcase />} onClick={() => navigate('/partners/orders/new')}>{t('pp.order.new')}</Button><Button variant="primary" icon={<LuPlus />} onClick={() => navigate('/partners/catalog/offers/new')}>{t('pp.offer.new')}</Button></> : undefined} />
+      {!staff && ctx.partner && (ctx.partner.w9 !== 'verified' || ctx.partner.agreement !== 'signed') && (
+        <div className="pp-callout warn" role="note">
+          <LuShieldCheck aria-hidden="true" />
+          <div className="grow"><p>{t('pp.home.compliance')}</p><div className="pp-callout-chips"><Status value={ctx.partner.w9} prefix={t('pp.mg.w9') + ':'} /><Status value={ctx.partner.agreement} prefix={t('pp.mg.agreement') + ':'} /></div></div>
+        </div>
+      )}
+      {failed && <Failed text={offers.error || orders.error} retry={() => { void offers.reload(); void orders.reload(); }} />}
+      <div className="pp-kpis">
+        <Kpi label={t('pp.home.openOffers')} value={openOffers} format={count} icon={<LuFileText />} tone="accent" onClick={() => navigate('/partners/catalog/offers')}
+          hint={openOffers === 0 ? t(staff ? 'pp.home.noOffersStaff' : 'pp.home.noOffers') : t('pp.home.seeOffers')} />
+        <Kpi label={t('pp.home.openOrders')} value={openOrders} format={count} icon={<LuBriefcase />} tone="violet" onClick={() => navigate('/partners/orders')}
+          hint={openOrders === 0 ? t('pp.home.noOrders') : t('pp.home.seeOrders')} />
+        {!money.error && <Kpi label={t('pp.st.eligible')} value={sum('eligible_cents')} format={usd} icon={<LuHandCoins />} tone="warn" hint={t('pp.home.eligibleHint')} onClick={() => navigate('/partners/commissions')} />}
+        {!money.error && <Kpi label={t('pp.st.paid')} value={sum('paid_cents')} format={usd} icon={<LuWallet />} tone="ok" hint={t('pp.home.paidHint')} onClick={() => navigate('/partners/commissions')} />}
       </div>
-      {!staff && ctx.partner && (ctx.partner.w9 !== 'verified' || ctx.partner.agreement !== 'signed') && <Note tone="warn">{t('pp.home.compliance')}</Note>}
-      <div className="pp-stats">
-        <Stat label={t('pp.home.openOffers')} value={o.filter((x) => ['draft', 'pending_approval', 'changes_requested', 'approved', 'sent', 'viewed'].includes(x.status)).length} />
-        <Stat label={t('pp.home.openOrders')} value={r.filter((x) => !['draft', 'completed', 'rejected', 'cancelled', 'refunded'].includes(x.status)).length} />
-        <Stat label={t('pp.st.eligible')} value={usd(sum('eligible_cents')) || '...'} hint={t('pp.home.eligibleHint')} />
-        <Stat label={t('pp.st.paid')} value={usd(sum('paid_cents')) || '...'} hint={t('pp.home.paidHint')} />
+      <div className="pp-cols">
+        <Panel title={t('pp.home.todo')} count={loading ? undefined : todo.length} flush className="pp-todo-panel">
+          {loading ? <Loading kind="table" /> : !todo.length ? (
+            <EmptyState compact icon={<LuCircleCheck />} title={t('pp.home.nothing')} body={t(staff ? 'pp.home.nothingStaff' : 'pp.home.nothingPartner')} />
+          ) : (
+            <ul className="pp-todo">{todo.slice(0, 12).map((x) => (
+              <li key={x.to}><Link to={x.to} className="pp-todo-a"><span className="pp-todo-ic" aria-hidden="true">{x.icon}</span><span className="grow">{x.text}</span><Status value={x.status} /><LuArrowRight className="pp-go" aria-hidden="true" /></Link></li>
+            ))}</ul>
+          )}
+        </Panel>
+        <Panel title={t('pp.home.shortcuts')} className="pp-quick-panel">
+          <div className="pp-quick">
+            <Link to="/partners/catalog" className="pp-q"><span className="pp-q-ic" aria-hidden="true"><LuBookOpen /></span><span><b>{t('pp.nav.catalog')}</b><small>{t('pp.home.qCatalog')}</small></span><LuArrowRight className="pp-go" aria-hidden="true" /></Link>
+            <Link to="/partners/orders" className="pp-q"><span className="pp-q-ic" aria-hidden="true"><LuBriefcase /></span><span><b>{t('pp.nav.orders')}</b><small>{t('pp.home.qOrders')}</small></span><LuArrowRight className="pp-go" aria-hidden="true" /></Link>
+            <Link to="/partners/commissions" className="pp-q"><span className="pp-q-ic" aria-hidden="true"><LuWallet /></span><span><b>{t('pp.nav.commissions')}</b><small>{t('pp.home.qCommissions')}</small></span><LuArrowRight className="pp-go" aria-hidden="true" /></Link>
+          </div>
+        </Panel>
       </div>
-      <Card title={t('pp.home.todo')}>
-        {!todo.length ? <p className="small muted">{t('pp.home.nothing')}</p> : (
-          <ul className="pp-todo">{todo.slice(0, 12).map((x) => <li key={x.to}><Link to={x.to}>{x.text}</Link></li>)}</ul>
-        )}
-      </Card>
-      <div className="pp-quick">
-        <Link to="/partners/catalog" className="card pp-q"><LuBookOpen aria-hidden="true" /><b>{t('pp.nav.catalog')}</b><span className="small muted">{t('pp.home.qCatalog')}</span></Link>
-        <Link to="/partners/orders" className="card pp-q"><LuBriefcase aria-hidden="true" /><b>{t('pp.nav.orders')}</b><span className="small muted">{t('pp.home.qOrders')}</span></Link>
-        <Link to="/partners/commissions" className="card pp-q"><LuWallet aria-hidden="true" /><b>{t('pp.nav.commissions')}</b><span className="small muted">{t('pp.home.qCommissions')}</span></Link>
+      <div className="pp-cols even">
+        <Panel title={t('pp.home.recentOffers')} flush tools={<Link to="/partners/catalog/offers" className="pp-link">{t('pp.home.viewAll')}<LuArrowRight aria-hidden="true" /></Link>}>
+          {loading ? <Loading kind="table" /> : !o.length ? <EmptyState compact icon={<LuFileText />} title={t(staff ? 'pp.offer.noneStaff' : 'pp.offer.none')} /> : (
+            <ul className="pp-mini">{recent(o).map((x) => (
+              <li key={x.id}><Link to={'/partners/catalog/offers/' + x.id} className="pp-mini-a">
+                <span className="pp-mini-t"><b>{x.client_name}</b><small>{x.ref}{staff ? ` · ${x.partner}` : ''} · {dateTime(x.updated_at)}</small></span>
+                <span className="pp-mini-r"><span className="pp-money">{usd(x.setup_cents + x.one_time_cents)}</span><Status value={x.status} /></span>
+              </Link></li>
+            ))}</ul>
+          )}
+        </Panel>
+        <Panel title={t('pp.home.recentOrders')} flush tools={<Link to="/partners/orders" className="pp-link">{t('pp.home.viewAll')}<LuArrowRight aria-hidden="true" /></Link>}>
+          {loading ? <Loading kind="table" /> : !r.length ? <EmptyState compact icon={<LuBriefcase />} title={t('pp.order.none')} /> : (
+            <ul className="pp-mini">{recent(r).map((x) => (
+              <li key={x.id}><Link to={'/partners/orders/' + x.id} className="pp-mini-a">
+                <span className="pp-mini-t"><b>{x.client_name}</b><small>{x.ref}{staff ? ` · ${x.partner}` : ''} · {dateTime(x.last_update || x.updated_at)}</small></span>
+                <span className="pp-mini-r"><span className="pp-money">{usd(x.setup_cents + x.one_time_cents)}</span><Status value={x.status} /></span>
+              </Link></li>
+            ))}</ul>
+          )}
+        </Panel>
       </div>
     </div>
   );

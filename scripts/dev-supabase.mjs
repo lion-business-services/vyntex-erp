@@ -208,6 +208,10 @@ end $f$;
 create or replace function devsb.user_update(p jsonb) returns jsonb language plpgsql as $f$
 begin
   if not devsb.session_ok(p) then return devsb.err(403, 'session_not_found', 'Session from session_id claim in JWT does not exist'); end if;
+  -- as Supabase: with a verified authenticator, a password change needs an aal2 session
+  if p ? 'password' and coalesce(p ->> 'aal', 'aal1') <> 'aal2' and exists (select 1 from auth.mfa_factors f where f.user_id = (p ->> 'sub')::uuid and f.status = 'verified') then
+    return devsb.err(401, 'insufficient_aal', 'AAL2 session is required to update email or password when MFA is enabled.');
+  end if;
   if p ? 'password' then
     if length(p ->> 'password') < 6 then return devsb.err(422, 'weak_password', 'Password should be at least 6 characters'); end if;
     update auth.users set encrypted_password = extensions.crypt(p ->> 'password', extensions.gen_salt('bf', 4)) where id = (p ->> 'sub')::uuid;

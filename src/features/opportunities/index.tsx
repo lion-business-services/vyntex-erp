@@ -6,7 +6,7 @@ import type { PageProps } from '@/app/routes';
 import { useApp } from '@/app/hooks';
 import { A, go } from '@/app/router';
 import { act } from '@/store/store';
-import { Avatar, Button, Card, Empty, PageHeader, SearchBox, Seg, Tabs, cx, toast } from '@/ui';
+import { Button, Card, Empty, PageHeader, SearchBox, Seg, Tabs, cx, toast } from '@/ui';
 import { CanWrite } from '@/app/shared';
 import { evaluateCrossSell } from '@/domain/actions';
 import { serviceName, serviceOf } from '@/domain/actions/catalog';
@@ -19,6 +19,7 @@ import { Actions, AddModal, StatusBadge, isLater } from './parts';
 import { Rules } from './rules';
 import '@/features/leads/work.css';
 import './opportunities.css';
+import { PersonAvatar } from '@/app/person';
 
 type Show = 'open' | 'later' | 'contacted' | 'won' | 'dismissed';
 const bucket = (o: Opp): Show => (isLater(o) ? 'later' : o.status);
@@ -109,7 +110,7 @@ function List({ focus }: { focus?: string }) {
                   return (
                     <tr key={o.id} data-opp={o.id} className={cx(o.id === focus && 'opportunities-focus')}>
                       <td className="t1">{c ? <A to={`/clients/${c.id}/opportunities`} className="opportunities-name">{c.name}</A> : null}{c?.company && <div className="xs dim opportunities-under">{c.company}</div>}
-                        {u && <div className="xs dim opportunities-under opportunities-who"><Avatar name={u.name} size="sm" />{u.name}</div>}</td>
+                        {u && <div className="xs dim opportunities-under opportunities-who"><PersonAvatar user={u} name={u.name} size="sm" />{u.name}</div>}</td>
                       <td data-label={t('opportunities.col.service')} className="opportunities-c-service">
                         <div><b>{sv ? serviceName(sv, lang) : t('catalog.gone')}</b>{sv && !sv.active && <span className="badge opportunities-gap">{t('catalog.retired')}</span>}</div>
                         <div className="xs muted">{rule ? t('opportunities.byRule', { rule: rule.name }) : o.by === 'automation' ? t('opportunities.byRuleGone') : t('opportunities.byPerson', { name: byId(data.users, o.by)?.name ?? '' })}</div>

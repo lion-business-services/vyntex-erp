@@ -8,7 +8,7 @@ import { LuDownload } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { A, refPath } from '@/app/router';
 import type { PageProps } from '@/app/routes';
-import { Avatar, Badge, Button, Card, Empty, PageHeader, SearchBox, toast, type Tone } from '@/ui';
+import { Badge, Button, Card, Empty, PageHeader, SearchBox, toast, type Tone } from '@/ui';
 import type { TFn } from '@/i18n';
 import type { DemoState, RefType } from '@/domain/types';
 import { auditRows, type AuditRow } from '@/domain/actions/security';
@@ -20,6 +20,7 @@ import { SampleNote, reasonText, sampleWord, whoName } from '@/features/security
 import { StepUpHost } from '@/features/security/stepup';
 import '@/features/security/security.css';
 import './audit.css';
+import { PersonAvatar } from '@/app/person';
 
 const PAGE = 80;
 /** Turns a code the screen has no wording for into readable words: "member.status_changed" reads "Member status changed". */
@@ -154,7 +155,7 @@ export default function AuditPage(_props: PageProps) {
                   {filtered.slice(0, shown).map(({ row, label, person, kind: k, record, detail }) => (
                     <tr key={row.id} data-action={row.action}>
                       <td className="t1 nowrap audit-when">{when(row.at)}</td>
-                      <td data-label={t('audit.c.who')}><span className="security-person">{data.users.some((u) => u.id === row.by) && <Avatar name={person} size="sm" />}<span>{person}</span></span></td>
+                      <td data-label={t('audit.c.who')}><span className="security-person">{data.users.some((u) => u.id === row.by) && <PersonAvatar id={row.by} name={person} size="sm" />}<span>{person}</span></span></td>
                       <td data-label={t('audit.c.what')}>{row.activity ? <span className="audit-what">{label}</span> : <Badge tone={toneOf(row.action)}>{label}</Badge>}</td>
                       <td data-label={t('audit.c.record')}>
                         {k ? <span className="audit-record"><span className="xs dim">{kindLabel(k)}</span>{record ? (record.to ? <A to={record.to}>{record.name}</A> : <span>{record.name}</span>) : null}</span> : null}

@@ -9,7 +9,7 @@ import { useApp } from './hooks';
 import { A, Link, appPath, go, navigate, refPath, useRoute } from './router';
 import { BrandLockup } from '@/brand';
 import { ClientPaymentModal, TaskFormModal } from './forms';
-import { Avatar, IconButton, Modal, cx, confirmDialog, toast } from '@/ui';
+import { IconButton, Modal, cx, confirmDialog, toast } from '@/ui';
 import { mutateQuiet as mutate, resetDemo, setLanguage, setPrefs, switchPack } from '@/store/store';
 import { PACK_LIST } from '@/packs';
 import { plansFor, planName, type PlanTier } from '@/lib/pricing';
@@ -29,6 +29,7 @@ import { assistantOn } from '@/features/assistant/deploy';
 import { ThemeToggle } from '@/ui/ThemeToggle';
 import { switchTheme } from '@/ui/theme';
 import './shell-ext.css';
+import { PersonAvatar } from '@/app/person';
 
 // Read straight from the build constant where a branch must leave the other product's wording out of the bundle.
 declare const __VX_DEPLOY__: string | undefined;
@@ -155,7 +156,7 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
               {bell && <NotificationsPanel onClose={() => setBell(false)} />}
             </div>
           )}
-          {actor && <span className="row tight nowrap" title={t(isWorker ? 'role.worker' : 'role.' + prefs.viewAs)} data-testid="actor"><Avatar name={actor} size="sm" accent /><span className="small strong hide-s">{actor}</span></span>}
+          {actor && <span className="row tight nowrap" title={t(isWorker ? 'role.worker' : 'role.' + prefs.viewAs)} data-testid="actor"><PersonAvatar user={isWorker ? undefined : app.user} name={actor} size="sm" accent /><span className="small strong hide-s">{actor}</span></span>}
         </div>
         <main className="content" id="main" tabIndex={-1}>
           {trialDays !== null && <div className="vx-trial-banner" role="status">

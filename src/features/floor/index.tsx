@@ -11,7 +11,7 @@ import { useApp } from '@/app/hooks';
 import type { PageProps } from '@/app/routes';
 import { A } from '@/app/router';
 import { act } from '@/store/store';
-import { Avatar, Badge, Button, Card, Empty, Field, IconButton, Menu, Modal, Note, PageHeader, Stat, Tabs, confirmDialog, cx, toast } from '@/ui';
+import { Badge, Button, Card, Empty, Field, IconButton, Menu, Modal, Note, PageHeader, Stat, Tabs, confirmDialog, cx, toast } from '@/ui';
 import type { Tone } from '@/ui';
 import { gateway } from '@/platform/gateway';
 import { completeAppointment } from '@/domain/actions/appointments';
@@ -25,6 +25,7 @@ import type { Appointment, Chair, PayMethod, WalkIn } from '@/domain/types';
 import { addDaysFrom, daysBetween, today } from '@/lib/dates';
 import { money, money2 } from '@/lib/money';
 import './floor.css';
+import { PersonAvatar } from '@/app/person';
 
 type Tab = 'live' | 'insights' | 'history' | 'setup';
 const STATUS_TONE: Record<Chair['status'], Tone> = { open: 'ok', busy: 'info', break: 'warn', off: 'neutral' };
@@ -432,7 +433,7 @@ function Kiosk({ onClose }: { onClose: () => void }) {
                 <b>{t('floor.firstAvailable')}</b><span>{t('floor.approx', { n: Math.max(0, quoteWait(data, sv)) })}</span></button>
               {workingChairs(data).filter((c) => !(c.skipServiceIds ?? []).includes(sv)).map((c) => {
                 const w = quoteWait(data, sv, c.staffId); const b = barberOf(data, c.staffId);
-                return <button key={c.id} type="button" className="floor-tile" onClick={() => join(c.staffId)}><span className="floor-tile-av"><Avatar name={b?.name ?? ''} /></span><b>{b?.name}</b><span>{w < 0 ? '' : t('floor.approx', { n: w })}</span></button>;
+                return <button key={c.id} type="button" className="floor-tile" onClick={() => join(c.staffId)}><span className="floor-tile-av"><PersonAvatar name={b?.name ?? ''} /></span><b>{b?.name}</b><span>{w < 0 ? '' : t('floor.approx', { n: w })}</span></button>;
               })}
             </div>
             <button type="button" className="linkbtn" onClick={() => setStep('what')}>{t('floor.kiosk.back')}</button>

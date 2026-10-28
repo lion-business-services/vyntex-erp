@@ -9,7 +9,18 @@ export const isInline = (v: string | undefined): v is string => !!v && v.startsW
 export async function storedImageSrc(value: string | undefined): Promise<string> {
   if (!value) return '';
   if (isInline(value)) return value;
-  try { const r = await gateway().files.url({ name: 'image', size: 0, mime: 'image/png', path: value }); return r.ok ? r.data : ''; } catch { return ''; }
+  try { return await linkFor(value); } catch { return ''; }
+}
+// The same picture shown in many places at once (a person's photo in every list) asks for its address once. The server's
+// addresses last a minute (api/ws.js, LINK_SECONDS); one is reused for 45 seconds, then a new one is asked for.
+const links = new Map<string, { at: number; url: Promise<string> }>();
+function linkFor(path: string): Promise<string> {
+  const now = Date.now(); const hit = links.get(path);
+  if (hit && now - hit.at < 45_000) return hit.url;
+  const url = gateway().files.url({ name: 'image', size: 0, mime: 'image/png', path }).then((r) => (r.ok ? r.data : ''), () => '');
+  links.set(path, { at: now, url });
+  void url.then((u) => { if (!u) links.delete(path); });
+  return url;
 }
 /** The address to put in `src`, or an empty string while it is being fetched or when there is no picture. */
 export function useStoredImage(value: string | undefined): string {
@@ -18,7 +29,7 @@ export function useStoredImage(value: string | undefined): string {
   useEffect(() => {
     if (inline || !value) { setSrc(inline); return; }
     let on = true;
-    gateway().files.url({ name: 'image', size: 0, mime: 'image/png', path: value }).then((r) => { if (on) setSrc(r.ok ? r.data : ''); }, () => { if (on) setSrc(''); });
+    linkFor(value).then((u) => { if (on) setSrc(u); }, () => { if (on) setSrc(''); });
     return () => { on = false; };
   }, [value, inline]);
   return src;

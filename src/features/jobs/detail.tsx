@@ -9,7 +9,7 @@ import { useApp } from '@/app/hooks';
 import { A, go } from '@/app/router';
 import { BackLink } from '@/app/Shell';
 import { act } from '@/store/store';
-import { Avatar, Badge, Button, Card, Empty, IconButton, MoneyBar, PageHeader, confirmDialog, cx, toast, type Tone } from '@/ui';
+import { Badge, Button, Card, Empty, IconButton, MoneyBar, PageHeader, confirmDialog, cx, toast, type Tone } from '@/ui';
 import { ActivityList, ContactLinks, DemoTag, DocStatusBadge, JobStatusBadge, NoAccess, NotesPanel, PlanBadge, TaskRow, CanWrite } from '@/app/shared';
 import { ClientPaymentModal, PayWorkerModal, TaskFormModal } from '@/app/forms';
 import { createDoc, createDocFromTemplate, deleteJob, deleteWorkerPay, removeFromJob } from '@/domain/actions';
@@ -24,6 +24,7 @@ import { money, money2, pct, sum } from '@/lib/money';
 import { changeStatus, payLine, plain, repeats, shortDate, tabLabel, tabsFor, type AutoLine, type JobTab } from './parts';
 import { AssignmentForm, ExpenseForm, JobForm, LogForm } from './forms';
 import { Appointments, BillingSummary, EngagementFacts, EngagementLine, Messages, PlaybookCard } from './engagement';
+import { PersonAvatar } from '@/app/person';
 
 const DOC_KINDS: DocKind[] = ['estimate', 'contract', 'invoice'];
 const ASSIGN_TONE: Record<AssignStatus, Tone> = { pending: 'neutral', progress: 'info', done: 'ok' };
@@ -572,7 +573,7 @@ function LogAndNotes({ job }: { job: Job }) {
               const name = actorName(data, l.workerId) ?? t('jobs.team.gone');
               return (
                 <div className="item jobs-logrow" key={l.id}>
-                  <Avatar name={name} size="sm" />
+                  <PersonAvatar name={name} size="sm" />
                   <div className="grow"><div className="jobs-prose">{l.text}</div><div className="xs dim">{name} · {shortDate(l.date, lang)}</div></div>
                   {can('delete') && <CanWrite><IconButton size="sm" label={t('common.delete')} onClick={() => remove(l.id)} data-testid="jobs-remove-log"><LuTrash2 /></IconButton></CanWrite>}
                 </div>

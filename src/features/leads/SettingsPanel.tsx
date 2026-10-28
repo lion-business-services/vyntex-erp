@@ -7,13 +7,14 @@ import { LuArrowDown, LuArrowUp, LuFlame, LuPlus, LuRotateCcw, LuTrash2, LuUserM
 import { useApp } from '@/app/hooks';
 import { NoAccess } from '@/app/shared';
 import { ctx, mutate } from '@/store/store';
-import { Avatar, Badge, Button, Card, IconButton, Note, Seg, cx, confirmDialog, toast } from '@/ui';
+import { Badge, Button, Card, IconButton, Note, Seg, cx, confirmDialog, toast } from '@/ui';
 import { lostReasonsOf, routingOf, sourcesOf, stagesOf } from '@/domain/config';
 import { leadsPerStage, resetLeadStages, saveLeadSources, saveLeadStages, saveLostReasons, saveRouting, skipReason, stageProblem, upcomingTurns } from '@/domain/actions/leads';
 import { byId } from '@/domain/selectors';
 import type { LeadRouting, OptionDef, StageDef } from '@/domain/types';
 import { uid } from '@/lib/id';
 import './leads.css';
+import { PersonAvatar } from '@/app/person';
 
 const KINDS: StageDef['kind'][] = ['open', 'won', 'lost'];
 const ROLES: NonNullable<StageDef['role']>[] = ['new', 'contacted', 'visit', 'proposal', 'negotiation'];
@@ -235,7 +236,7 @@ function RoutingCard() {
             return (
               <li key={id} className={cx(reason && 'skipped')} data-user={id}>
                 <span className="leads-pool-n" aria-hidden="true">{i + 1}</span>
-                <Avatar name={person} size="sm" />
+                <PersonAvatar name={person} size="sm" />
                 <span className="grow"><span className="t">{person}</span><span className="xs dim leads-sub">{u ? t('role.' + u.role) : ''}{reason ? ` · ${reason}` : first?.userId === id && r.mode === 'round_robin' ? ` · ${t('leads.set.isNext')}` : ''}</span></span>
                 <label className="check leads-pool-skip"><input type="checkbox" checked={excluded} onChange={(e) => set({ exclude: e.target.checked ? [...r.exclude, id] : r.exclude.filter((x) => x !== id) })} /><span>{t('leads.set.exclude')}</span></label>
                 <span className="leads-set-order">

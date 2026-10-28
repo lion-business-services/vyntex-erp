@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { LuEllipsis, LuMailPlus, LuRotateCcw, LuUserCheck, LuUserPlus, LuUserX, LuX } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { A } from '@/app/router';
-import { Avatar, Badge, Button, Card, Field, IconButton, Menu, Modal, confirmDialog, cx, toast } from '@/ui';
+import { Badge, Button, Card, Field, IconButton, Menu, Modal, confirmDialog, cx, toast } from '@/ui';
 import type { Lang, OfficeRole, TeamUser } from '@/domain/types';
 import { OFFICE_ROLES } from '@/domain/permissions';
 import { roleLabel } from '@/domain/config';
@@ -17,6 +17,7 @@ import { defaultLang } from '@/features/settings/actions';
 import { ops } from './ops';
 import { signInRules } from './rules';
 import { SampleNote, reasonText, sampleWord } from './parts';
+import { PersonAvatar } from '@/app/person';
 
 const hoursLeft = (u: TeamUser) => (u.invitedAt ? Math.max(0, Math.ceil((new Date(u.invitedAt).getTime() + INVITE_HOURS * 3600000 - Date.now()) / 3600000)) : 0);
 const STATE_ORDER: Record<InviteState, number> = { member: 0, invited: 1, invite_expired: 2, disabled: 3 };
@@ -69,7 +70,7 @@ export function PeopleCard({ ids = 'security', note }: { ids?: 'security' | 'set
                 return (
                   <tr key={u.id} data-user={u.id} data-state={state} className={cx(state === 'disabled' && 'security-off')}>
                     <td className="t1">
-                      <span className="security-who"><Avatar name={u.name} size="sm" />
+                      <span className="security-who"><PersonAvatar user={u} name={u.name} size="sm" />
                         <span className="grow">
                           {profiles && state === 'member' ? <A to={`/team/${u.id}`} className="security-name">{u.name}</A> : <span className="security-name">{u.name}</span>}
                           {self && <> <Badge outline>{t('security.people.you')}</Badge></>}

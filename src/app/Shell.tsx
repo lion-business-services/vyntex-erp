@@ -19,8 +19,10 @@ import { byId, notices } from '@/domain/selectors';
 import { pick } from '@/i18n';
 import { BRAND } from '@/config/brand';
 import { DEPLOY } from '@/config/deployment';
+import { INTERNAL_PLAN } from '@/config/plans';
 import { money } from '@/lib/money';
 import { session } from '@/platform/session';
+import { useStoredImage } from '@/features/settings/image';
 import { GROUPS, TEAM_ICON_OFFICE, modulesFor, type ModuleDef } from './modules';
 import { searchAll } from './search';
 import { assistantOn } from '@/features/assistant/deploy';
@@ -88,6 +90,8 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
   const actor = isWorker ? byId(data.workers, prefs.viewAs.slice(7))?.name : app.user?.name;
   const sample = !app.live;
   const liveSession = app.live ? session() : null;
+  const internal = liveSession?.planId === INTERNAL_PLAN;
+  const logoSrc = useStoredImage(data.company.logo);
   const trialDays = liveSession?.planId === 'trial' && liveSession.trialExpiresAt
     ? Math.max(0, Math.ceil((Date.parse(liveSession.trialExpiresAt) - Date.now()) / 86_400_000))
     : null;
@@ -102,8 +106,10 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
           <IconButton label={t('nav.closeMenu')} className="hamb" onClick={() => setMenu(false)}><LuX /></IconButton>
         </div>
         <div className="side-brand">
-          <div className="logo">{data.company.logo ? <img src={data.company.logo} alt="" /> : data.company.initials}</div>
-          <div className="grow"><b>{data.company.name}</b><small>{product}</small></div>
+          {/* a live workspace keeps a path to a private file: it is read through a short-lived address */}
+          <div className="logo">{logoSrc ? <img src={logoSrc} alt="" /> : data.company.initials}</div>
+          {/* VYNTEX's own workspace (plan "internal", free) is known by its name alone, without an edition under it */}
+          <div className="grow"><b>{data.company.name}</b>{!internal && <small>{product}</small>}</div>
         </div>
         <nav className="nav">
           {groups.map((g) => {

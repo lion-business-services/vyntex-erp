@@ -11,6 +11,7 @@
 // The page reads that once the operator is signed in (it is kept in this tab's sessionStorage through the sign-in),
 // then takes it off the address bar. Nothing is made until the operator presses Create.
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { INTERNAL_PLAN } from '@/config/plans';
 import { LuBuilding2, LuCircleCheck, LuCopy, LuCreditCard, LuExternalLink, LuInbox, LuLogOut, LuMail, LuMailCheck, LuPause, LuPhone, LuPlay, LuPlus, LuRefreshCw, LuRocket, LuSend, LuShieldCheck } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Link } from '@/app/router';
@@ -158,6 +159,7 @@ export default function AdminPage() {
 /** A plan id as people read it: the plan's name from the pricing file, or the id itself when it is not there. */
 function planLabel(industry: string, id: string, lang: Lang): string {
   const p = PACK_LIST.some((x) => x.id === industry) ? plansFor(industry as IndustryId).find((x) => x.id === id) : undefined;
+  if (id === INTERNAL_PLAN) return lang === 'es' ? 'Interno de VYNTEX, sin costo' : 'VYNTEX internal, free';
   return p ? planName(p, lang) : id === 'quoted' ? (lang === 'es' ? 'Cotizado' : 'Quoted') : id === 'trial' ? (lang === 'es' ? 'Prueba de 7 días' : '7-day trial') : id;
 }
 
@@ -257,7 +259,7 @@ function Console({ prefill, onPrefillUsed }: { prefill: Prefill | null; onPrefil
                           {c.status === 'suspended'
                             ? <Button size="sm" icon={<LuPlay />} onClick={() => void setStatus(c, 'active')} data-testid="admin-resume">{t('admin.resume')}</Button>
                             : <Button size="sm" variant="ghost" icon={<LuPause />} onClick={() => void setStatus(c, 'suspended')} data-testid="admin-pause">{t('admin.pause')}</Button>}
-                          {bill?.available && c.status !== 'closed' && !['active', 'trialing', 'past_due', 'unpaid'].includes(billOf(c.id)?.billing_status ?? '') && <Button size="sm" variant="ghost" icon={<LuCreditCard />} onClick={() => setPaying(c)} data-testid="admin-paylink">{t('admin.pay.open')}</Button>}
+                          {bill?.available && c.status !== 'closed' && c.plan !== INTERNAL_PLAN && !['active', 'trialing', 'past_due', 'unpaid'].includes(billOf(c.id)?.billing_status ?? '') && <Button size="sm" variant="ghost" icon={<LuCreditCard />} onClick={() => setPaying(c)} data-testid="admin-paylink">{t('admin.pay.open')}</Button>}
                         </td>
                       </tr>
                     );
@@ -478,7 +480,7 @@ function Result({ created, onClose }: { created: Created; onClose: () => void })
 
 /* ---------- billing of a company, seen by an operator ---------- */
 function BillingCell({ company, b }: { company: AdminCompany; b: BillingRow | null }) {
-  const { t, dateTime } = useApp();
+  const { t, dateTime, lang } = useApp();
   const st = b?.billing_status ?? null;
   if (st && st !== 'none' && st !== 'canceled' && st !== 'incomplete_expired') {
     const tone = st === 'active' || st === 'trialing' ? 'ok' : st === 'incomplete' ? 'info' : 'bad';
@@ -487,6 +489,7 @@ function BillingCell({ company, b }: { company: AdminCompany; b: BillingRow | nu
       {!b?.grace_until && b?.current_period_end && <><br /><span className="xs dim">{t('admin.bill.renews', { date: dateTime(b.current_period_end) })}</span></>}
       {!!b?.paid_cents && <><br /><span className="xs dim">{t('admin.bill.paid', { amount: money(b.paid_cents / 100) })}</span></>}</>;
   }
+  if (company.plan === INTERNAL_PLAN) return <Badge tone="accent">{lang === 'es' ? 'Sin costo' : 'Free'}</Badge>;
   if (company.plan === 'trial') {
     const end = b?.trial_expires_at ?? null;
     if (!end) return <Badge tone="accent">{t('admin.bill.trialWaiting')}</Badge>;

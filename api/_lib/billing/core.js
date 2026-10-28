@@ -98,6 +98,8 @@ export async function ensureCustomer(deps, company, email) {
  *   kind 'custom'  amounts an operator typed for a quoted edition: recurringCents, interval, setupCents, label
  */
 export async function createCheckout(deps, { company, email, origin, by, source, kind = 'plan', planId, billing, custom, lang = 'en' }) {
+  // VYNTEX's own workspace is free for good (src/config/plans.ts): nothing to pay, from any screen
+  if (company.plan === 'internal') throw new BillingError('internal_workspace', 409);
   const acct = company.account || {};
   if (acct.subscription_id && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(acct.status)) throw new BillingError('already_subscribed', 409);
   const customer = await ensureCustomer(deps, company, email);

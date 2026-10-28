@@ -9,6 +9,8 @@ import type { Permission } from '@/domain/permissions';
 import { moduleOn } from '@/domain/config';
 import type { App } from '@/app/hooks';
 import { DEPLOY } from '@/config/deployment';
+import { session } from '@/platform/session';
+import { INTERNAL_PLAN } from '@/config/plans';
 
 // Read straight from the build constant so the bundler leaves billing out of a deployment without it.
 declare const __VX_DEPLOY__: string | undefined;
@@ -40,7 +42,7 @@ export const SETTINGS_PANELS: SettingsPanelDef[] = [
   // plans and prices: only for an edition that is in the pricing file, in a deployment that shows plans
   { id: 'plan', labelKey: 'settings.tab.plan', icon: LuLayers, when: (app) => app.priced, view: lazy(() => import('./plan').then((m) => ({ default: m.PlanSection }))) },
   // a live VYNTEX ERP company: its subscription, paid through Stripe (src/features/billing)
-  { id: 'billing', labelKey: 'bill.title', icon: LuCreditCard, when: (app) => !!app.live && DEPLOY.id === 'vyntex' && !!BillingView, view: BillingView ?? (() => null) },
+  { id: 'billing', labelKey: 'bill.title', icon: LuCreditCard, when: (app) => !!app.live && DEPLOY.id === 'vyntex' && !!BillingView && session()?.planId !== INTERNAL_PLAN, view: BillingView ?? (() => null) },
   { id: 'connections', labelKey: 'settings.tab.connections', icon: LuPlug, when: (app) => app.priced, view: lazy(() => import('./plan').then((m) => ({ default: m.ConnectionsSection }))) },
   // how the company set the product up for itself
   { id: 'modules', labelKey: 'settings.tab.modules', icon: LuLayoutGrid, perm: 'config', view: lazy(() => import('./modules')) },

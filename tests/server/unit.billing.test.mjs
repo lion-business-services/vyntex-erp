@@ -155,6 +155,14 @@ test('a company that already pays cannot start a second subscription', async () 
   await assert.rejects(B.createCheckout(deps, { company: c, email: 'o@a.test', origin: 'x', source: 'owner', planId: 'builder', billing: 'monthly' }), (e) => e.code === 'already_subscribed');
 });
 
+test("VYNTEX's own workspace (plan internal) is free for good: no checkout of any kind, nothing sent to Stripe", async () => {
+  const { deps, calls } = world();
+  const c = company({ industry: 'practice', plan: 'internal' });
+  await assert.rejects(B.createCheckout(deps, { company: c, email: 'o@a.test', origin: 'x', source: 'operator', kind: 'custom', custom: { recurringCents: 50000, interval: 'month' } }), (e) => e.code === 'internal_workspace');
+  await assert.rejects(B.createCheckout(deps, { company: company({ plan: 'internal' }), email: 'o@a.test', origin: 'x', source: 'owner', planId: 'builder', billing: 'monthly' }), (e) => e.code === 'internal_workspace');
+  assert.equal(calls.stripe.length, 0);
+});
+
 test('a custom checkout for a quoted edition checks the amounts', async () => {
   const { deps, calls } = world();
   const c = company({ industry: 'practice' });

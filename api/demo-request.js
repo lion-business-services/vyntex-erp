@@ -12,6 +12,9 @@
 // was not sent: { ok: true, delivered: false, reason: 'not_configured' }.
 // The page then tells the visitor the truth and offers email, phone and WhatsApp instead.
 // Hidden-field (honeypot) submissions never notify anyone and are never stored.
+// Both notifications carry a link to the operator console that opens "New client workspace" filled in with this request
+// on the 7-day trial plan (trialLink below). The details travel in the part after # of the link, which browsers never
+// send to a server, so they do not end up in any server log. Nothing is made until an operator presses Create.
 //
 // Secrets are read from the environment only. They are never returned, never logged, and upstream error bodies are never echoed.
 import { clientAddress, hashAddress } from './_lib/request.js';
@@ -25,6 +28,8 @@ const RESEND_URL = 'https://api.resend.com/emails';
 const FORMSUBMIT_BASE = 'https://formsubmit.co/ajax/';
 const FORMSUBMIT_TIMEOUT_MS = 6000;
 const DEFAULT_CONSENT_TEXT = 'I agree to be contacted by VYNTEX USA about this request.';
+
+const DEFAULT_APP_ORIGIN = 'https://erp.vyntexusa.com';
 
 const LANGUAGES = ['en', 'es'];
 const CONTACT_METHODS = ['phone', 'whatsapp', 'email'];
@@ -126,7 +131,19 @@ function validate(input) {
   return Object.keys(errors).length ? { errors } : { value: out };
 }
 
-function emailText(r, at) {
+/** The address of this deployment for links (APP_ORIGIN, as everywhere else), or the VYNTEX ERP address. */
+function appOriginOf(env) {
+  const v = typeof env.APP_ORIGIN === 'string' ? env.APP_ORIGIN.trim().replace(/\/+$/, '') : '';
+  return /^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(v) ? v : DEFAULT_APP_ORIGIN;
+}
+
+/** The operator console link that opens "New client workspace" filled in with this request, on the 7-day trial. */
+function trialLink(r, origin = DEFAULT_APP_ORIGIN) {
+  const e = encodeURIComponent;
+  return `${origin}/admin#new-trial&business=${e(r.business)}&owner=${e(r.name)}&email=${e(r.email)}&industry=${e(r.industry)}&lang=${r.language === 'es' ? 'es' : 'en'}`;
+}
+
+function emailText(r, at, link) {
   return [
     'New demo request from the VYNTEX sales pages.',
     '',
@@ -144,6 +161,8 @@ function emailText(r, at) {
     '',
     'Consent given at ' + at + ':',
     '"' + r.consentText + '"',
+    '',
+    'Start a 7-day trial for this client: ' + link,
   ].join('\n');
 }
 
@@ -153,7 +172,7 @@ async function sendEmail(env, r, at) {
     const res = await fetch(RESEND_URL, {
       method: 'POST',
       headers: { authorization: 'Bearer ' + env.RESEND_API_KEY, 'content-type': 'application/json' },
-      body: JSON.stringify({ from: env.DEMO_REQUEST_FROM, to, reply_to: r.email, subject: `Demo request: ${r.business} (${r.industry})`, text: emailText(r, at) }),
+      body: JSON.stringify({ from: env.DEMO_REQUEST_FROM, to, reply_to: r.email, subject: `Demo request: ${r.business} (${r.industry})`, text: emailText(r, at, trialLink(r, appOriginOf(env))) }),
       signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) console.error('demo-request: the email service answered with status', res.status);
@@ -165,7 +184,7 @@ async function sendEmail(env, r, at) {
 }
 
 /** The JSON FormSubmit receives: its control fields, then the request with readable labels (shown as a table). */
-function formSubmitPayload(r, at) {
+function formSubmitPayload(r, at, link) {
   return {
     _subject: `New VYNTEX ERP demo request: ${r.business} (${r.industry})`,
     _template: 'table',
@@ -182,15 +201,16 @@ function formSubmitPayload(r, at) {
     Message: r.message || '(none)',
     Consent: `Given at ${at}: "${r.consentText}"`,
     Source: 'VYNTEX ERP, Request a demo (erp.vyntexusa.com)',
+    'Start a 7-day trial for this client': link,
   };
 }
 
-async function sendFormSubmit(target, r, at) {
+async function sendFormSubmit(target, r, at, link) {
   try {
     const res = await fetch(FORMSUBMIT_BASE + target, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json', origin: 'https://erp.vyntexusa.com', referer: 'https://erp.vyntexusa.com/request-demo' },
-      body: JSON.stringify(formSubmitPayload(r, at)),
+      body: JSON.stringify(formSubmitPayload(r, at, link)),
       signal: AbortSignal.timeout(FORMSUBMIT_TIMEOUT_MS),
     });
     let body = null;
@@ -264,7 +284,7 @@ export async function POST(request) {
 
   const [viaResend, viaFormSubmit] = await Promise.all([
     resendReady ? sendEmail(env, r, at) : false,
-    formSubmitTo ? sendFormSubmit(formSubmitTo, r, at) : false,
+    formSubmitTo ? sendFormSubmit(formSubmitTo, r, at, trialLink(r, appOriginOf(env))) : false,
   ]);
   const delivered = viaResend || viaFormSubmit;
   // The database copy is extra: if it fails, a notification that went out still counts as delivered.

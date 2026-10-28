@@ -155,3 +155,32 @@ test('health reports the demo request notification as configured while FormSubmi
   assert.equal(off.configured.demoRequestEmail, false);
   assert.ok(!JSON.stringify(on).includes('info@vyntexusa.com'), 'the inbox is never shown');
 });
+
+test('both notifications carry the console link that opens a 7-day trial for this client, details after the #', async () => {
+  const before = process.env.APP_ORIGIN;
+  Object.assign(process.env, { APP_ORIGIN: 'https://erp.vyntexusa.com', RESEND_API_KEY: 're_test_key_123456', DEMO_REQUEST_TO: 'team@example.com', DEMO_REQUEST_FROM: 'VYNTEX <demo@mail.example.com>' });
+  const body = { ...VALID, business: 'Sample & Sons Barbería', name: 'Sample Pérson' };
+  assert.equal((await submit(body)).status, 200);
+  const want = 'https://erp.vyntexusa.com/admin#new-trial&business=Sample%20%26%20Sons%20Barber%C3%ADa&owner=Sample%20P%C3%A9rson&email=person%40example.com&industry=barber&lang=es';
+  assert.equal(toFormSubmit()[0].body['Start a 7-day trial for this client'], want);
+  const text = toResend()[0].body.text;
+  assert.ok(text.endsWith('Start a 7-day trial for this client: ' + want), text.slice(-260));
+  const link = new URL(want);
+  assert.equal(link.search, '', 'nothing in the query string, so nothing reaches a server log');
+  const p = new URLSearchParams(link.hash.slice(1));
+  assert.ok(p.has('new-trial'));
+  assert.deepEqual([p.get('business'), p.get('owner'), p.get('email'), p.get('industry'), p.get('lang')], ['Sample & Sons Barbería', 'Sample Pérson', 'person@example.com', 'barber', 'es']);
+  if (before === undefined) delete process.env.APP_ORIGIN; else process.env.APP_ORIGIN = before;
+});
+
+test('the console link uses APP_ORIGIN when it is a plain origin, and the VYNTEX ERP address otherwise', async () => {
+  const before = process.env.APP_ORIGIN;
+  process.env.APP_ORIGIN = 'http://localhost:4173/';
+  await submit({ ...VALID, language: 'en' });
+  assert.match(toFormSubmit()[0].body['Start a 7-day trial for this client'], /^http:\/\/localhost:4173\/admin#new-trial&.*&lang=en$/);
+  calls = [];
+  process.env.APP_ORIGIN = 'javascript:alert(1)//';
+  await submit(VALID);
+  assert.match(toFormSubmit()[0].body['Start a 7-day trial for this client'], /^https:\/\/erp\.vyntexusa\.com\/admin#new-trial&/);
+  if (before === undefined) delete process.env.APP_ORIGIN; else process.env.APP_ORIGIN = before;
+});

@@ -3,8 +3,15 @@
 // shows every client company with its owner, or the invitation still waiting, and lets staff resend it or pause the
 // workspace. Everything is decided by the server and the database (api/admin.js, 0061_operator_console.sql): this page
 // only asks. Only people the database lists as operators get past the first answer, and only after the second sign-in step.
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
-import { LuBuilding2, LuCircleCheck, LuCopy, LuCreditCard, LuExternalLink, LuLogOut, LuMailCheck, LuPause, LuPlay, LuPlus, LuRefreshCw, LuSend, LuShieldCheck } from 'react-icons/lu';
+//
+// Demo requests: the console also lists who asked for a demo on the sales pages, and "Start 7-day trial" opens the form
+// filled in from the request. The notification email links here the same way, with the details after the # of the
+// address (never in the query string, so they never reach a server log):
+//   /admin#new-trial&business=<name>&owner=<name>&email=<email>&industry=<edition id or name>&lang=en|es
+// The page reads that once the operator is signed in (it is kept in this tab's sessionStorage through the sign-in),
+// then takes it off the address bar. Nothing is made until the operator presses Create.
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { LuBuilding2, LuCircleCheck, LuCopy, LuCreditCard, LuExternalLink, LuInbox, LuLogOut, LuMail, LuMailCheck, LuPause, LuPhone, LuPlay, LuPlus, LuRefreshCw, LuRocket, LuSend, LuShieldCheck } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Link } from '@/app/router';
 import { Lockup } from '@/brand';
@@ -24,6 +31,13 @@ export interface AdminCompany {
   owner: { email: string; name: string; since: string } | null;
   invitation: { email: string; expires_at: string; expired: boolean } | null;
 }
+/** One "Request a demo" submission, as operator_demo_requests (0077) returns it. */
+export interface DemoRequest {
+  id: string; created_at: string; name: string; business: string | null; industry: string | null; phone: string | null; email: string | null;
+  language: string; contact_method: string | null; team_size: string | null; message: string | null; workspace: string | null;
+}
+/** What the "New client workspace" form opens with, from a demo request or a link. */
+export interface Prefill { name: string; ownerName: string; ownerEmail: string; industry: IndustryId | null; lang: Lang }
 interface Created { name: string; slug: string; link: string; address: string; delivery: 'sent' | 'not_configured' | 'failed'; email: string; lang: Lang; again?: boolean }
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -41,6 +55,34 @@ export function slugProblem(slug: string, taken: string[]): '' | 'short' | 'form
   if (taken.includes(slug)) return 'taken';
   return '';
 }
+/**
+ * The edition a demo request or a link names: an edition id ("build"), its product name ("VYNTEX CLEAN", or "clean"),
+ * or its industry in English or Spanish ("Construction", "limpieza"), in any letter case. Null when nothing matches.
+ */
+export function editionFrom(value: string | null | undefined): IndustryId | null {
+  const v = String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!v) return null;
+  const hit = PACK_LIST.find((p) => [p.id, p.product, p.product.replace(/^vyntex\s+/i, ''), p.label.en, p.label.es].some((x) => String(x ?? '').trim().toLowerCase() === v));
+  return hit ? hit.id : null;
+}
+const clip = (v: string | null | undefined, n: number) => String(v ?? '').replace(/[\u0000-\u001F\u007F]+/g, ' ').trim().slice(0, n);
+/** The form's opening values from a demo request. */
+export function prefillFromRequest(r: Pick<DemoRequest, 'business' | 'name' | 'email' | 'industry' | 'language'>): Prefill {
+  return { name: clip(r.business, 200), ownerName: clip(r.name, 200), ownerEmail: clip(r.email, 320), industry: editionFrom(r.industry), lang: r.language === 'es' ? 'es' : 'en' };
+}
+/** The form's opening values from the part of the address after #, or null when it is not a new-trial link. */
+export function prefillFromHash(hash: string): Prefill | null {
+  const h = hash.replace(/^#/, '');
+  if (!/^new-trial(&|$)/.test(h)) return null;
+  let q: URLSearchParams;
+  try { q = new URLSearchParams(h); } catch { return null; }
+  return prefillFromRequest({ business: q.get('business'), name: q.get('owner') ?? '', email: q.get('email'), industry: q.get('industry'), language: q.get('lang') ?? 'en' });
+}
+const PENDING = 'vx.admin.newTrial';
+const stash = (v: string | null) => { try { if (v) sessionStorage.setItem(PENDING, v); else sessionStorage.removeItem(PENDING); } catch { /* storage blocked: the copy in memory is used */ } };
+const stashed = (): string | null => { try { return sessionStorage.getItem(PENDING); } catch { return null; } };
+const isTrialHash = (h: string) => /^#new-trial(&|$)/.test(h);
+
 const TRIAL = (lang: Lang) => ({ id: 'trial', label: lang === 'es' ? 'Prueba de 7 días (sin costo, solo por invitación)' : '7-day trial (free, invitation only)' });
 const planOptions = (industry: IndustryId, lang: Lang) =>
   [...(isPriced(industry) ? plansFor(industry).map((p) => ({ id: p.id, label: `${planName(p, lang)} · ${money(p.monthly)}${lang === 'es' ? '/mes' : '/mo'}` })) : [{ id: 'quoted', label: lang === 'es' ? 'Cotizado' : 'Quoted' }]), TRIAL(lang)];
@@ -54,6 +96,29 @@ export default function AdminPage() {
   const { t } = useApp();
   const [gate, setGate] = useState<Gate>({ at: 'checking' });
   useEffect(() => { document.title = `${t('admin.title')} · VYNTEX ERP`; }, [t]);
+  // a new-trial link: kept through the sign-in (in memory and in this tab's sessionStorage), used once the console is open
+  const pending = useRef<string | null>(null);
+  const [prefill, setPrefill] = useState<Prefill | null>(null);
+  if (pending.current === null && typeof location !== 'undefined' && isTrialHash(location.hash)) { pending.current = location.hash; stash(location.hash); }
+  useEffect(() => {
+    if (gate.at !== 'ready' && gate.at !== 'denied') return;
+    const raw = isTrialHash(location.hash) ? location.hash : pending.current || stashed();
+    pending.current = ''; stash(null);
+    if (isTrialHash(location.hash)) history.replaceState(history.state, '', location.pathname + location.search);
+    if (gate.at === 'ready' && raw) setPrefill(prefillFromHash(raw));
+  }, [gate.at]);
+  // a link opened in this tab while the console is already on screen
+  useEffect(() => {
+    const onHash = () => {
+      if (!isTrialHash(location.hash)) return;
+      if (gate.at !== 'ready') { pending.current = location.hash; stash(location.hash); return; }
+      const raw = location.hash;
+      history.replaceState(history.state, '', location.pathname + location.search);
+      stash(null); setPrefill(prefillFromHash(raw));
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, [gate.at]);
 
   const check = useCallback(async () => {
     const s = await get<{ signedIn: boolean; user?: { email: string } }>('/api/auth/session', { session: false, passive: true });
@@ -84,7 +149,7 @@ export default function AdminPage() {
         {gate.at === 'offline' && <Card><p role="alert">{t('admin.offline')}</p><Button onClick={() => void check()}>{t('admin.retry')}</Button></Card>}
         {gate.at === 'denied' && <Card><div className="note warn" role="alert" data-testid="admin-denied">{t('admin.denied')}</div></Card>}
         {gate.at === 'mfa' && <Card><div className="note warn" role="alert" data-testid="admin-mfa">{t('admin.mfa')}</div><div className="row"><Button variant="primary" onClick={() => void signOut()}>{t('admin.mfaAgain')}</Button></div></Card>}
-        {gate.at === 'ready' && <Console />}
+        {gate.at === 'ready' && <Console prefill={prefill} onPrefillUsed={() => setPrefill(null)} />}
       </main>
     </div>
   );
@@ -96,11 +161,13 @@ function planLabel(industry: string, id: string, lang: Lang): string {
   return p ? planName(p, lang) : id === 'quoted' ? (lang === 'es' ? 'Cotizado' : 'Quoted') : id === 'trial' ? (lang === 'es' ? 'Prueba de 7 días' : '7-day trial') : id;
 }
 
-function Console() {
+function Console({ prefill, onPrefillUsed }: { prefill: Prefill | null; onPrefillUsed: () => void }) {
   const { t, dateTime, lang } = useApp();
   const [list, setList] = useState<AdminCompany[] | null>(null);
   const [failed, setFailed] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<{ prefill?: Prefill } | null>(null);
+  const [demos, setDemos] = useState<DemoRequest[] | null>(null);
+  const [demosFailed, setDemosFailed] = useState(false);
   const [done, setDone] = useState<Created | null>(null);
   const [inviting, setInviting] = useState<AdminCompany | null>(null);
   const [q, setQ] = useState('');
@@ -108,21 +175,26 @@ function Console() {
   const [paying, setPaying] = useState<AdminCompany | null>(null);
 
   const load = useCallback(async () => {
-    const [a, b] = await Promise.all([
+    const [a, b, d] = await Promise.all([
       get<{ companies: AdminCompany[] }>('/api/admin/companies', { session: true }),
       get<BillingOverview>('/api/billing/operator', { session: true, passive: true }),
+      get<{ requests: DemoRequest[] }>('/api/admin/demo-requests', { session: true, passive: true }),
     ]);
     if (a.ok) { setList(a.data.companies); setFailed(false); } else setFailed(true);
     if (b.ok) setBill(b.data);
+    if (d.ok) { setDemos(d.data.requests); setDemosFailed(false); } else setDemosFailed(true);
   }, []);
+  // a new-trial link opens the form once, filled in
+  useEffect(() => { if (prefill) { setCreating({ prefill }); onPrefillUsed(); } }, [prefill, onPrefillUsed]);
   const billOf = (id: string) => bill?.companies.find((x) => x.tenant_id === id) ?? null;
   useEffect(() => { void load(); }, [load]);
 
   const stats = useMemo(() => {
     const l = list ?? [];
     const paying = (bill?.companies ?? []).filter((x) => x.billing_status === 'active' || x.billing_status === 'trialing').length;
-    return { total: l.length, active: l.filter((c) => c.status === 'active' && c.owner).length, waiting: l.filter((c) => !c.owner && c.status !== 'closed').length, paused: l.filter((c) => c.status === 'suspended').length, paying };
-  }, [list, bill]);
+    return { total: l.length, active: l.filter((c) => c.status === 'active' && c.owner).length, waiting: l.filter((c) => !c.owner && c.status !== 'closed').length, paused: l.filter((c) => c.status === 'suspended').length, paying,
+      demos: demos ? demos.filter((r) => !r.workspace).length : null };
+  }, [list, bill, demos]);
   const shown = (list ?? []).filter((c) => !q.trim() || `${c.name} ${c.slug} ${c.owner?.email ?? ''} ${c.invitation?.email ?? ''}`.toLowerCase().includes(q.trim().toLowerCase()));
 
   const setStatus = async (c: AdminCompany, status: 'active' | 'suspended') => {
@@ -140,7 +212,7 @@ function Console() {
         </div>
         <div className="row">
           <Button icon={<LuRefreshCw />} onClick={() => void load()} data-testid="admin-refresh">{t('admin.refresh')}</Button>
-          <Button variant="primary" icon={<LuPlus />} onClick={() => setCreating(true)} data-testid="admin-new">{t('admin.new')}</Button>
+          <Button variant="primary" icon={<LuPlus />} onClick={() => setCreating({})} data-testid="admin-new">{t('admin.new')}</Button>
         </div>
       </div>
 
@@ -150,6 +222,7 @@ function Console() {
         <div className="card adm-stat"><span>{t('admin.stat.waiting')}</span><b>{stats.waiting}</b></div>
         <div className="card adm-stat"><span>{t('admin.stat.paused')}</span><b>{stats.paused}</b></div>
         <div className="card adm-stat"><span>{t('admin.stat.paying')}</span><b data-testid="admin-stat-paying">{stats.paying}</b></div>
+        {stats.demos !== null && <a className="card adm-stat adm-stat-link" href="#demo-requests" onClick={(e) => { e.preventDefault(); document.getElementById('demo-requests')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}><span>{t('admin.stat.demos')}</span><b data-testid="admin-stat-demos">{stats.demos}</b></a>}
       </div>
       {bill && !bill.available && <p className="small muted adm-note" data-testid="admin-billing-off">{t('admin.bill.off')}</p>}
       {bill?.available && bill.mode === 'test' && <p className="small muted adm-note" data-testid="admin-billing-test">{t('admin.bill.test')}</p>}
@@ -157,7 +230,7 @@ function Console() {
       <Card flush title={t('admin.list')} actions={<div className="adm-search"><SearchBox value={q} onChange={setQ} placeholder={t('admin.search')} label={t('admin.search')} /></div>}>
         {failed ? <div className="adm-pad"><p role="alert">{t('admin.loadFailed')}</p><Button onClick={() => void load()}>{t('admin.retry')}</Button></div>
           : !list ? <div className="adm-pad muted" role="status">{t('admin.checking')}</div>
-          : !list.length ? <div className="adm-pad adm-empty"><LuBuilding2 aria-hidden="true" /><p className="strong">{t('admin.empty.title')}</p><p className="small muted">{t('admin.empty.body')}</p><Button variant="primary" icon={<LuPlus />} onClick={() => setCreating(true)}>{t('admin.new')}</Button></div>
+          : !list.length ? <div className="adm-pad adm-empty"><LuBuilding2 aria-hidden="true" /><p className="strong">{t('admin.empty.title')}</p><p className="small muted">{t('admin.empty.body')}</p><Button variant="primary" icon={<LuPlus />} onClick={() => setCreating({})}>{t('admin.new')}</Button></div>
           : (
             <div className="table-wrap">
               <table className="tbl adm-table" data-testid="admin-table">
@@ -195,9 +268,11 @@ function Console() {
           )}
       </Card>
 
+      <DemoRequests list={demos} failed={demosFailed} onRetry={() => void load()} onStart={(r) => setCreating({ prefill: prefillFromRequest(r) })} />
+
       <p className="xs dim adm-foot"><LuShieldCheck aria-hidden="true" /> {t('admin.privacy')}</p>
 
-      {creating && <NewCompany taken={(list ?? []).map((c) => c.slug)} onClose={() => setCreating(false)} onDone={(c) => { setCreating(false); setDone(c); void load(); }} />}
+      {creating && <NewCompany taken={(list ?? []).map((c) => c.slug)} prefill={creating.prefill} onClose={() => setCreating(null)} onDone={(c) => { setCreating(null); setDone(c); void load(); }} />}
       {inviting && <Reinvite company={inviting} onClose={() => setInviting(null)} onDone={(c) => { setInviting(null); setDone(c); void load(); }} />}
       {done && <Result created={done} onClose={() => setDone(null)} />}
       {paying && <PaymentLink company={paying} onClose={() => { setPaying(null); void load(); }} />}
@@ -206,9 +281,11 @@ function Console() {
 }
 
 /* ---------- a new client workspace ---------- */
-function NewCompany({ taken, onClose, onDone }: { taken: string[]; onClose: () => void; onDone: (c: Created) => void }) {
+function NewCompany({ taken, prefill, onClose, onDone }: { taken: string[]; prefill?: Prefill; onClose: () => void; onDone: (c: Created) => void }) {
   const { t, lang } = useApp();
-  const [f, setF] = useState({ name: '', slug: '', industry: 'build' as IndustryId, plan: '', ownerName: '', ownerEmail: '', lang: lang as Lang });
+  const [f, setF] = useState(() => prefill
+    ? { name: prefill.name, slug: slugFrom(prefill.name), industry: prefill.industry ?? ('build' as IndustryId), plan: 'trial', ownerName: prefill.ownerName, ownerEmail: prefill.ownerEmail, lang: prefill.lang }
+    : { name: '', slug: '', industry: 'build' as IndustryId, plan: '', ownerName: '', ownerEmail: '', lang: lang as Lang });
   const [ownSlug, setOwnSlug] = useState(false);
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false); const [tried, setTried] = useState(false);
   const plans = planOptions(f.industry, lang);
@@ -234,6 +311,7 @@ function NewCompany({ taken, onClose, onDone }: { taken: string[]; onClose: () =
   return (
     <Modal title={t('admin.new')} onClose={onClose} labelClose={t('common.cancel')} size="wide">
       <form onSubmit={submit} noValidate data-testid="admin-form">
+        {prefill && <p className="note adm-prefilled" data-testid="admin-f-prefilled"><LuInbox aria-hidden="true" />{t('admin.form.prefilled', { name: prefill.ownerName || prefill.name || prefill.ownerEmail })}</p>}
         <p className="small muted">{t('admin.form.intro')}</p>
         <div className="fgrid">
           <Field label={t('admin.f.name')} htmlFor="adm-name" full error={tried && !f.name.trim()}>
@@ -264,7 +342,7 @@ function NewCompany({ taken, onClose, onDone }: { taken: string[]; onClose: () =
             <input id="adm-oemail" type="email" value={f.ownerEmail} maxLength={320} autoComplete="off" onChange={(e) => set({ ownerEmail: e.target.value })} data-testid="admin-f-owner-email" />
           </Field>
           <Field label={t('admin.f.lang')} htmlFor="adm-lang" full>
-            <select id="adm-lang" value={f.lang} onChange={(e) => set({ lang: e.target.value as Lang })}>
+            <select id="adm-lang" value={f.lang} onChange={(e) => set({ lang: e.target.value as Lang })} data-testid="admin-f-lang">
               <option value="en">English</option><option value="es">Español</option>
             </select>
           </Field>
@@ -278,6 +356,59 @@ function NewCompany({ taken, onClose, onDone }: { taken: string[]; onClose: () =
         <div className="row"><span className="grow" /><Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button><Button variant="primary" type="submit" disabled={busy} icon={<LuBuilding2 />} data-testid="admin-f-submit">{t(busy ? 'admin.form.busy' : 'admin.form.submit')}</Button></div>
       </form>
     </Modal>
+  );
+}
+
+/* ---------- demo requests from the sales pages ---------- */
+function DemoRequests({ list, failed, onRetry, onStart }: { list: DemoRequest[] | null; failed: boolean; onRetry: () => void; onStart: (r: DemoRequest) => void }) {
+  const { t } = useApp();
+  const count = list ? <span className="small muted" data-testid="admin-dr-count">{t(list.length === 1 ? 'admin.dr.count1' : 'admin.dr.count', { n: list.length })}</span> : undefined;
+  return (
+    <Card flush id="demo-requests" className="adm-dr-card" title={t('admin.dr.title')} actions={count}>
+      <p className="small muted adm-dr-sub">{t('admin.dr.sub')}</p>
+      {failed && !list ? <div className="adm-pad"><p role="alert">{t('admin.dr.loadFailed')}</p><Button onClick={onRetry}>{t('admin.retry')}</Button></div>
+        : !list ? <div className="adm-pad muted" role="status">{t('admin.checking')}</div>
+        : !list.length ? <div className="adm-pad adm-empty" data-testid="admin-dr-empty"><LuInbox aria-hidden="true" /><p className="strong">{t('admin.dr.empty.title')}</p><p className="small muted">{t('admin.dr.empty.body')}</p></div>
+        : <ul className="adm-dr" data-testid="admin-dr-list">{list.map((r) => <DemoRow key={r.id} r={r} onStart={() => onStart(r)} />)}</ul>}
+    </Card>
+  );
+}
+
+function DemoRow({ r, onStart }: { r: DemoRequest; onStart: () => void }) {
+  const { t, lang, dateTime } = useApp();
+  const [open, setOpen] = useState(false);
+  const ed = editionFrom(r.industry);
+  const pack = ed ? PACK_LIST.find((p) => p.id === ed) : undefined;
+  const long = !!r.message && (r.message.length > 160 || r.message.split('\n').length > 2);
+  const facts = [
+    r.team_size ? t(r.team_size === '1' ? 'admin.dr.team1' : 'admin.dr.team', { size: r.team_size }) : '',
+    r.contact_method && ['phone', 'whatsapp', 'email'].includes(r.contact_method) ? t('admin.dr.by.' + r.contact_method) : '',
+    t(r.language === 'es' ? 'admin.dr.lang.es' : 'admin.dr.lang.en'),
+  ].filter(Boolean);
+  return (
+    <li className="adm-dr-item" data-testid="admin-dr-row" data-email={r.email ?? ''} data-workspace={r.workspace ?? ''}>
+      <div className="adm-dr-main">
+        <div className="adm-dr-head">
+          <b className="adm-dr-biz">{r.business || r.name}</b>
+          <Badge tone={pack ? 'info' : 'neutral'}>{pack ? `${pack.product} · ${pack.label[lang] ?? pack.label.en}` : (r.industry && r.industry !== 'other' ? r.industry : t('admin.dr.other'))}</Badge>
+        </div>
+        <p className="small adm-dr-facts"><span className="strong">{r.name}</span>{facts.map((x) => <span key={x}>{x}</span>)}</p>
+        <p className="small adm-dr-contact" aria-label={t('admin.dr.contact')}>
+          {r.email && <a href={'mailto:' + r.email} data-testid="admin-dr-email"><LuMail aria-hidden="true" />{r.email}</a>}
+          {r.phone && <a href={'tel:' + r.phone.replace(/[^\d+]/g, '')} data-testid="admin-dr-phone"><LuPhone aria-hidden="true" />{r.phone}</a>}
+        </p>
+        {r.message && <>
+          <p className={cx('small muted adm-dr-msg', !open && long && 'clamped')} data-testid="admin-dr-message">{r.message}</p>
+          {long && <button type="button" className="adm-dr-more xs" aria-expanded={open} onClick={() => setOpen(!open)}>{t(open ? 'admin.dr.less' : 'admin.dr.more')}</button>}
+        </>}
+      </div>
+      <div className="adm-dr-side">
+        <span className="xs dim">{t('admin.dr.received', { date: dateTime(r.created_at) })}</span>
+        {r.workspace
+          ? <a className="adm-dr-done small" href={'/' + r.workspace} target="_blank" rel="noopener" data-testid="admin-dr-workspace"><LuCircleCheck aria-hidden="true" />{t('admin.dr.created', { slug: r.workspace })}<LuExternalLink aria-hidden="true" /></a>
+          : <Button size="sm" variant="primary" icon={<LuRocket />} onClick={onStart} data-testid="admin-dr-start">{t('admin.dr.start')}</Button>}
+      </div>
+    </li>
   );
 }
 

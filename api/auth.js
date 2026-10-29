@@ -1,7 +1,9 @@
 // /api/auth/*: sign-in, the second sign-in step, fresh identity checks, sign-out, invitations and passwords.
 //
-// There is NO sign-up route (a seven-day trial is given by VYNTEX through an operator invitation). An account exists only because a member with the "users" capability invited that
-// address (invite/accept below), or because the platform operator invited the first owner of a company.
+// There is NO sign-up route. An account exists only because a member with the "users" capability invited that address
+// (invite/accept below), because the platform operator invited the first owner of a company, or (VYNTEX ERP only)
+// because a visitor asked for a seven-day trial (trial/request, api/_lib/trial.js): that too ends in an owner invitation
+// emailed to the address, and the account is made only when the link is opened (invite/accept).
 // The browser never talks to Supabase: it talks to these routes, and the Supabase tokens stay inside a sealed,
 // HttpOnly cookie (api/_lib/session.js).
 //
@@ -19,6 +21,8 @@
 //   POST  partner-invite/check, partner-invite/accept    the same for a VYNTEX Partner Portal invitation (no company membership)
 //   POST  password/reset    { email }  or  { token, password }  (or { password } to retry after a refused password)
 //   POST  password/update   { password }        needs a fresh identity check
+//   GET   trial/status      { available }       VYNTEX ERP only (LBS Command: 404)
+//   POST  trial/request     { business, owner, email, edition, language, consent, website }   VYNTEX ERP only
 //
 // Every answer is { ok: true, ... } or { ok: false, error: <code> }. Wrong email or wrong password give the same
 // answer, the same way, whether or not the account exists.
@@ -35,6 +39,7 @@ import { sha256Hex, randomToken, sealWith, openWith, deriveKey } from './_lib/cr
 import { sendSystemEmail, resetEmail, emailConfigured } from './_lib/mail.js';
 import { need, secureCookies } from './_lib/env.js';
 import { randomBytes } from 'node:crypto';
+import { trialStatus, trialRequest } from './_lib/trial.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const CODE = /^\d{6}$/;
@@ -568,6 +573,12 @@ const POST_ROUTES = {
 
 const handle = entry('auth', async (request, path) => {
   if (path === 'session') return request.method === 'GET' ? getSession(request) : methodNotAllowed('GET');
+  // The public seven-day trial exists on VYNTEX ERP only. On LBS Command these addresses do not exist.
+  if (path === 'trial/status' || path === 'trial/request') {
+    if (deployId() !== 'vyntex') return fail(404, 'not_found');
+    if (path === 'trial/status') return request.method === 'GET' ? trialStatus() : methodNotAllowed('GET');
+    return request.method === 'POST' ? trialRequest(request) : methodNotAllowed('POST');
+  }
   const route = Object.hasOwn(POST_ROUTES, path) ? POST_ROUTES[path] : null;
   // Anything else does not exist. In particular there is no "signup", "register" or "users" route.
   if (!route) return fail(404, 'not_found');

@@ -11,7 +11,7 @@ import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { setTestEnv, Browser, secrets, assertNoLeak, root, ORIGIN } from './helpers.mjs';
 
-const PG = '/tmp/vx-pg-public';
+const PG = process.env.VX_PG_PUBLIC_DIR || '/tmp/vx-pg-public';
 const PORT = 4751;
 const pgEnv = { ...process.env, PGTEST_DIR: PG, MIGRATIONS_MODE: 'all' };
 let S;

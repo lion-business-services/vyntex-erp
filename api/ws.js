@@ -12,8 +12,8 @@
 // The browser never sees a Supabase address or token. A function that is not on the allow-list cannot be reached,
 // whatever its name, and the functions that reveal, export or change who can do what also need a fresh identity check.
 import { randomUUID } from 'node:crypto';
-import { entry, ok, fail, readJson, readRaw, HttpError, methodNotAllowed, upstreamError, isUuid, isPlainObject, json } from './_lib/respond.js';
-import { appOrigin, isTest, need } from './_lib/env.js';
+import { entry, ok, fail, readJson, readRaw, HttpError, methodNotAllowed, upstreamError, isUuid, isPlainObject, json, log } from './_lib/respond.js';
+import { appOrigin, isTest, need, deployId } from './_lib/env.js';
 import { userRpc, serviceRpc, storage } from './_lib/supabase.js';
 import { guard } from './_lib/guard.js';
 import { limit, keyHash } from './_lib/ratelimit.js';
@@ -141,6 +141,15 @@ async function invite(request, session, cookies, tenant, args, idem) {
     return json(status, answer, { cookies });
   };
 
+  // Seats: the users the company's plan includes (pricing file, through the domain bundle). Office invitations past the
+  // limit are refused before anything is made; members already in the company are never touched.
+  const seats = await seatCheck(session, tenant, role);
+  if (seats) {
+    if (idemKey) await serviceRpc('idem_abort', { p_scope: 'invite', p_key: `${session.uid}:${idemKey}` });
+    await securityEvent({ tenant, user: session.uid, kind: 'operation.refused', outcome: 'denied', request, meta: { name: 'member_invite', reason: 'seat_limit' } });
+    return fail(409, 'seat_limit', seats, { cookies });
+  }
+
   const token = randomToken(32);
   const created = await userRpc(session.at, 'invite_create', {
     p_tenant: tenant, p_email: email, p_role: role, p_name: typeof args.name === 'string' ? args.name.slice(0, 200) : '',
@@ -163,6 +172,26 @@ async function invite(request, session, cookies, tenant, args, idem) {
     return finish(200, { ok: true, invitation: { id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expires_at }, delivery: sent.reason === 'not_configured' ? 'manual' : 'manual_failed', link });
   }
   return finish(200, { ok: true, invitation: { id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expires_at }, delivery: 'sent' });
+}
+
+/**
+ * Null when one more person in `role` may be invited; otherwise { limit, used, plan } for the answer. Only VYNTEX ERP sells
+ * plans with a number of users: LBS Command has none. The count comes from the database with the person's own token
+ * (public.seat_usage refuses anyone who is not a member); the limit comes from the pricing file.
+ */
+async function seatCheck(session, tenant, role) {
+  if (deployId() !== 'vyntex') return null;
+  const { seats } = await import('./_lib/domain.bundle.mjs');
+  if (!seats.takesSeat(role)) return null;
+  const r = await userRpc(session.at, 'seat_usage', { p_tenant: tenant });
+  // A database without migration 0078 has no count to give: invitations stay unlimited there (logged) rather than
+  // stopping every invitation. Any other failure stops the invitation.
+  if (!r.ok && (r.sqlstate === 'PGRST202' || r.sqlstate === '42883')) { log('ws', 'seat_usage_missing'); return null; }
+  if (!r.ok) throw upstreamError(r);
+  const u = isPlainObject(r.data) ? r.data : {};
+  const limit = seats.seatLimit(String(u.industry || ''), typeof u.plan === 'string' ? u.plan : null);
+  const used = (Number(u.members) || 0) + (Number(u.invites) || 0);
+  return seats.seatAvailable(limit, used, role) ? null : { limit, used, plan: String(u.plan || '') };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

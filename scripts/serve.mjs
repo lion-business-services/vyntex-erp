@@ -16,6 +16,25 @@ const dist = process.env.DIST ? path.resolve(process.env.DIST) : path.join(root,
 const port = Number(process.env.PORT || process.argv[2] || 4173);
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.ico': 'image/x-icon', '.txt': 'text/plain; charset=utf-8', '.woff2': 'font/woff2' };
 
+// A test run only (VX_ENV=test with VX_TEST_MAIL_FILE): system email goes to a file instead of Resend, one JSON line per
+// message, so a browser test can open the link a person would have received (tests/e2e/stack.mjs, `mail: true`).
+// Never active on a real deployment: Vercel does not run this file, and the test switch is required.
+if (process.env.VX_TEST_MAIL_FILE && process.env.VX_ENV === 'test') {
+  const sink = path.resolve(process.env.VX_TEST_MAIL_FILE);
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url);
+    if (u === 'https://api.resend.com/emails') {
+      const body = JSON.parse(String(init.body || '{}'));
+      const id = 'email_' + Math.random().toString(16).slice(2, 14);
+      fs.appendFileSync(sink, JSON.stringify({ id, at: new Date().toISOString(), to: body.to, subject: body.subject, text: body.text }) + '\n');
+      return new Response(JSON.stringify({ id }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    if (u.startsWith('https://api.resend.com/')) return new Response('{"data":[]}', { status: 200, headers: { 'content-type': 'application/json' } });
+    return realFetch(url, init);
+  };
+}
+
 let vercel = { rewrites: [], headers: [] };
 try { vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8')); } catch { /* served without rewrites */ }
 
@@ -73,7 +92,7 @@ http.createServer(async (req, res) => {
   let file = path.join(dist, decodeURIComponent(url.pathname));
   if (!file.startsWith(dist)) { res.writeHead(403); return res.end(); }
   // the public pages have their own files (scripts/prerender.mjs), as vercel.json maps them: /pricing -> pricing.html
-  if (!fs.existsSync(file) && /^\/(pricing|request-demo|demo)$/.test(url.pathname) && fs.existsSync(file + '.html')) file += '.html';
+  if (!fs.existsSync(file) && /^\/(pricing|request-demo|demo|start-trial)$/.test(url.pathname) && fs.existsSync(file + '.html')) file += '.html';
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(dist, 'index.html');
   res.writeHead(200, { 'content-type': types[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store', ...extraHeaders(url.pathname) });
   fs.createReadStream(file).pipe(res);

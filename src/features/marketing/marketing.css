@@ -105,6 +105,9 @@
 .mk-top-demo{color:var(--text-2);font-weight:650;font-size:14.5px;text-decoration:none;white-space:nowrap;padding:9px 4px;border-radius:6px;transition:color var(--motion-fast) var(--ease-vyntex)}
 .mk-top-demo:hover{color:var(--accent)}
 .mk-top-cta{flex:none}
+/* Sign in next to the one primary action of the header: the 7-day free trial */
+.mk-top-signin{margin-left:-6px}
+.mk-top.compact .mk-top-cta+.mk-top-trial{margin-left:0}
 /* the day/night switch (ui/ThemeToggle.tsx) sits beside the language choice, in the header and in the phone menu */
 .mk-top .mk-theme{margin:0 -4px}
 .mk-menu-prefs{display:flex;align-items:center;gap:8px}
@@ -402,6 +405,15 @@
 .mk-contact a:hover{color:var(--accent)}
 .mk-contact svg{width:17px;height:17px;flex:none;margin-top:4px;color:var(--accent)}
 
+/* the 7-day free trial strip near the end of the overview */
+.mk-trial{padding-top:0;padding-bottom:80px}
+.mk-trial-in{position:relative;display:flex;align-items:center;justify-content:space-between;gap:28px 56px;padding:36px 52px;border:1px solid var(--accent-line);border-radius:16px;background:linear-gradient(120deg,var(--accent-soft),transparent 60%),var(--surface)}
+.mk-trial-in::before{content:"";position:absolute;left:28px;top:-1px;width:120px;height:1px;background:var(--grad-edge)}
+.mk-trial-tag{font-size:13.5px;font-weight:700;color:var(--accent);letter-spacing:.01em}
+.mk-trial-t h2{margin-top:6px;font-size:clamp(24px,2.3vw,32px);font-weight:700;letter-spacing:-.024em;line-height:1.15}
+.mk-trial-t p:last-child{margin-top:8px;color:var(--text-2);font-size:17px;max-width:40em}
+.mk-trial-act{display:flex;flex-direction:column;align-items:center;gap:8px;flex:none}
+
 /* footer */
 .mk-foot{border-top:1px solid var(--line);padding:56px 0 60px;font-size:14.5px;color:var(--text-2)}
 .mk-foot-in{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,4fr) minmax(0,2fr);gap:48px}
@@ -610,6 +622,11 @@
   .mk{--mk-pad:16px;--mk-top:58px}
   .mk-top-in{gap:8px}
   .mk-top.compact .mk-menu-btn{margin-left:auto}
+  .mk-top.compact .mk-menu-btn{margin-left:0}
+  .mk-top.compact .mk-top-trial{margin-left:auto;min-height:40px;padding:0 14px;font-size:14.5px}
+  .mk-menu .mk-top-signin{margin-left:0}
+  .mk-trial-in{flex-direction:column;align-items:stretch;padding:28px 20px}
+  .mk-trial-act .btn{align-self:stretch;justify-content:center}
   .mk-hero{padding:28px 0 52px}
   .mk-hero-name{margin-bottom:14px;gap:4px 0}
   .mk-hero-word{font-size:13.5px;margin-right:12px}
@@ -695,3 +712,8 @@
   .mk-conv.live .mk-conv-after{margin-top:24px}
   .mk-ap.off{opacity:1;transform:none;transition:none}
 }
+/* the full header (1440 and wider) carries Sign in and the trial button too: a little wider than the page column, tighter gaps */
+.mk-top:not(.compact) .mk-top-in{max-width:1440px;gap:14px}
+.mk-top:not(.compact) .mk-nav{gap:0}
+.mk-top:not(.compact) .mk-nav a{padding:9px 10px}
+.mk-top:not(.compact) .mk-top-signin{margin-left:0}

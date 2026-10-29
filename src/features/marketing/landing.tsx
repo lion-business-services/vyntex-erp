@@ -69,6 +69,7 @@ export function Landing({ notFound }: { notFound?: boolean }) {
       <CustomizationSection />
       <PlansOverview />
       <RequestBand />
+      <TrialBand />
       <ClosingSection />
     </MkPage>
   );
@@ -294,6 +295,28 @@ function RequestBand() {
             <ContactList />
             <Link to="/request-demo" className="btn primary lg" data-testid="mk-req-request">{t('mk.cta.request')}<Arrow /></Link>
             <Link to="/demo" className="mk-tlink" data-testid="mk-req-demo">{t('mk.req.look')}</Link>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- the 7-day free trial: one short strip near the end, one action ---------- */
+function TrialBand() {
+  const { t } = useApp();
+  return (
+    <section className="mk-sec mk-trial" aria-labelledby="mk-trial-h" data-testid="mk-trial-band">
+      <div className="mk-wrap">
+        <Reveal className="mk-trial-in">
+          <div className="mk-trial-t">
+            <p className="mk-trial-tag">{t('mk.tr.eyebrow')}</p>
+            <h2 id="mk-trial-h">{t('mk.tr.band.h')}</h2>
+            <p>{t('mk.tr.band.p')}</p>
+          </div>
+          <div className="mk-trial-act">
+            <Link to="/start-trial" className="btn primary lg" data-testid="mk-trial-start">{t('mk.tr.cta')}<Arrow /></Link>
+            <Link to="/pricing" className="mk-tlink" data-testid="mk-trial-pricing">{t('mk.tr.see')}</Link>
           </div>
         </Reveal>
       </div>

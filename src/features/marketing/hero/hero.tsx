@@ -107,7 +107,8 @@ export function Hero() {
             <h1 id="mk-h1">{t('mk.hero.h1a')} <span className="chrome-text mk-sheen">{t('mk.hero.h1b')}</span></h1>
             <p className={cx('mk-lede', switched && 'in')} key={pack.id + lang}><Worded t={t} k="mk.hero.lede" tokens={['jobs', 'workers']} /></p>
             <div className="mk-cta">
-              <Link to="/demo" className="btn primary lg" data-testid="mk-open-demo">{t('mk.cta.demo')}<Arrow /></Link>
+              <Link to="/start-trial" className="btn primary lg" data-testid="mk-start-trial">{t('mk.tr.cta')}<Arrow /></Link>
+              <Link to="/demo" className="btn lg" data-testid="mk-open-demo">{t('mk.cta.demo')}<Arrow /></Link>
               <Link to="/request-demo" className="btn lg" data-testid="mk-request">{t('mk.cta.request')}</Link>
               <Link to="/pricing" className="mk-tlink" data-testid="mk-pricing">{t('mk.cta.pricing')}</Link>
             </div>

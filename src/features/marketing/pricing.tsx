@@ -210,9 +210,12 @@ function PlanPricing() {
                         <div><dt>{t('mk.p2.pr.users')}</dt><dd data-testid={`pr-users-${p.id}`}>{usersValue(t, p)}</dd></div>
                         <div><dt>{t('mk.p2.pr.credit')}</dt>{p.welcomeCredit ? <dd>{money(p.welcomeCredit.amount_usd)}</dd> : <dd className="none">{t('mk.p2.pr.creditNone')}</dd>}</div>
                       </dl>
+                      <div className="mkp-plan-act">
                       <button type="button" className={cx('btn lg block mkp-pick', on && 'on')} aria-pressed={on} onClick={() => setTier(p.tier)} data-testid={`pr-plan-${p.id}`}>
                         {on ? <span><LuCheck aria-hidden="true" />{t('mk.pr.selected', { plan: name })}</span> : t('mk.pr.select', { plan: name })}
                       </button>
+                      <Link to="/start-trial" className="mkp-quiet mkp-plan-trial" data-testid={`pr-trial-${p.id}`}>{t('mk.tr.ctaPlan')}<Arrow /></Link>
+                      </div>
                     </div>
                     <div className="mkp-plan-b">
                       <div className="mkp-plan-feats">

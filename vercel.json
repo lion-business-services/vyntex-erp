@@ -56,6 +56,10 @@
       "destination": "/demo.html"
     },
     {
+      "source": "/start-trial",
+      "destination": "/start-trial.html"
+    },
+    {
       "source": "/api/partners/:path*",
       "destination": "/api/partners?vxpath=:path*"
     },
@@ -141,7 +145,7 @@
       ]
     },
     {
-      "source": "/(pricing|request-demo|demo)",
+      "source": "/(pricing|request-demo|demo|start-trial)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -150,7 +154,7 @@
       ]
     },
     {
-      "source": "/((?!(?:pricing|request-demo|demo)$)[^.]+)",
+      "source": "/((?!(?:pricing|request-demo|demo|start-trial)$)[^.]+)",
       "headers": [
         {
           "key": "X-Robots-Tag",

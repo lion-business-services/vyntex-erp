@@ -138,11 +138,13 @@ test('one trial per address, ever: a second request gets the same answer and no 
   assert.equal(await tenantOf('another-name-llc'), null, 'nothing is made');
 });
 
-test('a quoted edition has no self-serve trial: refused with its own code, nothing made', async () => {
+test('a quoted edition starts a trial like any other: created, and the activation email is sent', async () => {
   for (const edition of ['practice', 'barber']) {
+    const before = S.mail.sent.length;
     const r = await ask(visitor(), form(mailOf('quoted-' + edition), { business: 'Quoted ' + edition, edition }));
-    assert.deepEqual([r.status, r.json.error], [400, 'quoted_edition'], edition);
-    assert.equal(await tenantOf('quoted-' + edition), null);
+    assert.deepEqual([r.status, r.json], [200, { ok: true, sent: true }], edition);
+    assert.ok(await tenantOf('quoted-' + edition), 'the workspace waits for its owner: ' + edition);
+    assert.ok(S.mail.sent.length > before, 'the activation email went out: ' + edition);
   }
 });
 

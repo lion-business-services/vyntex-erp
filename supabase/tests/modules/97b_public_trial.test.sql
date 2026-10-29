@@ -46,11 +46,11 @@ select test.is(public.trial_request_create('pt-ivy', 'Ivy Again LLC', 'clean', '
 select test.ok(not exists (select 1 from public.tenants where slug = 'pt-ivy'), 'nothing is made for it') \g /dev/null
 
 -- what is refused
-select test.is(public.trial_request_create('pt-practice', 'Tax Office LLC', 'practice', 'tax-pt@example.com', 'T', repeat('7', 64), repeat('8', 64)),
-  'quoted_edition', 'a quoted edition (professional services) is refused') \g /dev/null
-select test.is(public.trial_request_create('pt-barber', 'Shop LLC', 'barber', 'shop-pt@example.com', 'S', repeat('7', 64), repeat('8', 64)),
-  'quoted_edition', 'and so is the barbershop edition') \g /dev/null
-select test.ok(not exists (select 1 from public.tenants where slug in ('pt-practice', 'pt-barber')), 'nothing is made for them') \g /dev/null
+select test.is(public.trial_request_create('pt-practice', 'Tax Office LLC', 'practice', 'tax-pt@example.com', 'T', repeat('7', 64), repeat('e1', 32)),
+  'created', 'a quoted edition (professional services) starts a trial too (0079)') \g /dev/null
+select test.is(public.trial_request_create('pt-barber', 'Shop LLC', 'barber', 'shop-pt@example.com', 'S', repeat('7', 64), repeat('e2', 32)),
+  'created', 'and so does the barbershop edition') \g /dev/null
+select test.ok((select pg_catalog.count(*) from public.tenants where slug in ('pt-practice', 'pt-barber') and plan_id = 'trial' and status = 'onboarding') = 2, 'both wait in onboarding on the trial plan') \g /dev/null
 select test.is(public.trial_request_create('pt-nope', 'Nope LLC', 'nope', 'nope-pt@example.com', 'N', repeat('7', 64), repeat('8', 64)),
   'bad_industry', 'an unknown edition is refused') \g /dev/null
 select test.is(public.trial_request_create('start-trial', 'Start LLC', 'clean', 'start-pt@example.com', 'S', repeat('7', 64), repeat('8', 64)),
@@ -61,7 +61,7 @@ select test.is(public.trial_request_create('pt-short', 'X', 'clean', 'x-pt@examp
 select test.is(public.trial_request_create('pt-mail', 'Mail LLC', 'clean', 'not-an-email', 'M', repeat('7', 64), repeat('8', 64)), 'bad_email', 'a wrong address is refused') \g /dev/null
 select test.is(public.trial_request_create('pt-hash', 'Hash LLC', 'clean', 'hash-pt@example.com', 'H', 'xyz', repeat('8', 64)), 'invalid', 'a malformed hash is refused') \g /dev/null
 select test.ok(not has_function_privilege('authenticated', 'app.trial_editions()', 'execute'), 'the edition list is internal') \g /dev/null
-select test.ok(app.trial_editions() @> array['build', 'clean'] and not (app.trial_editions() && array['practice', 'barber']), 'it lists priced editions only') \g /dev/null
+select test.ok(app.trial_editions() @> array['build', 'clean', 'practice', 'barber'], 'it lists every edition, priced or quoted') \g /dev/null
 
 -- an undeliverable request is undone and leaves nothing behind; the address may then try again
 select public.trial_request_create('pt-undone', 'Undone LLC', 'landscape', 'undone-pt@example.com', 'U', repeat('9', 64), repeat('c', 64)) as undone_made \gset

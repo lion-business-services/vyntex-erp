@@ -98,7 +98,7 @@ export function StartTrial() {
 
   const submit = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (busy || quoted) return;
+    if (busy) return;
     const found = problems(f);
     setErrors(found);
     if (Object.keys(found).length) { setOutcome(null); focusFirst(found); return; }
@@ -109,7 +109,6 @@ export function StartTrial() {
     }, { stepUp: false, session: false });
     setBusy(false);
     if (a.ok && a.data.sent) { setSentTo(f.email.trim()); return; }
-    if (!a.ok && a.code === 'quoted_edition') { set('edition', f.edition); setOutcome(null); return; }
     if (!a.ok && a.code === 'invalid' && a.data.fields && typeof a.data.fields === 'object') {
       const fromServer: Partial<Record<Field, string>> = {};
       for (const k of Object.keys(a.data.fields as object)) if ((ORDER as string[]).includes(k)) fromServer[k as Field] = `mk.tr.err.${k === 'edition' ? 'business' : k}`;
@@ -196,33 +195,26 @@ export function StartTrial() {
                             <label key={l}><input type="radio" name="tr-language" value={l} checked={f.language === l} onChange={() => set('language', l)} data-testid={`tr-language-${l}`} /><span>{t('mk.tr.lang.' + l)}</span></label>
                           ))}</div>
                         </fieldset>
-                        {quoted ? (
-                          <div className="full mkp-tr-quoted" role="status" data-testid="tr-quoted">
-                            <h3>{t('mk.tr.quoted.h', { product: edition.product })}</h3>
-                            <p>{t('mk.tr.quoted.p', { product: edition.product })}</p>
-                            <Link to={`/request-demo?industry=${edition.id}`} className="btn primary lg block" data-testid="tr-quoted-request">{t('mk.tr.quoted.cta')}<Arrow /></Link>
-                          </div>
-                        ) : (
-                          <div className={cx('mkp-consent full', errors.consent && 'err')}>
+                        {quoted && <p className="full mkp-tr-fine" role="note" data-testid="tr-quoted">{t('mk.tr.quotedNote', { product: edition.product })}</p>}
+                        <div className={cx('mkp-consent full', errors.consent && 'err')}>
                             <label><input id="tr-f-consent" type="checkbox" checked={f.consent} onChange={(e) => set('consent', e.target.checked)} data-testid="tr-consent" aria-required="true" {...aria('consent')} />
                               <span>{t('mk.tr.consent.a')} <a href={TERMS_URL} target="_blank" rel="noopener noreferrer" data-testid="tr-terms">{t('mk.tr.consent.terms')}</a> {t('mk.tr.consent.and')} <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer" data-testid="tr-privacy">{t('mk.tr.consent.privacy')}</a>{t('mk.tr.consent.b')}</span>
                             </label>
                             {err('consent')}
                           </div>
-                        )}
                         <div className="mkp-hp" aria-hidden="true">
                           <label htmlFor="tr-f-website">{t('mk.tr.hp')}</label>
                           <input id="tr-f-website" type="text" name="website" tabIndex={-1} autoComplete="off" value={f.website} onChange={(e) => set('website', e.target.value)} data-testid="tr-website" />
                         </div>
                       </div>
-                      {!quoted && <>
+                      <>
                         {hasErrors && <p className="mkp-err mkp-err-sum" role="alert" data-testid="tr-errors"><LuCircleAlert aria-hidden="true" />{t('mk.tr.err.summary')}</p>}
                         {fail}
                         <div className="mkp-send">
                           <button type="submit" className="btn primary lg block" disabled={busy} aria-busy={busy || undefined} data-testid="tr-submit">{t(busy ? 'mk.tr.sending' : 'mk.tr.submit')}{!busy && <Arrow />}</button>
                           <p className="mkp-tr-fine">{t('mk.tr.fine')}</p>
                         </div>
-                      </>}
+                      </>
                     </form>
                   </>
                 )}

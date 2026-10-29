@@ -19,8 +19,16 @@ How a client company pays VYNTEX for its VYNTEX ERP plan, and how free trials ar
 
 * A **Billing** column per company: trial days left, active, payment failed with the grace date, ended, and the total
   received. A "Paying by Stripe" count.
-* **New client workspace, plan "7-day trial"**: the only way a trial exists. One trial per owner email, ever. The clock
-  starts when the owner accepts the invitation.
+* **New client workspace, plan "7-day trial"**: VYNTEX gives a trial from the console. One trial per owner email, ever
+  (shared with the public trial below). The clock starts when the owner accepts the invitation.
+* **Public 7-day trial** (owner decision of October 29, 2026): anyone can start one at `erp.vyntexusa.com/start-trial`
+  for a priced edition (quoted editions go to Request a demo). Route `POST /api/auth/trial/request` (api/_lib/trial.js),
+  migration `0078_public_trials.sql`. The owner gets an activation link by email; VYNTEX gets "New self-serve trial" at
+  `BILLING_NOTIFY_TO`. Offered only when the database and system email are set; `TRIAL_SIGNUP_DISABLED=true` turns it off.
+  During the trial the company has its edition's top plan; afterwards the paused screen shows the billing panel.
+* **Users per plan**: the pricing file's `users` (Foundation/Essential 1, Builder/Pro 5, top plan unlimited) is enforced
+  when someone is invited (api/ws.js, `public.seat_usage`): active office members plus open office invitations. Field
+  workers on the portal do not count; a trial, quoted and internal plans are unlimited; nobody is ever removed.
 * **Payment link**: makes a Stripe Checkout link valid 23 hours and emails it to the owner (English and Spanish). For
   priced editions choose plan and monthly or yearly; for quoted editions (professional services) type the agreed
   amounts.

@@ -18,7 +18,7 @@ In the console, staff can also send a new owner invitation (while a company has 
 
 | What | How |
 |---|---|
-| Accounts | Invitation only. There is no public sign-up. Invitation links work once, expire in 72 hours, and only their hash is stored. |
+| Accounts | Invitation only, or the public 7-day trial (/start-trial), which also ends in an emailed owner invitation. There is no other sign-up. Invitation links work once, expire in 72 hours, and only their hash is stored. |
 | Second step | Authenticator app (TOTP) with 10 recovery codes. Required for owners and managers of every company (set by `supabase/setup/go-live.sql`); a company can require it for more roles. Operators always need it. |
 | Sessions | Sealed, HttpOnly cookies; idle timeout; 12-hour maximum; sign out everywhere; a fresh identity check before sensitive actions. |
 | Company isolation | Row level security forced on every table, 6,472 automated database assertions, including deliberate-breakage checks. |

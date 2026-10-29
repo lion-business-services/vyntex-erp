@@ -61,7 +61,7 @@ export const quotedEditions = (): IndustryPack[] => ladders().quoted;
 
 const nav = () => `<nav aria-label="VYNTEX ERP">${ul([
   a('/', `${name} overview`), a('/demo', t('mk.p2.gs.demo')), a('/pricing', t('mk.nav.pricing')), a('/request-demo', t('mk.nav.request')),
-  a(COMPANY_SITE + '/', 'VYNTEX USA'),
+  a('/start-trial', t('mk.tr.title')), a(COMPANY_SITE + '/', 'VYNTEX USA'),
 ])}</nav>`;
 
 const contact = () => `<section><h2>Contact</h2><p>${esc(t('mk.p2.gs.help', { phone: BRAND.phone, email: BRAND.email }))}</p>
@@ -181,19 +181,39 @@ ${steps()}${contact()}<p>${esc(t('mk.pr.version', { v: PRICING_VERSION }))}</p><
     jsonLd: [softwareLd(false), crumbs([[name, '/'], [t('mk.nav.request'), '/request-demo']])],
   };
 
-  return [home, pricing, demo, request];
+  const tops = ladders().groups.map((g) => `${g.packs.map((p) => p.product).join(', ')}: ${planName(g.plans[g.plans.length - 1], 'en')}`);
+  const trial: PublicPage = {
+    path: '/start-trial', file: 'start-trial.html',
+    title: `${name} | Start your 7-day free trial, no credit card`,
+    description: `Start a 7-day free trial of ${name} for your industry: your own workspace in a few minutes, the top plan of your edition during the trial, no credit card needed. Choose a plan and pay in Settings when you are ready.`,
+    body: `${nav()}<main><h1>${esc(t('mk.tr.h', { name }))}</h1><p>${esc(t('mk.tr.lede'))}</p>
+<section><h2>${esc(t('mk.tr.get.h'))}</h2>${ul([
+      `<strong>${esc(t('mk.tr.g1.h'))}</strong>: ${esc(t('mk.tr.g1.p'))}`,
+      `<strong>${esc(t('mk.tr.g2.h'))}</strong>: ${esc(t('mk.tr.g2.p'))}`,
+      `<strong>${esc(t('mk.tr.g3.h'))}</strong>: ${esc(t('mk.tr.g3.pAny'))} ${esc(tops.join('; '))}.`,
+      `<strong>${esc(t('mk.tr.g4.h'))}</strong>: ${esc(t('mk.tr.g4.p', { address: 'erp.vyntexusa.com/your-business' }))}`,
+      `<strong>${esc(t('mk.tr.g5.h'))}</strong>: ${esc(t('mk.tr.g5.p'))}`,
+      `<strong>${esc(t('mk.tr.g6.h'))}</strong>: ${esc(t('mk.tr.g6.p'))}`,
+    ])}</section>
+<section><h2>${esc(t('mk.tr.done.next'))}</h2><ol>${(['s1', 's2', 's3', 's4'] as const).map((k) => `<li>${esc(t(`mk.tr.done.${k}`))}</li>`).join('')}</ol></section>
+${quotedEditions().length ? `<p>${esc(quotedEditions().map((p) => p.product).join(', '))}: ${esc(t('mk.p2.pr.quoted.h'))}. ${a('/request-demo', t('mk.tr.quoted.cta'))}</p>` : ''}
+<p>The trial form needs JavaScript. ${a('/pricing', t('mk.tr.see'))} · ${a('/request-demo', t('mk.cta.request'))}</p>${contact()}</main>`,
+    jsonLd: [softwareLd(false), crumbs([[name, '/'], [t('mk.tr.title'), '/start-trial']])],
+  };
+
+  return [home, pricing, demo, request, trial];
 }
 
 /** robots.txt: search, AI-search and (approved) AI training crawlers read the public pages; private addresses stay closed. */
 export function robotsTxt(opts: { trainingAllowed: boolean; search: readonly string[]; training: readonly string[] }): string {
   // Workspaces live at /<company>/..., which cannot be listed here: they are closed by sign-in and by the noindex header
-  // (vercel.json). These are the addresses the site keeps for itself. /signup (the trial sign-up) is by invitation only,
-  // so it is closed here, left out of the sitemap and marked noindex like every other non-public address.
+  // (vercel.json). These are the addresses the site keeps for itself. /signup (an old address that now opens /start-trial)
+  // is closed here, left out of the sitemap and marked noindex like every other non-public address.
   const closed = ['/api/', '/admin', '/signin', '/signup', '/invite/', '/reset-password', '/mfa', '/sign/', '/review/', '/demo/'];
   const group = (agents: readonly string[], lines: string[]) => agents.map((x) => `User-agent: ${x}`).join('\n') + '\n' + lines.join('\n');
   const open = ['Allow: /', ...closed.map((p) => `Disallow: ${p}`)];
   return [
-    '# VYNTEX ERP. Public pages: /, /pricing, /demo, /request-demo. Workspaces and sign-in are private.',
+    '# VYNTEX ERP. Public pages: /, /pricing, /demo, /request-demo, /start-trial. Workspaces and sign-in are private.',
     group(opts.search, open),
     opts.trainingAllowed ? group(opts.training, open) : group(opts.training, ['Disallow: /']),
     group(['*'], open),
@@ -222,6 +242,7 @@ export function llmsTxt(): string {
     `- [Live demo](${ORIGIN}/demo): ${t('mk.p2.gs.s1.p')}`,
     `- [Plans and pricing](${ORIGIN}/pricing): setup fee, monthly and yearly prices, add-ons (including extra training), rules.`,
     `- [Book a free guided demo](${ORIGIN}/request-demo): ${t('mk.p2.gs.s3.p')}`,
+    `- [Start a 7-day free trial](${ORIGIN}/start-trial): ${t('mk.tr.lede')} No credit card needed. Editions quoted on request have no self-serve trial.`,
     `- [VYNTEX USA, the company](${COMPANY_SITE}/) and its services: ${COMPANY_SITE}/llms.txt`,
     '',
     '## Editions (add ?industry=<id> to the demo or pricing link; add ?lang=es for Spanish)',

@@ -18,9 +18,9 @@ const byPath = Object.fromEntries(pages.map((p) => [p.path, p]));
 const text = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
 const usd = (n) => '$' + n.toLocaleString('en-US');
 
-test('the four public addresses, each with its own file, title and description', () => {
-  assert.deepEqual(pages.map((p) => [p.path, p.file]), [['/', 'index.html'], ['/pricing', 'pricing.html'], ['/demo', 'demo.html'], ['/request-demo', 'request-demo.html']]);
-  assert.equal(new Set(pages.map((p) => p.title)).size, 4, 'titles differ');
+test('the five public addresses, each with its own file, title and description', () => {
+  assert.deepEqual(pages.map((p) => [p.path, p.file]), [['/', 'index.html'], ['/pricing', 'pricing.html'], ['/demo', 'demo.html'], ['/request-demo', 'request-demo.html'], ['/start-trial', 'start-trial.html']]);
+  assert.equal(new Set(pages.map((p) => p.title)).size, 5, 'titles differ');
   for (const p of pages) {
     assert.ok(p.title.length <= 70, `${p.path} title fits a result line (${p.title.length})`);
     assert.ok(p.description.length >= 70 && p.description.length <= 300, `${p.path} description length ${p.description.length}`);
@@ -81,9 +81,9 @@ test('robots.txt: public pages open, private addresses closed, AI training crawl
 
 test('sitemap and llms.txt list the public pages only, with the demo, pricing and booking links', () => {
   const xml = m.sitemapXml(pages);
-  assert.deepEqual([...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((x) => x[1]), ['https://erp.vyntexusa.com/', 'https://erp.vyntexusa.com/pricing', 'https://erp.vyntexusa.com/demo', 'https://erp.vyntexusa.com/request-demo']);
+  assert.deepEqual([...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((x) => x[1]), ['https://erp.vyntexusa.com/', 'https://erp.vyntexusa.com/pricing', 'https://erp.vyntexusa.com/demo', 'https://erp.vyntexusa.com/request-demo', 'https://erp.vyntexusa.com/start-trial']);
   const llms = m.llmsTxt();
-  for (const link of ['https://erp.vyntexusa.com/demo', 'https://erp.vyntexusa.com/pricing', 'https://erp.vyntexusa.com/request-demo', 'https://www.vyntexusa.com/llms.txt']) assert.ok(llms.includes(link), link);
+  for (const link of ['https://erp.vyntexusa.com/demo', 'https://erp.vyntexusa.com/pricing', 'https://erp.vyntexusa.com/request-demo', 'https://erp.vyntexusa.com/start-trial', 'https://www.vyntexusa.com/llms.txt']) assert.ok(llms.includes(link), link);
   for (const p of pricing.plans) assert.ok(llms.includes(`${p.name}: ${usd(p.setup_usd)} one-time setup, then ${usd(p.monthly_usd)} per month or ${usd(p.yearly_usd)} per year`), p.name);
   assert.ok(!/Stripe Tax|Daysi/.test(llms));
 });

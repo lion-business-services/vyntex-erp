@@ -18,6 +18,20 @@ import { ops } from './ops';
 import { signInRules } from './rules';
 import { SampleNote, reasonText, sampleWord } from './parts';
 import { PersonAvatar } from '@/app/person';
+import { session } from '@/platform/session';
+import { seatLimit, takesSeat } from '@/lib/seats';
+
+/**
+ * Users on the company's plan (VYNTEX ERP, live workspaces): the limit comes from the pricing file (lib/seats.ts) and the
+ * server enforces it (api/ws.js); this only says where the company stands. Null when there is nothing to show.
+ */
+function seatsOf(users: TeamUser[], industry: string, live: boolean): { used: number; limit: number | null } | null {
+  if (!live || !DEPLOY.showPlans) return null;
+  const s = session();
+  if (!s) return null;
+  const used = users.filter((u) => takesSeat(u.role) && (memberState(u) === 'member' || memberState(u) === 'invited')).length;
+  return { used, limit: seatLimit(industry, s.planId) };
+}
 
 const hoursLeft = (u: TeamUser) => (u.invitedAt ? Math.max(0, Math.ceil((new Date(u.invitedAt).getTime() + INVITE_HOURS * 3600000 - Date.now()) / 3600000)) : 0);
 const STATE_ORDER: Record<InviteState, number> = { member: 0, invited: 1, invite_expired: 2, disabled: 3 };
@@ -34,6 +48,8 @@ export function PeopleCard({ ids = 'security', note }: { ids?: 'security' | 'set
   const lastOwner = (u: TeamUser) => u.role === 'owner' && activeOwners.length === 1 && activeOwners[0].id === u.id;
   const people = [...data.users].sort((a, b) => STATE_ORDER[memberState(a)] - STATE_ORDER[memberState(b)]);
   const officeNames = (u: TeamUser) => (u.officeIds ?? []).map((id) => data.offices.find((o) => o.id === id)?.name).filter(Boolean).join(', ');
+  const seats = seatsOf(data.users, pack.id, live);
+  const full = !!seats && seats.limit !== null && seats.used >= seats.limit;
 
   const run = async (id: string, what: () => Promise<{ ok: boolean; reason?: string }>, done: string) => {
     setBusy(id);
@@ -55,6 +71,14 @@ export function PeopleCard({ ids = 'security', note }: { ids?: 'security' | 'set
     <>
       <Card flush title={t('security.people.title')} actions={mayManage ? <Button variant="primary" size="sm" icon={<LuUserPlus aria-hidden="true" />} onClick={() => setInviting(true)} data-testid={`${ids}-user-add`}>{t('security.people.invite')}</Button> : undefined}>
         <p className="muted security-pad security-lead">{t('security.people.intro')}</p>
+        {seats && (
+          <div className={cx('security-pad security-seats', full && 'full')} data-testid={`${ids}-seats`} data-used={seats.used} data-limit={seats.limit ?? 'unlimited'}>
+            <p className="small strong">{seats.limit === null ? t('security.seats.unlimited', { used: seats.used }) : t('security.seats.used', { used: seats.used, limit: seats.limit })}</p>
+            {full && mayManage
+              ? <p className="small" role="status" data-testid={`${ids}-seats-full`}>{t(seats.limit === 1 ? 'security.seats.full1' : 'security.seats.full', { limit: seats.limit ?? 0 })} <A to="/settings/billing" className="linkbtn" data-testid={`${ids}-seats-upgrade`}>{t('security.seats.upgrade')}</A></p>
+              : <p className="xs dim">{t('security.seats.note')}</p>}
+          </div>
+        )}
         <div className="table-wrap">
           <table className="tbl stackable security-people" data-testid={`${ids}-users`}>
             <thead><tr>
@@ -166,6 +190,7 @@ function InviteModal({ onClose }: { onClose: () => void }) {
     setBusy(true);
     const res = await ops.memberInvite({ name: f.name, email: f.email, role: f.role, title: f.title || undefined, officeIds: offices.length ? offices : undefined, lang: f.lang });
     setBusy(false);
+    if (!res.ok && res.reason === 'seat_limit') { setErr('seat_limit'); return; }
     if (!res.ok) { setErr(res.reason === 'conflict' ? t('security.invite.taken') : reasonText(t, res.reason)); return; }
     const handed = res.data as typeof res.data & { inviteLink?: string; inviteDelivery?: string };
     if (handed.inviteLink) { setLink({ url: handed.inviteLink, failed: handed.inviteDelivery === 'manual_failed', name: res.data.name, email: res.data.email }); return; }
@@ -200,7 +225,9 @@ function InviteModal({ onClose }: { onClose: () => void }) {
             </Field>
           )}
         </div>
-        {err && <p className="small neg" role="alert" style={{ marginTop: 10 }} data-testid="security-invite-error">{err}</p>}
+        {err === 'seat_limit'
+          ? <p className="small" role="alert" style={{ marginTop: 10 }} data-testid="security-invite-seats">{t(seatLimit(pack.id, session()?.planId) === 1 ? 'security.seats.full1' : 'security.seats.full', { limit: seatLimit(pack.id, session()?.planId) ?? 0 })} <A to="/settings/billing" className="linkbtn" onClick={onClose} data-testid="security-invite-upgrade">{t('security.seats.upgrade')}</A></p>
+          : err && <p className="small neg" role="alert" style={{ marginTop: 10 }} data-testid="security-invite-error">{err}</p>}
         <p className="small muted security-invite-how"><LuMailPlus aria-hidden="true" />{t('security.invite.how', { hours: INVITE_HOURS })}</p>
         {!live && <SampleNote>{t('security.invite.sample', { sample: sampleWord(t) })}</SampleNote>}
         <div className="modal-f" style={{ margin: '18px -18px -18px' }}>

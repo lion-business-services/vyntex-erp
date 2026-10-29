@@ -36,7 +36,7 @@ select test.is(test.as('a_owner', $q$select public.trial_request_create('a-b-c',
 insert into public.tenant_members (tenant_id, user_id, role, name, email)
   select id, test.new_user('tr_owner'), 'owner', 'Tina Trial', 'owner@example.com' from public.tenants where slug = 'trial-sample' \g /dev/null
 select test.ok((select status = 'active' and trial_started_at is not null
-                and trial_expires_at between now() + interval '7 days' - interval '1 minute' and now() + interval '7 days' + interval '1 minute'
+                and trial_expires_at between now() + interval '168 hours' - interval '1 minute' and now() + interval '168 hours' + interval '1 minute'
                 from public.tenants where slug = 'trial-sample'), 'accepting the invitation opens the company for seven days') \g /dev/null
 select trial_expires_at as first_deadline from public.tenants where slug = 'trial-sample' \gset
 insert into public.tenant_members (tenant_id, user_id, role, name, email)

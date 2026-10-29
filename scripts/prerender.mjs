@@ -6,6 +6,7 @@
 //   pricing.html        /pricing        (vercel.json rewrites /pricing to it)
 //   demo.html           /demo
 //   request-demo.html   /request-demo
+//   start-trial.html    /start-trial    (the 7-day free trial)
 //
 // The text sits inside the app's root element. The app replaces it as soon as it starts, and public/theme-init.js marks
 // the page so the text is hidden while it does: visitors see the same screens as before; readers that do not run
@@ -69,7 +70,7 @@ export async function prerender({ dir, root, deploy }) {
   if (deploy === 'lbs') {
     // one company, nothing public: every crawler stays out, and the addresses vercel.json maps keep showing the app
     fs.writeFileSync(path.join(dir, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
-    for (const f of ['pricing.html', 'demo.html', 'request-demo.html']) fs.writeFileSync(path.join(dir, f), shell);
+    for (const f of ['pricing.html', 'demo.html', 'request-demo.html', 'start-trial.html']) fs.writeFileSync(path.join(dir, f), shell);
     return { pages: 0 };
   }
   const seo = await loadSeo(root);

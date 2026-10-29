@@ -82,6 +82,52 @@ export function ownerWelcomeEmail({ lang, company, link, hours, address }) {
   };
 }
 
+/** The owner of a self-serve seven-day trial (route trial/request): the one-time activation link. */
+export function trialActivationEmail({ lang, company, link, hours, address }) {
+  const product = productName();
+  if (es(lang)) {
+    return {
+      subject: `Active su prueba gratuita de 7 días de ${product}`,
+      text: [
+        'Hola:', '',
+        `Gracias por elegir ${product}. El espacio de ${company} está reservado para usted.`, '',
+        'Abra este enlace para crear su contraseña y activar su prueba gratuita de 7 días:', link, '',
+        `El enlace funciona una sola vez y vence en ${hours} horas. Los 7 días empiezan cuando usted lo activa. Su dirección para entrar será:`, address, '',
+        'Por su seguridad, al entrar se le pedirá agregar una aplicación de autenticación (Google Authenticator, Microsoft Authenticator o similar).',
+        'No se necesita tarjeta de crédito. Cuando esté listo, elija un plan en Configuración, Facturación.',
+        'Si usted no pidió esta prueba, puede ignorar este mensaje: no se activa nada sin el enlace.',
+        'Si tiene alguna pregunta, llámenos o escríbanos por WhatsApp al 609-780-3218, o escriba a info@vyntexusa.com.', '',
+      ].join('\n'),
+    };
+  }
+  return {
+    subject: `Activate your ${product} 7-day trial`,
+    text: [
+      'Hello,', '',
+      `Thank you for choosing ${product}. The ${company} workspace is reserved for you.`, '',
+      'Open this link to create your password and activate your 7-day free trial:', link, '',
+      `The link works once and expires in ${hours} hours. The 7 days start when you activate it. Your sign-in address will be:`, address, '',
+      'For your security, you will be asked to add an authenticator app (Google Authenticator, Microsoft Authenticator or similar) when you sign in.',
+      'No credit card is needed. When you are ready, choose a plan in Settings, Billing.',
+      'If you did not ask for this trial, you can ignore this email: nothing is activated without the link.',
+      'Questions? Call or WhatsApp us at 609-780-3218, or write to info@vyntexusa.com.', '',
+    ].join('\n'),
+  };
+}
+
+/** VYNTEX's own notice of a new self-serve trial. Internal, in English. */
+export function trialNoticeEmail({ company, edition, email, owner, lang, address }) {
+  return {
+    subject: `New self-serve trial: ${company} (${edition}), ${email}`,
+    text: [
+      'A new self-serve 7-day trial was requested on the VYNTEX ERP site.', '',
+      'Business: ' + company, 'Edition: ' + edition, 'Owner: ' + owner, 'Email: ' + email, 'Language: ' + (lang === 'es' ? 'Spanish' : 'English'),
+      'Workspace: ' + address, '',
+      'The owner was emailed the activation link. The 7 days start when the owner activates the workspace.', '',
+    ].join('\n'),
+  };
+}
+
 export function resetEmail({ lang, link }) {
   const product = productName();
   if (es(lang)) {

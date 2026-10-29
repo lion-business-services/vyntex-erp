@@ -12,7 +12,7 @@ import { pick, type TFn } from '@/i18n';
 import { cx } from '@/ui';
 import { ThemeToggle } from '@/ui/ThemeToggle';
 
-export type MkPageId = 'home' | 'pricing' | 'request';
+export type MkPageId = 'home' | 'pricing' | 'request' | 'trial';
 /** Sections of the overview that the header links to. */
 export type MkSectionId = 'product' | 'industries' | 'integrations' | 'how-it-works';
 
@@ -105,7 +105,7 @@ function useNarrow(maxWidth: number): boolean {
 
 export function MkHeader({ current }: { current: MkPageId }) {
   const { t, lang } = useApp();
-  const compact = useNarrow(1239);
+  const compact = useNarrow(1439);
   const phone = useNarrow(700);
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -134,7 +134,12 @@ export function MkHeader({ current }: { current: MkPageId }) {
   );
   const demo = <Link to="/demo" className="mk-top-demo" onClick={close} data-testid="mk-nav-demo">{t('mk.nav.demo')}</Link>;
   const request = (
-    <Link to="/request-demo" className="btn primary mk-top-cta" aria-current={current === 'request' ? 'page' : undefined} onClick={close} data-testid="mk-nav-request">{t('mk.nav.request')}</Link>
+    <Link to="/request-demo" className="btn mk-top-cta" aria-current={current === 'request' ? 'page' : undefined} onClick={close} data-testid="mk-nav-request">{t('mk.nav.request')}</Link>
+  );
+  // the public 7-day trial: the one primary action of the header, next to Sign in
+  const signin = <Link to="/signin" className="mk-top-demo mk-top-signin" onClick={close} data-testid="mk-nav-signin">{t('mk.tr.signin')}</Link>;
+  const trial = (
+    <Link to="/start-trial" className="btn primary mk-top-cta mk-top-trial" aria-current={current === 'trial' ? 'page' : undefined} onClick={close} data-testid="mk-nav-trial">{t('mk.tr.ctaShort')}</Link>
   );
 
   return (
@@ -144,17 +149,18 @@ export function MkHeader({ current }: { current: MkPageId }) {
         {compact ? (
           <>
             {!phone && request}
+            {trial}
             <button type="button" id="mk-menu-btn" className="mk-menu-btn" aria-expanded={open} aria-controls="mk-menu" aria-label={t(open ? 'mk.nav.close' : 'mk.nav.menu')} onClick={() => setOpen(!open)} data-testid="mk-menu">
               {open ? <LuX aria-hidden="true" /> : <LuMenu aria-hidden="true" />}
             </button>
           </>
         ) : (
-          <>{nav}{language}<ThemeToggle className="mk-theme" />{demo}{request}</>
+          <>{nav}{language}<ThemeToggle className="mk-theme" />{demo}{signin}{request}{trial}</>
         )}
       </div>
       {compact && (
         <div id="mk-menu" className="mk-menu" hidden={!open}>
-          <div className="mk-wrap mk-menu-in">{nav}<div className="mk-menu-end">{demo}<span className="mk-menu-prefs">{language}<ThemeToggle className="mk-theme" /></span></div>{phone && request}</div>
+          <div className="mk-wrap mk-menu-in">{nav}<div className="mk-menu-end">{demo}{signin}<span className="mk-menu-prefs">{language}<ThemeToggle className="mk-theme" /></span></div>{phone && request}</div>
         </div>
       )}
     </header>
@@ -197,7 +203,9 @@ export function MkFooter({ current }: { current?: MkPageId }) {
           <SectionLink id="how-it-works" onHome={onHome}>{t('mk.nav.how')}</SectionLink>
           <Link to="/pricing">{t('mk.nav.pricing')}</Link>
           <Link to="/request-demo">{t('mk.nav.request')}</Link>
+          <Link to="/start-trial" data-testid="mk-foot-trial">{t('mk.tr.ctaShort')}</Link>
           <Link to="/demo">{t('mk.nav.demo')}</Link>
+          <Link to="/signin">{t('mk.tr.signin')}</Link>
         </nav>
       </div>
     </footer>

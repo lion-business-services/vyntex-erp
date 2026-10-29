@@ -23,6 +23,7 @@ const PortalPage = lazy(() => import('@/features/portal'));
 const LandingPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/marketing').then((m) => ({ default: m.LandingPage })));
 const PricingPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/marketing').then((m) => ({ default: m.PricingPage })));
 const RequestDemoPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/marketing').then((m) => ({ default: m.RequestDemoPage })));
+const StartTrialPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/marketing').then((m) => ({ default: m.StartTrialPage })));
 const Tour = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/tour').then((m) => ({ default: m.Tour })));
 const SignIn = lazy(() => import('@/features/auth').then((m) => ({ default: m.SignIn })));
 const AdminPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/admin'));
@@ -117,11 +118,12 @@ export function App() {
   else if (top === 'mfa') page = <Mfa />;
   else if (top === 'sign') page = <SignPage token={route.parts[1]} />;
   else if (top === 'review') page = <ReviewPage token={route.parts[1]} />;
-  else if (LandingPage && PricingPage && RequestDemoPage) {
+  else if (LandingPage && PricingPage && RequestDemoPage && StartTrialPage) {
     if (top === '') page = <Sales><LandingPage /></Sales>;
     else if (top === 'pricing') page = <Sales><PricingPage /></Sales>;
-    // trials are given by VYNTEX through an invitation: an old /signup link lands on the request form
-    else if (top === 'request-demo' || top === 'signup') page = <Sales><RequestDemoPage /></Sales>;
+    else if (top === 'request-demo') page = <Sales><RequestDemoPage /></Sales>;
+    // the public 7-day trial; an old /signup link lands on it too
+    else if (top === 'start-trial' || top === 'signup') page = <Sales><StartTrialPage /></Sales>;
     else page = <Sales><LandingPage notFound /></Sales>;
   }
   // a deployment without sales pages: its home page is the sign-in page

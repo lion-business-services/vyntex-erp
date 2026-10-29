@@ -38,9 +38,7 @@ exception when others then
   raise;
 end $$;
 
--- the public request is gone
-select test.is(test.as('service', $q$select public.trial_request_create('pub-trial', 'Pub LLC', 'clean', 'pub@example.com', 'P', repeat('a', 64), repeat('b', 64))$q$),
-  'error:42501', 'the server key can no longer make a trial on its own') \g /dev/null
+-- the public request: a visitor can never call it (0078 gave it back to the server key only; 97b_public_trial checks that)
 select test.is(test.as('anon', $q$select public.trial_request_create('pub-trial', 'Pub LLC', 'clean', 'pub@example.com', 'P', repeat('a', 64), repeat('b', 64))$q$),
   'error:42501', 'nor can a visitor') \g /dev/null
 

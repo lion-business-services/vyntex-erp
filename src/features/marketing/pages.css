@@ -364,3 +364,35 @@
    everything is already complete. Reveals are shown in place, including the panel kind. */
 @media (prefers-reduced-motion:reduce){.mkp .vx-reveal,.mkp .vx-reveal.panel{opacity:1;transform:none;filter:none}}
 @media print{.mkp-bar{position:static}.mkp-rd-bg,.mkp-link{display:none}}
+
+/* ---------- pricing: the 7-day free trial under each plan's own button ---------- */
+.mkp-plan-act{display:grid;gap:12px;justify-items:center;align-content:start}
+.mkp-plan-act .mkp-pick{width:100%}
+.mkp .mkp-plan-trial{color:var(--accent);font-size:15px}
+.mkp .mkp-plan-trial:hover{color:var(--text)}
+
+/* ---------- start a 7-day free trial (/start-trial): the request page's layout, its own details ---------- */
+.mkp-tr-eyebrow{display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;padding:5px 12px;border:1px solid var(--accent-line);border-radius:999px;background:var(--accent-soft);color:var(--text);font-size:13.5px;font-weight:700;letter-spacing:.01em}
+.mkp-tr-eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.mkp-tr .mkp-lede{max-width:52ch}
+.mkp-tr-hint{font-size:13.5px;line-height:1.4;color:var(--text-3);overflow-wrap:anywhere}
+.mkp-tr-hint b{font-weight:700;color:var(--text-2)}
+.mkp-tr-addr{display:block;margin-top:2px;font-weight:700;color:var(--text);overflow-wrap:anywhere}
+.mkp-tr-note{font-size:14px !important;color:var(--text-3) !important}
+.mkp-tr-fine{margin-top:12px;text-align:center;font-size:14px;color:var(--text-3)}
+.mkp-tr-secure{display:flex;align-items:flex-start;gap:10px;margin-top:18px;padding:14px 16px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);font-size:15px;line-height:1.5;color:var(--text-2)}
+.mkp-tr-secure svg{flex:none;width:19px;height:19px;margin-top:2px;color:var(--accent)}
+.mkp-tr-links{display:flex;flex-wrap:wrap;gap:10px 26px;margin-top:20px}
+.mkp-tr-quoted{padding:18px 18px 20px;border:1px solid var(--accent-line);border-radius:10px;background:var(--accent-soft)}
+.mkp-tr-quoted h3{font:700 18px/1.3 var(--font-display);letter-spacing:-.008em}
+.mkp-tr-quoted p{margin:6px 0 16px;font-size:15.5px;line-height:1.55;color:var(--text-2)}
+.mkp-tr-alt{margin-top:14px}
+.mkp-tr .mkp-consent a{color:var(--accent);font-weight:650;text-decoration:underline;text-underline-offset:3px}
+.mkp-tr .mkp-consent a:hover{color:var(--text)}
+.mkp-tr-sent{margin-top:8px;font-size:17px;color:var(--text);overflow-wrap:anywhere}
+.mkp-tr-resend{margin-top:22px;padding-top:16px;border-top:1px solid var(--line-strong);font-size:15px;line-height:1.55;color:var(--text-2)}
+.mkp-tr .mkp-done-fig .ck{stroke-width:2}
+@media (min-width:981px){.mkp-tr .mkp-rd-form{position:sticky;top:calc(var(--mk-top,64px) + 20px)}}
+.mkp-tr .mkp-fgrid>.ed{grid-column:span 7}
+@media (max-width:640px){.mkp-tr .mkp-fgrid>.ed{grid-column:1/-1}}
+@media (max-width:1100px) and (min-width:981px){.mkp-tr .mkp-fgrid>.ed,.mkp-tr .mkp-fgrid>.lang{grid-column:1/-1}}

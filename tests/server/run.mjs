@@ -12,7 +12,12 @@ const unitOnly = process.argv.includes('--unit');
 const files = fs.readdirSync(here).filter((f) => f.endsWith('.test.mjs')).sort();
 const unit = files.filter((f) => f.startsWith('unit.'));
 const e2e = files.filter((f) => f.includes('.e2e.'));
-const pgEnv = { ...process.env, PGTEST_DIR: '/tmp/vx-pg-server', MIGRATIONS_MODE: 'isolated' };
+// PGTEST_DIR (optional) moves both throwaway databases, so two runs on one machine do not share a folder:
+//   <PGTEST_DIR> for the isolated one, <PGTEST_DIR>-public for the one with every migration.
+const SERVER_DIR = process.env.PGTEST_DIR || '/tmp/vx-pg-server';
+const PUBLIC_DIR = process.env.PGTEST_DIR ? process.env.PGTEST_DIR + '-public' : '/tmp/vx-pg-public';
+const dirs = { VX_PG_SERVER_DIR: SERVER_DIR, VX_PG_PUBLIC_DIR: PUBLIC_DIR };
+const pgEnv = { ...process.env, ...dirs, PGTEST_DIR: SERVER_DIR, MIGRATIONS_MODE: 'isolated' };
 
 let status = 0;
 const run = (list, env) => {
@@ -28,7 +33,7 @@ if (!unitOnly) {
   if (pg.status !== 0) { console.error(pg.stdout + pg.stderr); process.exit(1); }
   try {
     console.log(`== end-to-end tests (${e2e.length} files) against the local stand-ins. Nothing here talks to Supabase or to a provider.`);
-    run(e2e, { ...process.env, VX_PG_READY: '1' });
+    run(e2e, { ...process.env, ...dirs, VX_PG_READY: '1' });
   } finally {
     spawnSync('bash', [path.join(here, 'pg_local.sh'), 'stop'], { env: pgEnv });
   }
@@ -40,15 +45,17 @@ if (unitOnly) process.exit(status);
 // gets its own throwaway PostgreSQL in its own folder, started after the runs above and stopped at the end. The
 // process.exit above is replaced by the one at the bottom, so its result counts.
 {
-  const publicEnv = { ...process.env, PGTEST_DIR: '/tmp/vx-pg-public', MIGRATIONS_MODE: 'all' };
+  const publicEnv = { ...process.env, ...dirs, PGTEST_DIR: PUBLIC_DIR, MIGRATIONS_MODE: 'all' };
   console.log('== starting a second throwaway PostgreSQL with every migration, for the public endpoints');
   const pg = spawnSync('bash', [path.join(here, 'pg_local.sh'), 'start'], { env: publicEnv, encoding: 'utf8' });
   if (pg.status !== 0) { console.error(pg.stdout + pg.stderr); process.exit(1); }
   try {
     console.log('== end-to-end tests of the public endpoints (e2e.public.test.mjs) against the local stand-ins');
-    run(['e2e.public.test.mjs'], { ...process.env, VX_PG_PUBLIC_READY: '1' });
+    run(['e2e.public.test.mjs'], { ...process.env, ...dirs, VX_PG_PUBLIC_READY: '1' });
     console.log('== end-to-end tests of the VYNTEX Partner Portal (e2e.partners.test.mjs) on the same database');
-    run(['e2e.partners.test.mjs'], { ...process.env, VX_PG_PUBLIC_READY: '1' });
+    run(['e2e.partners.test.mjs'], { ...process.env, ...dirs, VX_PG_PUBLIC_READY: '1' });
+    console.log('== end-to-end tests of the public 7-day trial and seat limits (e2e.trial.test.mjs) on the same database');
+    run(['e2e.trial.test.mjs'], { ...process.env, ...dirs, VX_PG_PUBLIC_READY: '1' });
   } finally {
     spawnSync('bash', [path.join(here, 'pg_local.sh'), 'stop'], { env: publicEnv });
   }

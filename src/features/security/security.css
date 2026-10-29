@@ -162,3 +162,8 @@ a.security-name:hover{text-decoration:underline;text-underline-offset:3px}
 .security-stepup-lead svg{flex:none;width:18px;height:18px;margin-top:2px;color:var(--accent)}
 /* unsaved changes in a long matrix: the save bar stays in reach */
 .security-savebar{position:sticky;bottom:0;z-index:2;background:var(--surface-2);border-radius:0 0 var(--radius) var(--radius);border-top-color:var(--line-strong)}
+/* users on the plan (VYNTEX ERP): where the company stands, and the way to a larger plan at the limit */
+.security-seats{display:grid;gap:4px;margin:0 0 14px}
+.card.flush .security-seats{margin:0 0 12px}
+.security-seats.full>p:last-child{padding:10px 12px;border:1px solid var(--warn);border-radius:var(--radius-s);background:var(--warn-soft)}
+.security-seats .linkbtn{font-weight:700}

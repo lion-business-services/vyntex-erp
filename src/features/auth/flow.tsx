@@ -1,7 +1,8 @@
 // The way in. One component walks a person from "nobody is signed in" to their workspace, one step at a time:
 // email and password, the code of the second step (or a recovery code), setting that step up the first time, the recovery
 // codes shown once, and, for someone who belongs to several companies, which one to open.
-// There is no sign-up anywhere in it: accounts are opened by invitation (src/features/auth/invite.tsx).
+// There is no sign-up anywhere in it: accounts are opened by invitation (src/features/auth/invite.tsx); on VYNTEX ERP the
+// 7-day free trial (/start-trial) also ends in an owner invitation emailed to the address.
 // Each step asks the server and shows what the server said. Wrong email and wrong password read the same.
 import { Suspense, lazy, useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { LuEye, LuEyeOff, LuCopy, LuDownload, LuCheck, LuBuilding2, LuArrowRight } from 'react-icons/lu';
@@ -299,9 +300,16 @@ function Foot() {
   const look = useAuthLook();
   // a page with its own look (the Partner Portal) says how its own accounts come to exist, and links where it belongs
   if (look?.fine || look?.links) return <>{look.fine && <p className="auth-fine" data-testid="auth-invite-only">{look.fine}</p>}{look.links && <div className="auth-links">{look.links}</div>}</>;
+  // VYNTEX ERP opens a workspace by a 7-day free trial too; LBS Command only by invitation. The build constant is read
+  // right here so the LBS bundle carries neither the trial link nor its wording.
   return (
     <>
-      <p className="auth-fine" data-testid="auth-invite-only">{t('auth.noSignup')}</p>
+      {(typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs')
+        ? <p className="auth-fine" data-testid="auth-invite-only">{t('auth.noSignup')}</p>
+        : <>
+          <p className="auth-trial" data-testid="auth-trial">{t('mk.tr.signinLine', { product: DEPLOY.productName })} <Link to="/start-trial" className="linkbtn" data-testid="auth-start-trial">{t('mk.tr.signinLink')}</Link></p>
+          <p className="auth-fine" data-testid="auth-invite-only">{t('mk.tr.signinFine')}</p>
+        </>}
       {(SAMPLE_BASE || DEPLOY.marketing) && (
         <div className="auth-links">
           {SAMPLE_BASE && <Link to={SAMPLE_BASE} className="linkbtn" data-testid="auth-open-sample">{t(DEPLOY.publicDemo ? 'auth.openDemo' : 'auth.openPreview')}</Link>}

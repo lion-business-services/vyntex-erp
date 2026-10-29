@@ -37,6 +37,8 @@ export const RESERVED_SLUGS: readonly string[] = [
   'vyntex', 'null', 'undefined',
   // the VYNTEX Partner Portal (/partners/*) and client proposals (/proposal/<token>), 0070_partner_core.sql
   'partners', 'partner', 'proposal',
+  // the public seven-day trial page (/start-trial), 0078_public_trials.sql
+  'start-trial',
 ];
 
 /**

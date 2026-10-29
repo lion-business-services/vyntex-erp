@@ -6,7 +6,8 @@
 //   2. same origin and the double-submit csrf value, as every public auth route
 //   3. limits: 5 per 15 minutes per network address, 3 per day per email, and a ceiling for the whole site
 //   4. the hidden field (honeypot): filled in, the request gets the usual answer and nothing is made or sent
-//   5. strict validation; a quoted edition (no published plans) is refused with `quoted_edition`
+//   5. strict validation. Every edition can start a trial (owner decision, Oct 29 2026); a quoted edition pays through
+//      a payment link VYNTEX sends after the trial (src/features/billing, bill.quoted)
 //   6. the address word is made here from the business name (the database checks it again: app.is_valid_slug and the
 //      reserved words); a taken or reserved word gets a short random ending, a few times
 //   7. a one-time token (same format and SHA-256 hash as every invitation): only its hash goes to the database, through
@@ -95,9 +96,6 @@ export async function trialRequest(request) {
   const checked = validate(body);
   if (checked.fields) return fail(400, 'invalid', { fields: checked.fields });
   const { business, owner, email, edition, lang } = checked.value;
-
-  const { pricing } = await import('./domain.bundle.mjs');
-  if (!pricing.isPriced(edition)) return fail(400, 'quoted_edition');
 
   await limit('trial.acct', accountKey(email), 3, 86400);
 

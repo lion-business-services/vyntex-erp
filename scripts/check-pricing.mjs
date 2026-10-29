@@ -76,7 +76,7 @@ for (const p of globalThis.__pricing.packs) {
 for (const name of products) if (!globalThis.__pricing.packs.some((p) => p.product === name)) { console.error(`✗ the pricing file lists "${name}" but no edition has that product name`); bad++; }
 
 // the editions that can start a self-serve trial in the database (app.trial_editions, the newest migration that defines
-// it) must be exactly the priced editions of the pricing file: a quoted edition never gets a self-serve trial
+// it) must be exactly the editions of the product: every edition, priced or quoted, can start the trial (0079)
 {
   const migDir = path.join(root, 'supabase/migrations');
   const defs = fs.readdirSync(migDir).filter((f) => f.endsWith('.sql')).sort()
@@ -84,8 +84,8 @@ for (const name of products) if (!globalThis.__pricing.packs.some((p) => p.produ
     .map((sql) => /function app\.trial_editions\(\)[\s\S]*?array\[([^\]]*)\]/.exec(sql)).filter(Boolean);
   if (defs.length) {
     const inDb = [...defs.at(-1)[1].matchAll(/'([a-z][a-z0-9_]*)'/g)].map((m) => m[1]).sort();
-    const priced = [...globalThis.__pricing.inFile].sort();
-    if (inDb.join(',') !== priced.join(',')) { console.error(`✗ app.trial_editions() lists ${inDb.join(', ')}; the pricing file prices ${priced.join(', ')}. Write a migration that makes them equal.`); bad++; }
+    const all = globalThis.__pricing.packs.map((p) => p.id).sort();
+    if (inDb.join(',') !== all.join(',')) { console.error(`✗ app.trial_editions() lists ${inDb.join(', ')}; the editions are ${all.join(', ')}. Write a migration that makes them equal.`); bad++; }
   }
 }
 if (bad) { console.error(`${bad} pricing problem(s)`); process.exit(1); }

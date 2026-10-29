@@ -41,11 +41,10 @@ test('a visitor starts a trial from /start-trial and is told to check their emai
   // offered on this site (database and system email set up)
   const status = await p.api('GET', '/api/auth/trial/status');
   assert.deepEqual(status.json, { ok: true, available: true });
-  // a quoted edition has no self-serve trial: the form says so and leads to Request a demo
+  // a quoted edition starts the trial like any other: the button is there, and a note says how its plan is paid
   await p.page.selectOption('[data-testid=tr-edition]', 'practice');
   await p.page.waitForSelector('[data-testid=tr-quoted]');
-  assert.equal(await p.page.getAttribute('[data-testid=tr-quoted-request]', 'href'), '/request-demo?industry=practice');
-  assert.equal(await p.page.locator('[data-testid=tr-submit]').count(), 0, 'no trial button for a quoted edition');
+  assert.equal(await p.page.locator('[data-testid=tr-submit]').count(), 1, 'the trial button is there for a quoted edition');
 
   await p.page.selectOption('[data-testid=tr-edition]', 'wash');
   // nothing filled in: the page says what is missing, and sends nothing

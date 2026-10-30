@@ -26,6 +26,8 @@ export const serviceHighlights = (s: CatalogService, lang: Lang): string[] => (s
 /** "Not included" in the viewer's language, else the base list. */
 export const serviceExcludes = (s: CatalogService, lang: Lang): string[] => (s.i18n?.[lang]?.excludes?.length ? s.i18n[lang]!.excludes! : s.excludes ?? []);
 export const serviceBestFor = (s: CatalogService, lang: Lang): string => s.i18n?.[lang]?.bestFor || s.bestFor || '';
+/** How long the service takes to deliver, in the viewer's language when written, else the base language. */
+export const serviceLeadTime = (s: CatalogService, lang: Lang): string => s.i18n?.[lang]?.leadTime || s.leadTime || '';
 /** The book a service is listed in, trimmed; empty when it is in none. */
 export const bookOf = (s: Pick<CatalogService, 'book'>): string => (typeof s.book === 'string' ? s.book.trim() : '');
 /**

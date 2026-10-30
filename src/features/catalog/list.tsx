@@ -1,7 +1,7 @@
 // The catalog: every service the company sells, grouped by category, with its price tiers at a glance.
 // Built to stay readable with a large catalog (150 services and more): search and filters narrow it, categories fold.
 import { useMemo, useState } from 'react';
-import { LuCalendarClock, LuChevronDown, LuDownload, LuFileText, LuListChecks, LuPlus, LuRepeat, LuUpload } from 'react-icons/lu';
+import { LuCalendarClock, LuChevronDown, LuDownload, LuFileText, LuLayoutGrid, LuList, LuListChecks, LuPlus, LuRepeat, LuUpload } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { A, go, useRoute } from '@/app/router';
 import { Badge, Button, Card, Empty, SearchBox, Seg, cx, toast } from '@/ui';
@@ -10,6 +10,7 @@ import type { Repeat } from '@/domain/types';
 import { downloadCsv } from '@/features/data/csv';
 import { catalogCsvRows } from './csv';
 import { ImportDialog, ServiceForm } from './forms';
+import { CategoryTabs, ServiceCards } from './cards';
 import { NO_BOOK, REPEAT_OPTIONS, booksOf, byServiceOrder, categoriesOf, categoryLabel, serviceText, showBooks, tierPrice } from './parts';
 
 type Show = 'active' | 'retired' | 'all';
@@ -36,13 +37,17 @@ export function ServiceList({ canEdit }: { canEdit: boolean }) {
   const tabbed = showBooks(all, books);
   const loose = all.some((x) => !bookOf(x));
   const want = route.query.get('book') ?? '';
+  // cards (as in the VYNTEX Command Center) or the compact list; the choice is in the address, cards unless it says list
+  const cards = route.query.get('view') !== 'list';
+  const address = (b: string, list: boolean) => { const qs = new URLSearchParams(); if (b) qs.set('book', b); if (list) qs.set('view', 'list'); const x = qs.toString(); return '/catalog' + (x ? '?' + x : ''); };
   const book = !tabbed ? '' : want === NO_BOOK && loose ? NO_BOOK : books.find((b) => b.slug === want)?.slug ?? '';
   const bookName = books.find((b) => b.slug === book)?.name;
   const inTab = (x: Service, tab: string) => !tab || (tab === NO_BOOK ? !bookOf(x) : bookOf(x) === books.find((b) => b.slug === tab)?.name);
   const shows = (x: Service) => show === 'all' || (show === 'active') === x.active;
   const tabs = tabbed ? [{ slug: '', label: t('common.all') }, ...books.map((b) => ({ slug: b.slug, label: b.name })), ...(loose ? [{ slug: NO_BOOK, label: t('catalog.book.other') }] : [])]
     .map((x) => ({ ...x, count: all.filter((s) => shows(s) && inTab(s, x.slug)).length })) : [];
-  const pickBook = (slug: string) => { setCategory('*'); setChosen({}); go(slug ? `/catalog?book=${encodeURIComponent(slug)}` : '/catalog'); };
+  const pickBook = (slug: string) => { setCategory('*'); setChosen({}); go(address(slug, !cards)); };
+  const pickView = (list: boolean) => { setCategory('*'); setRepeat(''); setChosen({}); go(address(book, list)); };
   /** The services of the book on screen: everything below (filters, counts, export) works within it. */
   const scope = useMemo(() => all.filter((x) => inTab(x, book)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -52,13 +57,17 @@ export function ServiceList({ canEdit }: { canEdit: boolean }) {
     const s = q.trim().toLowerCase();
     return scope.filter((x) =>
       (show === 'all' || (show === 'active') === x.active)
-      && (category === '*' || x.category === category)
-      && (!repeat || (repeat === 'any' ? !!x.repeat && x.repeat !== 'once' : (x.repeat ?? 'once') === repeat))
+      && (cards || category === '*' || x.category === category)
+      && (cards || !repeat || (repeat === 'any' ? !!x.repeat && x.repeat !== 'once' : (x.repeat ?? 'once') === repeat))
       && (!s || serviceText(t, pack, x).includes(s)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope, q, category, show, repeat, pack, t]);
+  }, [scope, q, category, show, repeat, pack, t, cards]);
   const groups = categoriesOf(pack, rows).map((c) => ({ id: c, list: rows.filter((x) => x.category === c).sort(byServiceOrder(lang)) }));
-  const filtered = !!(q || category !== '*' || repeat || show !== 'active');
+  const filtered = !!(q || (!cards && (category !== '*' || repeat)) || show !== 'active');
+  // cards: one category at a time (the first unless one was picked); a search shows every category that has a match
+  const searching = !!q.trim();
+  const cardCat = searching ? undefined : (groups.find((g) => g.id === category)?.id ?? groups[0]?.id);
+  const cardGroups = searching ? groups : groups.filter((g) => g.id === cardCat);
   const clear = () => { setQ(''); setCategory('*'); setRepeat(''); setShow('active'); setChosen({}); };
   // a short list, or one somebody searched or filtered, shows everything; a long one starts folded so the page stays an overview
   const big = rows.length > FOLD_ABOVE && !q.trim() && category === '*';
@@ -85,16 +94,24 @@ export function ServiceList({ canEdit }: { canEdit: boolean }) {
       <div className="catalog-bar">
         <div className="filters catalog-filters">
           <SearchBox value={q} onChange={setQ} placeholder={t('catalog.search')} />
-          <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('catalog.f.category')} data-testid="catalog-filter-category">
-            <option value="*">{t('catalog.cat.all')}</option>{categoriesOf(pack, scope).map((c) => <option key={c} value={c}>{categoryLabel(t, pack, c)}</option>)}
-          </select>
-          <select value={repeat} onChange={(e) => setRepeat(e.target.value as typeof repeat)} aria-label={t('catalog.f.repeat')} data-testid="catalog-filter-repeat">
-            <option value="">{t('catalog.rep.all')}</option><option value="any">{t('catalog.rep.any')}</option>{usedRepeats.map((r) => <option key={r} value={r}>{t('jobs.rp.' + r)}</option>)}
-          </select>
+          {!cards && <>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label={t('catalog.f.category')} data-testid="catalog-filter-category">
+              <option value="*">{t('catalog.cat.all')}</option>{categoriesOf(pack, scope).map((c) => <option key={c} value={c}>{categoryLabel(t, pack, c)}</option>)}
+            </select>
+            <select value={repeat} onChange={(e) => setRepeat(e.target.value as typeof repeat)} aria-label={t('catalog.f.repeat')} data-testid="catalog-filter-repeat">
+              <option value="">{t('catalog.rep.all')}</option><option value="any">{t('catalog.rep.any')}</option>{usedRepeats.map((r) => <option key={r} value={r}>{t('jobs.rp.' + r)}</option>)}
+            </select>
+          </>}
           <Seg label={t('catalog.show')} value={show} onChange={setShow} options={[{ value: 'active', label: t('catalog.show.active') }, { value: 'retired', label: t('catalog.show.retired'), count: retired || undefined }, { value: 'all', label: t('common.all') }]} />
           {filtered && <button type="button" className="linkbtn small" onClick={clear} data-testid="catalog-clear">{t('common.clearFilters')}</button>}
         </div>
         <div className="row tight catalog-acts">
+          {all.length > 0 && (
+            <div className="seg catalog-view" role="group" aria-label={t('catalog.view')}>
+              <button type="button" aria-pressed={cards} onClick={() => pickView(false)} data-testid="catalog-view-cards" title={t('catalog.view.cards')}><LuLayoutGrid aria-hidden="true" /><span>{t('catalog.view.cards')}</span></button>
+              <button type="button" aria-pressed={!cards} onClick={() => pickView(true)} data-testid="catalog-view-list" title={t('catalog.view.list')}><LuList aria-hidden="true" /><span>{t('catalog.view.list')}</span></button>
+            </div>
+          )}
           {canEdit && can('import') && <Button icon={<LuUpload aria-hidden="true" />} onClick={() => setImp(true)} data-testid="catalog-import">{t('catalog.import')}</Button>}
           {can('export') && all.length > 0 && <Button icon={<LuDownload aria-hidden="true" />} onClick={exportCsv} data-testid="catalog-export">{t('catalog.export')}</Button>}
           {canEdit && <Button variant={all.length ? 'primary' : 'default'} icon={<LuPlus aria-hidden="true" />} onClick={() => setForm(true)} data-testid="catalog-new">{t('catalog.new')}</Button>}
@@ -104,7 +121,7 @@ export function ServiceList({ canEdit }: { canEdit: boolean }) {
         <p className="small muted catalog-sum" data-testid="catalog-sum">
           {t(rows.length === scope.length ? 'catalog.sum' : 'catalog.sumOf', { n: rows.length, total: scope.length })} · {t('catalog.sum.tiers', { n: rows.reduce((a, s) => a + s.tiers.length, 0) })}
           {retired > 0 && show !== 'retired' ? <> · {t('catalog.sum.retired', { n: retired })}</> : null}
-          {groups.length > 1 && <> · <button type="button" className="linkbtn" onClick={() => setAll(!groups.every((g, i) => isOpen(g.id, i)))} data-testid="catalog-fold-all">{t(groups.every((g, i) => isOpen(g.id, i)) ? 'catalog.foldAll' : 'catalog.openAll')}</button></>}
+          {!cards && groups.length > 1 && <> · <button type="button" className="linkbtn" onClick={() => setAll(!groups.every((g, i) => isOpen(g.id, i)))} data-testid="catalog-fold-all">{t(groups.every((g, i) => isOpen(g.id, i)) ? 'catalog.foldAll' : 'catalog.openAll')}</button></>}
         </p>
       )}
 
@@ -112,6 +129,11 @@ export function ServiceList({ canEdit }: { canEdit: boolean }) {
         <Card className="work-none"><Empty title={t('catalog.empty')} action={canEdit ? <Button variant="primary" icon={<LuPlus aria-hidden="true" />} onClick={() => setForm(true)}>{t('catalog.new')}</Button> : undefined}>{t(canEdit ? 'catalog.emptyHint' : 'catalog.emptyRead')}</Empty></Card>
       ) : !rows.length ? (
         <Card className="work-none"><Empty title={t('common.noResults')} action={<Button onClick={clear} data-testid="catalog-clear-empty">{t('common.clearFilters')}</Button>} /></Card>
+      ) : cards ? (
+        <>
+          <CategoryTabs groups={groups} active={cardCat} onPick={(c) => { setCategory(c); setQ(''); }} />
+          <ServiceCards groups={cardGroups} headings={searching} />
+        </>
       ) : (
         <div className="stack catalog-groups" data-testid="catalog-list">
           {groups.map((g, i) => {

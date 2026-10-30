@@ -8,6 +8,8 @@ import { setLanguage } from '@/store/store';
 import { DEPLOY } from '@/config/deployment';
 import type { Lang } from '@/domain/types';
 import { ThemeToggle } from '@/ui/ThemeToggle';
+import { LuArrowLeft } from 'react-icons/lu';
+import { BRAND } from '@/config/brand';
 import './auth.css';
 
 // Read straight from the build constant, as elsewhere, so each bundle keeps only its own branch.
@@ -40,13 +42,16 @@ export function AuthFrame({ title, sub, children, testId, step }: { title: strin
     const field = el.querySelector<HTMLElement>('input:not([type=hidden]):not([type=checkbox]):not([disabled]), [data-autofocus]');
     (field ?? el).focus({ preventScroll: !field });
   }, [step]);
+  // VYNTEX only: the way back to the company's main website (LBS signs in on its own pages and has none)
+  const vyntex = typeof __VX_DEPLOY__ === 'undefined' || __VX_DEPLOY__ !== 'lbs';
   const tools = (
     <>
+      {vyntex && <a href={BRAND.site} className="auth-site" data-testid="auth-site-back"><LuArrowLeft aria-hidden="true" />vyntexusa.com</a>}
       <div className="seg" role="group" aria-label={t('auth.language')}>
         {DEPLOY.languages.map((code) => <button type="button" key={code} aria-pressed={lang === code} onClick={() => setLanguage(code)} lang={code} data-testid={`auth-lang-${code}`}>{LANG_NAME[code]}</button>)}
       </div>
       {/* LBS signs in on its own dark ground and has no switch here; it still has the one in its workspace */}
-      {(typeof __VX_DEPLOY__ === 'undefined' || __VX_DEPLOY__ !== 'lbs') && <ThemeToggle />}
+      {vyntex && <ThemeToggle />}
     </>
   );
   return (

@@ -1,7 +1,7 @@
 // Pieces shared by the three public pages: the page frame (header, footer), the product name set like the wordmark,
 // section headings, contact links and the links that scroll to a section of the overview.
 import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
-import { LuMail, LuMapPin, LuMenu, LuMessageCircle, LuPhone, LuX } from 'react-icons/lu';
+import { LuArrowLeft, LuMail, LuMapPin, LuMenu, LuMessageCircle, LuPhone, LuX } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Link, PREVIEW, navigate } from '@/app/router';
 import { setLanguage } from '@/store/store';
@@ -206,9 +206,23 @@ export function MkFooter({ current }: { current?: MkPageId }) {
           <Link to="/start-trial" data-testid="mk-foot-trial">{t('mk.tr.ctaShort')}</Link>
           <Link to="/demo">{t('mk.nav.demo')}</Link>
           <Link to="/signin">{t('mk.tr.signin')}</Link>
+          <a href={BRAND.site} data-testid="mk-foot-site">{t('mk.site.main')}</a>
         </nav>
       </div>
     </footer>
+  );
+}
+
+/** The way back to the company's main website, vyntexusa.com: a thin strip above the header of every public page. */
+export function SiteStrip() {
+  const { t, lang } = useApp();
+  return (
+    <div className="mk-site">
+      <div className="mk-wrap mk-site-in">
+        <a href={BRAND.site} className="mk-site-back" data-testid="mk-site-back"><LuArrowLeft aria-hidden="true" />{t('mk.site.back')}</a>
+        <span className="mk-site-tag">{BRAND.company} · {pick(BRAND.tagline, lang)}</span>
+      </div>
+    </div>
   );
 }
 
@@ -219,6 +233,7 @@ export function MkPage({ current, children }: { current: MkPageId; children: Rea
     <div className="mk">
       <a href="#mk-main" className="skip">{t('app.skip')}</a>
       <ScrollProgress />
+      <SiteStrip />
       <MkHeader current={current} />
       <main id="mk-main" className="mk-main" tabIndex={-1}>{children}</main>
       <MkFooter current={current} />

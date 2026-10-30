@@ -597,7 +597,7 @@ export interface CatalogTier {
   kind?: CatalogTierKind;
 }
 /** Text of a service in one language. The lists are "What's included" and "Not included", one item per entry. */
-export interface CatalogServiceText { name?: string; description?: string; highlights?: string[]; excludes?: string[]; bestFor?: string }
+export interface CatalogServiceText { name?: string; description?: string; highlights?: string[]; excludes?: string[]; bestFor?: string; /** "7 to 10 business days". */ leadTime?: string }
 export interface CatalogService {
   id: string;
   name: string;
@@ -615,6 +615,20 @@ export interface CatalogService {
   highlights?: string[];
   excludes?: string[];
   bestFor?: string;
+  /** Shown with a "Most popular" ribbon on the catalog cards. Kept in `extra`. */
+  popular?: boolean;
+  /** How long it takes to deliver, in the base language ("7 to 10 business days"). Kept in `extra`. */
+  leadTime?: string;
+  /** The commercial terms a card states when the company set them (none are assumed). Kept in `extra`. */
+  /** Months the client commits to before the monthly fee can be cancelled. */
+  minTermMonths?: number;
+  /** The setup fee can be split into this many equal payments. */
+  installments?: number;
+  /** Paying the year up front costs this many monthly fees. */
+  prepayMonths?: number;
+  /** Software plans: people included ('unlimited' or a number), and the welcome credit in dollars (0: none). */
+  users?: number | 'unlimited';
+  welcomeCredit?: number;
   category: string;
   description?: string;
   active: boolean;

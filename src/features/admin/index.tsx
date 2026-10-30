@@ -558,7 +558,7 @@ function PaymentLink({ company, onClose }: { company: AdminCompany; onClose: () 
                   <option value="monthly">{t('bill.monthly')}</option><option value="yearly">{t('bill.yearly')}</option>
                 </select>
               </Field>
-              {chosen && <p className="small full" data-testid="admin-pay-summary">{t('admin.pay.summary', { recurring: money(billing === 'yearly' ? chosen.yearly : chosen.monthly), period: t(billing === 'yearly' ? 'bill.perYear' : 'bill.perMonth'), setup: money(chosen.setup), first: money(chosen.setup + (billing === 'yearly' ? chosen.yearly : chosen.monthly)) })}</p>}
+              {chosen && <p className="small full" data-testid="admin-pay-summary">{t(chosen.setup > 0 ? 'admin.pay.summary' : 'admin.pay.summaryNoSetup', { recurring: money(billing === 'yearly' ? chosen.yearly : chosen.monthly), period: t(billing === 'yearly' ? 'bill.perYear' : 'bill.perMonth'), setup: money(chosen.setup), first: money(chosen.setup + (billing === 'yearly' ? chosen.yearly : chosen.monthly)) })}</p>}
             </> : <>
               <p className="small muted full">{t('admin.pay.quoted')}</p>
               <Field label={t('admin.pay.recurring')} htmlFor="adm-pay-rec"><input id="adm-pay-rec" inputMode="decimal" value={c.recurring} onChange={(e) => setC({ ...c, recurring: e.target.value })} data-testid="admin-pay-recurring" /></Field>

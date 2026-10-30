@@ -134,10 +134,12 @@ export function BillingPanel({ tenantId, compact = false }: { tenantId: string; 
                   <header className="row between nowrap"><h4>{planName(p, lang)}</h4>{p.mostPopular && <Badge tone="accent">{t('bill.popular')}</Badge>}</header>
                   <p className="vx-bill-price"><b>{money(recurring)}</b> <span className="small muted">{t(billing === 'yearly' ? 'bill.perYear' : 'bill.perMonth')}</span></p>
                   {billing === 'yearly' && saves > 0 && <p className="xs vx-bill-save">{t('bill.saves', { amount: money(saves) })}</p>}
-                  <dl className="vx-bill-lines">
-                    <dt>{t('bill.setup')}</dt><dd>{money(p.setup)}</dd>
-                    <dt><b>{t('bill.first')}</b></dt><dd><b>{money(p.setup + recurring)}</b></dd>
-                  </dl>
+                  {p.setup > 0 && (
+                    <dl className="vx-bill-lines">
+                      <dt>{t('bill.setup')}</dt><dd>{money(p.setup)}</dd>
+                      <dt><b>{t('bill.first')}</b></dt><dd><b>{money(p.setup + recurring)}</b></dd>
+                    </dl>
+                  )}
                   <p className="xs muted">{t('bill.then', { amount: money(recurring), period: t(billing === 'yearly' ? 'bill.perYear' : 'bill.perMonth') })}</p>
                   <Button variant={p.mostPopular ? 'primary' : undefined} icon={<LuCreditCard aria-hidden="true" />} disabled={busy !== null} onClick={() => { void go('/api/billing/checkout', { plan: p.id, billing }, p.id); }} data-testid={`bill-pay-${p.id}`}>
                     {busy === p.id ? t('bill.paying') : t('bill.pay')}

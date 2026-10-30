@@ -80,14 +80,16 @@ function editionsList() {
 
 function planTable(plans: Plan[], pack: IndustryPack) {
   const tp = tFor(pack);
+  // a setup column only when some plan has a setup fee
+  const setup = plans.some((p) => p.setup > 0);
   const rows = plans.map((p) => {
     const save = yearlySavings(p);
     return `<tr><th scope="row">${esc(planName(p, 'en'))}${p.mostPopular ? ` (${esc(t('mk.pr.popular'))})` : ''}</th>`
       + `<td>${money(p.monthly)} ${esc(t('mk.pr.perMonth'))}</td>`
       + `<td>${money(p.yearly)} ${esc(t('mk.pr.perYear'))}${save > 0 ? `<br>${esc(t('mk.pr.saves', { amount: money(save) }))}` : ''}</td>`
-      + `<td>${money(p.setup)}</td><td>${esc(usersText(p))}</td><td>${esc(planSupport(p, pack.id, 'en', tp))}</td></tr>`;
+      + `${setup ? `<td>${money(p.setup)}</td>` : ''}<td>${esc(usersText(p))}</td><td>${esc(planSupport(p, pack.id, 'en', tp))}</td></tr>`;
   }).join('');
-  return `<table><caption>${esc(t('mk.p2.pr.plans'))}, US dollars, before taxes</caption><thead><tr><th scope="col">Plan</th><th scope="col">${esc(t('mk.pr.monthly'))}</th><th scope="col">${esc(t('mk.pr.yearly'))}</th><th scope="col">${esc(t('mk.pr.setup'))}</th><th scope="col">${esc(t('mk.p2.pr.users'))}</th><th scope="col">Support</th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<table><caption>${esc(t('mk.p2.pr.plans'))}, US dollars, before taxes</caption><thead><tr><th scope="col">Plan</th><th scope="col">${esc(t('mk.pr.monthly'))}</th><th scope="col">${esc(t('mk.pr.yearly'))}</th>${setup ? `<th scope="col">${esc(t('mk.pr.setup'))}</th>` : ''}<th scope="col">${esc(t('mk.p2.pr.users'))}</th><th scope="col">Support</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function planDetails(plans: Plan[], pack: IndustryPack) {
@@ -111,7 +113,7 @@ function softwareLd(withOffers: boolean): object {
     priceSpecification: [
       { '@type': 'UnitPriceSpecification', price: p.monthly, priceCurrency: 'USD', unitText: 'month', referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' } },
       { '@type': 'UnitPriceSpecification', price: p.yearly, priceCurrency: 'USD', unitText: 'year', referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'ANN' } },
-      { '@type': 'PriceSpecification', name: 'One-time setup', price: p.setup, priceCurrency: 'USD' },
+      ...(p.setup > 0 ? [{ '@type': 'PriceSpecification', name: 'One-time setup', price: p.setup, priceCurrency: 'USD' }] : []),
     ],
   }))) : undefined;
   return {
@@ -138,7 +140,7 @@ export function publicPages(): PublicPage[] {
   const home: PublicPage = {
     path: '/', file: 'index.html',
     title: `${name} | Business software with a live demo, plans and pricing`,
-    description: `${name} by VYNTEX USA: leads, clients, jobs, scheduling, documents, e-signature, payments, automations and reports in one place, with an edition for each industry. Try the live demo with no account, compare plans and setup fees, or book a free guided demo.`,
+    description: `${name} by VYNTEX USA: leads, clients, jobs, scheduling, documents, e-signature, payments, automations and reports in one place, with an edition for each industry. Try the live demo with no account, compare plans and prices, or book a free guided demo.`,
     body: `${nav()}<main><h1>${esc(name)}: ${esc(heading)}</h1><p>${esc(t('mk.hero.lede'))}</p>
 <p>${a('/demo', t('mk.p2.gs.demo'))} · ${a('/pricing', t('mk.cta.pricing'))} · ${a('/request-demo', t('mk.cta.request'))}</p>
 <section><h2>${esc(t('mk.hero.fact1', { n: PACK_LIST.length }))}</h2>${editionsList()}</section>
@@ -149,8 +151,8 @@ ${steps()}${contact()}</main>`,
 
   const pricing: PublicPage = {
     path: '/pricing', file: 'pricing.html',
-    title: `${name} | Plans and pricing: setup fee, monthly and yearly prices`,
-    description: `${name} plans compared: one-time setup fee, monthly and yearly prices, users, support, features, add-ons including extra training, and the rules behind the prices. US dollars, before taxes.`,
+    title: `${name} | Plans and pricing: monthly and yearly prices`,
+    description: `${name} plans compared: monthly and yearly prices with no setup fee, users, support, features, add-ons including extra training, and the rules behind the prices. US dollars, before taxes.`,
     body: `${nav()}<main><h1>${esc(t('mk.pr.h'))} ${esc(name)}</h1><p>${esc(t('mk.pr.sub'))}</p>
 ${groups.map((g) => `<section><h2>${esc(g.packs.map((p) => `${p.product} (${pick(p.label, 'en')})`).join(', '))}</h2>${planTable(g.plans, g.packs[0])}${planDetails(g.plans, g.packs[0])}</section>`).join('')}
 ${quoted.map((p) => `<section><h2>${esc(p.product)} (${esc(pick(p.label, 'en'))}): ${esc(t('mk.p2.pr.quoted.h'))}</h2><p>${esc(tFor(p)('mk.p2.pr.quoted.p', { product: p.product }))} ${a('/request-demo', t('mk.p2.pr.quoted.cta'))}</p></section>`).join('')}
@@ -230,7 +232,7 @@ export function sitemapXml(pages: PublicPage[]): string {
 /** llms.txt: a plain summary with every link an AI assistant or sales agent needs. Prices come from the pricing file. */
 export function llmsTxt(): string {
   const { groups, quoted } = ladders();
-  const line = (p: Plan) => `${planName(p, 'en')}: ${money(p.setup)} one-time setup, then ${money(p.monthly)} per month or ${money(p.yearly)} per year; ${usersText(p).toLowerCase()}`;
+  const line = (p: Plan) => `${planName(p, 'en')}: ${p.setup > 0 ? `${money(p.setup)} one-time setup, then ` : 'no setup fee, '}${money(p.monthly)} per month or ${money(p.yearly)} per year; ${usersText(p).toLowerCase()}`;
   return [
     `# ${name}`,
     '',
@@ -240,7 +242,7 @@ export function llmsTxt(): string {
     '',
     `- [Overview](${ORIGIN}/)`,
     `- [Live demo](${ORIGIN}/demo): ${t('mk.p2.gs.s1.p')}`,
-    `- [Plans and pricing](${ORIGIN}/pricing): setup fee, monthly and yearly prices, add-ons (including extra training), rules.`,
+    `- [Plans and pricing](${ORIGIN}/pricing): monthly and yearly prices (no setup fee), add-ons (including extra training), rules.`,
     `- [Book a free guided demo](${ORIGIN}/request-demo): ${t('mk.p2.gs.s3.p')}`,
     `- [Start a 7-day free trial](${ORIGIN}/start-trial): ${t('mk.tr.lede')} No credit card needed. Editions quoted on request have no self-serve trial.`,
     `- [VYNTEX USA, the company](${COMPANY_SITE}/) and its services: ${COMPANY_SITE}/llms.txt`,

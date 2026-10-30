@@ -10,7 +10,7 @@
   },
   "effective_dates": {
     "seller_guide_prices_approved": "2026-09-17 (seller-guide.html line 351)",
-    "vyntex_build_pricing_version": "2026-09-26h",
+    "vyntex_build_pricing_version": "2026-10-30a",
     "master_command_repo_upload": "2026-10-02 (git dfeda94)",
     "legacy_db_vx_settings": "no pricing / partner_portal keys present on 2026-10-22; HTML defaults are effective"
   },
@@ -2796,7 +2796,7 @@
       "prices": [
         {
           "kind": "recurring",
-          "amount_cents": 5900,
+          "amount_cents": 8900,
           "billing_period": "month",
           "status": "approved_source",
           "provenance": {
@@ -2810,23 +2810,13 @@
         },
         {
           "kind": "recurring",
-          "amount_cents": 70800,
+          "amount_cents": 106800,
           "billing_period": "year",
           "yearly_free_months": 0,
           "status": "approved_source",
           "provenance": {
             "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
             "ref": "plans[id=foundation].yearly_usd"
-          }
-        },
-        {
-          "kind": "setup",
-          "amount_cents": 29900,
-          "billing_period": "one_time",
-          "status": "approved_source",
-          "provenance": {
-            "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
-            "ref": "plans[id=foundation].setup_usd"
           }
         }
       ],
@@ -2836,7 +2826,8 @@
         "version": "2026-09-26h"
       },
       "notes": [
-        "Partner commission on ERP software plans: no source defines one. Needs VYNTEX Approval before any partner earning is shown."
+        "Partner commission on ERP software plans: no source defines one. Needs VYNTEX Approval before any partner earning is shown.",
+        "2026-10-30: owner set new plan prices (monthly $89 / $169 / $225, yearly with the same free months) and removed the setup fee; config/vyntex-build-pricing.json version 2026-10-30a."
       ]
     },
     {
@@ -2866,7 +2857,7 @@
       "prices": [
         {
           "kind": "recurring",
-          "amount_cents": 11900,
+          "amount_cents": 16900,
           "billing_period": "month",
           "status": "approved_source",
           "provenance": {
@@ -2880,23 +2871,13 @@
         },
         {
           "kind": "recurring",
-          "amount_cents": 130900,
+          "amount_cents": 185900,
           "billing_period": "year",
           "yearly_free_months": 1,
           "status": "approved_source",
           "provenance": {
             "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
             "ref": "plans[id=builder].yearly_usd"
-          }
-        },
-        {
-          "kind": "setup",
-          "amount_cents": 49900,
-          "billing_period": "one_time",
-          "status": "approved_source",
-          "provenance": {
-            "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
-            "ref": "plans[id=builder].setup_usd"
           }
         }
       ],
@@ -2911,7 +2892,8 @@
         "version": "2026-09-26h"
       },
       "notes": [
-        "Partner commission on ERP software plans: no source defines one. Needs VYNTEX Approval before any partner earning is shown."
+        "Partner commission on ERP software plans: no source defines one. Needs VYNTEX Approval before any partner earning is shown.",
+        "2026-10-30: owner set new plan prices (monthly $89 / $169 / $225, yearly with the same free months) and removed the setup fee; config/vyntex-build-pricing.json version 2026-10-30a."
       ]
     },
     {
@@ -2942,7 +2924,7 @@
       "prices": [
         {
           "kind": "recurring",
-          "amount_cents": 16900,
+          "amount_cents": 22500,
           "billing_period": "month",
           "status": "approved_source",
           "provenance": {
@@ -2956,23 +2938,13 @@
         },
         {
           "kind": "recurring",
-          "amount_cents": 169000,
+          "amount_cents": 225000,
           "billing_period": "year",
           "yearly_free_months": 2,
           "status": "approved_source",
           "provenance": {
             "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
             "ref": "plans[id=master_builder].yearly_usd"
-          }
-        },
-        {
-          "kind": "setup",
-          "amount_cents": 59900,
-          "billing_period": "one_time",
-          "status": "approved_source",
-          "provenance": {
-            "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
-            "ref": "plans[id=master_builder].setup_usd"
           }
         }
       ],
@@ -2987,7 +2959,8 @@
         "version": "2026-09-26h"
       },
       "notes": [
-        "Partner commission on ERP software plans: no source defines one. Needs VYNTEX Approval before any partner earning is shown."
+        "Partner commission on ERP software plans: no source defines one. Needs VYNTEX Approval before any partner earning is shown.",
+        "2026-10-30: owner set new plan prices (monthly $89 / $169 / $225, yearly with the same free months) and removed the setup fee; config/vyntex-build-pricing.json version 2026-10-30a."
       ]
     },
     {
@@ -3017,7 +2990,7 @@
       "prices": [
         {
           "kind": "recurring",
-          "amount_cents": 5900,
+          "amount_cents": 8900,
           "billing_period": "month",
           "status": "approved_source",
           "provenance": {
@@ -3027,18 +3000,8 @@
         },
         {
           "kind": "recurring",
-          "amount_cents": 70800,
+          "amount_cents": 106800,
           "billing_period": "year",
-          "status": "approved_source",
-          "provenance": {
-            "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
-            "ref": "other_industries.plans[id=essential]"
-          }
-        },
-        {
-          "kind": "setup",
-          "amount_cents": 29900,
-          "billing_period": "one_time",
           "status": "approved_source",
           "provenance": {
             "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
@@ -3049,7 +3012,10 @@
       "status": "approved_source",
       "effective": {
         "version": "2026-09-26h"
-      }
+      },
+      "notes": [
+        "2026-10-30: owner set new plan prices (monthly $89 / $169 / $225, yearly with the same free months) and removed the setup fee; config/vyntex-build-pricing.json version 2026-10-30a."
+      ]
     },
     {
       "id": "edition-pro",
@@ -3078,7 +3044,7 @@
       "prices": [
         {
           "kind": "recurring",
-          "amount_cents": 11900,
+          "amount_cents": 16900,
           "billing_period": "month",
           "status": "approved_source",
           "provenance": {
@@ -3088,18 +3054,8 @@
         },
         {
           "kind": "recurring",
-          "amount_cents": 130900,
+          "amount_cents": 185900,
           "billing_period": "year",
-          "status": "approved_source",
-          "provenance": {
-            "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
-            "ref": "other_industries.plans[id=pro]"
-          }
-        },
-        {
-          "kind": "setup",
-          "amount_cents": 49900,
-          "billing_period": "one_time",
           "status": "approved_source",
           "provenance": {
             "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
@@ -3110,7 +3066,10 @@
       "status": "approved_source",
       "effective": {
         "version": "2026-09-26h"
-      }
+      },
+      "notes": [
+        "2026-10-30: owner set new plan prices (monthly $89 / $169 / $225, yearly with the same free months) and removed the setup fee; config/vyntex-build-pricing.json version 2026-10-30a."
+      ]
     },
     {
       "id": "edition-elite",
@@ -3139,7 +3098,7 @@
       "prices": [
         {
           "kind": "recurring",
-          "amount_cents": 16900,
+          "amount_cents": 22500,
           "billing_period": "month",
           "status": "approved_source",
           "provenance": {
@@ -3149,18 +3108,8 @@
         },
         {
           "kind": "recurring",
-          "amount_cents": 169000,
+          "amount_cents": 225000,
           "billing_period": "year",
-          "status": "approved_source",
-          "provenance": {
-            "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
-            "ref": "other_industries.plans[id=elite]"
-          }
-        },
-        {
-          "kind": "setup",
-          "amount_cents": 59900,
-          "billing_period": "one_time",
           "status": "approved_source",
           "provenance": {
             "source": "vyntex-erp@0e07446:config/vyntex-build-pricing.json",
@@ -3171,7 +3120,10 @@
       "status": "approved_source",
       "effective": {
         "version": "2026-09-26h"
-      }
+      },
+      "notes": [
+        "2026-10-30: owner set new plan prices (monthly $89 / $169 / $225, yearly with the same free months) and removed the setup fee; config/vyntex-build-pricing.json version 2026-10-30a."
+      ]
     },
     {
       "id": "erp-addon-client_portal",

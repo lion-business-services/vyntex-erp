@@ -206,7 +206,7 @@ function PlanPricing() {
                         </p>
                       </div>
                       <dl className="mkp-facts">
-                        <div><dt>{t('mk.pr.setup')}</dt><dd data-testid={`pr-setup-${p.id}`}>{money(p.setup)}</dd></div>
+                        {p.setup > 0 && <div><dt>{t('mk.pr.setup')}</dt><dd data-testid={`pr-setup-${p.id}`}>{money(p.setup)}</dd></div>}
                         <div><dt>{t('mk.p2.pr.users')}</dt><dd data-testid={`pr-users-${p.id}`}>{usersValue(t, p)}</dd></div>
                         <div><dt>{t('mk.p2.pr.credit')}</dt>{p.welcomeCredit ? <dd>{money(p.welcomeCredit.amount_usd)}</dd> : <dd className="none">{t('mk.p2.pr.creditNone')}</dd>}</div>
                       </dl>
@@ -252,7 +252,7 @@ function PlanPricing() {
                 <p className="mkp-fine">{t('mk.pr.first.sub')}</p>
               </div>
               <dl className="mkp-sum" data-testid="pr-first">
-                <div><dt>{t('mk.pr.first.setup')}</dt><dd data-testid="pr-first-setup">{money(chosen.setup)}</dd></div>
+                {chosen.setup > 0 && <div><dt>{t('mk.pr.first.setup')}</dt><dd data-testid="pr-first-setup">{money(chosen.setup)}</dd></div>}
                 <div><dt>{t(billing === 'yearly' ? 'mk.pr.first.year' : 'mk.pr.first.month', { plan: planName(chosen, lang) })}</dt><dd data-testid="pr-first-period">{money(period)}</dd></div>
                 <div className="total"><dt>{t('mk.pr.first.total')}</dt><dd key={`${chosen.id}-${billing}`} data-testid="pr-first-total">{money(chosen.setup + period)}</dd></div>
               </dl>

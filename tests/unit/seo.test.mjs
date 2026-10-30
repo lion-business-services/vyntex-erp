@@ -36,7 +36,7 @@ test('pricing page: every plan of the pricing file with its monthly, yearly and 
   const body = text(byPath['/pricing'].body);
   for (const p of [...pricing.plans, ...pricing.other_industries.plans]) {
     assert.ok(body.includes(p.name), p.name);
-    for (const n of [p.monthly_usd, p.yearly_usd, p.setup_usd]) assert.ok(body.includes(usd(n)), `${p.name} ${usd(n)}`);
+    for (const n of [p.monthly_usd, p.yearly_usd, ...(p.setup_usd > 0 ? [p.setup_usd] : [])]) assert.ok(body.includes(usd(n)), `${p.name} ${usd(n)}`);
   }
   for (const a of pricing.add_ons.filter((x) => typeof x.price_usd === 'number')) assert.ok(body.includes(usd(a.price_usd)), a.id);
   assert.match(body, /Extra training session/);
@@ -51,7 +51,7 @@ test('structured data: SoftwareApplication with one offer per plan, prices from 
     const plan = [...pricing.plans, ...pricing.other_industries.plans].find((p) => o.name.startsWith(p.name + ' ('));
     assert.ok(plan, o.name);
     assert.equal(o.price, plan.monthly_usd); assert.equal(o.priceCurrency, 'USD');
-    assert.deepEqual(o.priceSpecification.map((s) => s.price), [plan.monthly_usd, plan.yearly_usd, plan.setup_usd]);
+    assert.deepEqual(o.priceSpecification.map((s) => s.price), [plan.monthly_usd, plan.yearly_usd, ...(plan.setup_usd > 0 ? [plan.setup_usd] : [])]);
   }
   assert.ok(!byPath['/'].jsonLd[0].offers, 'prices are marked up on the pricing page only');
 });
@@ -84,7 +84,7 @@ test('sitemap and llms.txt list the public pages only, with the demo, pricing an
   assert.deepEqual([...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((x) => x[1]), ['https://erp.vyntexusa.com/', 'https://erp.vyntexusa.com/pricing', 'https://erp.vyntexusa.com/demo', 'https://erp.vyntexusa.com/request-demo', 'https://erp.vyntexusa.com/start-trial']);
   const llms = m.llmsTxt();
   for (const link of ['https://erp.vyntexusa.com/demo', 'https://erp.vyntexusa.com/pricing', 'https://erp.vyntexusa.com/request-demo', 'https://erp.vyntexusa.com/start-trial', 'https://www.vyntexusa.com/llms.txt']) assert.ok(llms.includes(link), link);
-  for (const p of pricing.plans) assert.ok(llms.includes(`${p.name}: ${usd(p.setup_usd)} one-time setup, then ${usd(p.monthly_usd)} per month or ${usd(p.yearly_usd)} per year`), p.name);
+  for (const p of pricing.plans) assert.ok(llms.includes(`${p.name}: ${p.setup_usd > 0 ? `${usd(p.setup_usd)} one-time setup, then ` : 'no setup fee, '}${usd(p.monthly_usd)} per month or ${usd(p.yearly_usd)} per year`), p.name);
   assert.ok(!/Stripe Tax|Daysi/.test(llms));
 });
 

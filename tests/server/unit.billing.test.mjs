@@ -77,13 +77,13 @@ test('any one of several v1 signatures may match (Stripe sends two while a secre
 
 /* ---------- prices ---------- */
 
-test('a quote comes from the pricing file: monthly, yearly and the setup fee, in cents', () => {
+test('a quote comes from the pricing file: monthly, yearly and the setup fee (none since 2026-10-30), in cents', () => {
   const m = B.quote('build', 'builder', 'monthly');
-  assert.equal(m.recurringCents, 11900);
-  assert.equal(m.setupCents, 49900);
+  assert.equal(m.recurringCents, 16900);
+  assert.equal(m.setupCents, 0);
   assert.equal(m.interval, 'month');
   const y = B.quote('build', 'builder', 'yearly');
-  assert.equal(y.recurringCents, 130900);
+  assert.equal(y.recurringCents, 185900);
   assert.equal(y.interval, 'year');
   assert.match(y.recurringKey, /^vx_[a-z0-9_]+_builder_yearly$/);
   assert.throws(() => B.quote('practice', 'x', 'monthly'), (e) => e.code === 'quoted_edition');
@@ -125,19 +125,19 @@ function world({ prices = {}, subs = {}, events = {}, charges = {}, rpcData = {}
 
 /* ---------- checkout ---------- */
 
-test('a plan checkout uses lookup-key prices, adds the setup fee once, card and ACH only, no fee line', async () => {
+test('a plan checkout uses lookup-key prices, no setup line when the plan has no setup fee, card and ACH only, no fee line', async () => {
   const { deps, calls } = world();
   const out = await B.createCheckout(deps, { company: company(), email: 'owner@acme.test', origin: 'https://erp.vyntexusa.com', by: null, source: 'owner', planId: 'builder', billing: 'monthly' });
   assert.equal(out.url, 'https://checkout.stripe.com/c/pay/cs_test_1');
   const cs = calls.stripe.find((c) => c.path === '/checkout/sessions');
   assert.equal(cs.params.mode, 'subscription');
   assert.deepEqual(cs.params.payment_method_types, ['card', 'us_bank_account']);
-  assert.equal(cs.params.line_items.length, 2);
+  assert.equal(cs.params.line_items.length, 1);
   assert.equal(cs.params.metadata.tenant_id, TENANT);
   assert.equal(cs.params.metadata.plan_id, 'builder');
   assert.ok(!JSON.stringify(cs.params).includes('automatic_tax'), 'Stripe Tax stays off');
   const created = calls.stripe.filter((c) => c.path === '/prices' && c.method === 'POST').map((c) => c.params.unit_amount).sort();
-  assert.deepEqual(created, [11900, 49900]);
+  assert.deepEqual(created, [16900]);
   assert.ok(calls.stripe.filter((c) => c.method === 'POST').every((c) => c.idem), 'every write has an idempotency key');
   assert.ok(calls.rpc.some((c) => c.fn === 'billing_checkout_add'));
   assert.ok(cs.params.success_url.startsWith('https://erp.vyntexusa.com/acme-build/settings/billing'));

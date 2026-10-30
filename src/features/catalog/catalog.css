@@ -149,3 +149,70 @@
 .catalog-plan .kv dd{font-variant-numeric:tabular-nums}
 .catalog-file input[type=file]{max-width:100%}
 .catalog-tieracts .iconbtn:disabled{opacity:.35;cursor:default}
+
+/* ---------- cards: the catalog as the VYNTEX Command Center shows it ---------- */
+.catalog-view button{display:inline-flex;align-items:center;gap:6px}
+.catalog-view svg{width:15px;height:15px}
+@media (max-width:560px){.catalog-view{flex:none}.catalog-view span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
+/* the categories of the book: a row of tabs */
+.cc-cats{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.cc-cats button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:8px 15px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface);color:var(--text-2);font-weight:650;font-size:14px;cursor:pointer;transition:background var(--motion-fast) var(--ease-vyntex),color var(--motion-fast) var(--ease-vyntex),border-color var(--motion-fast) var(--ease-vyntex)}
+.cc-cats button:hover{color:var(--text);border-color:var(--accent-line)}
+.cc-cats button[aria-pressed="true"]{background:var(--grad-cta);border-color:transparent;color:var(--accent-ink);box-shadow:var(--glow)}
+.cc-cats button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cc-cat-n{font-size:12px;font-variant-numeric:tabular-nums;opacity:.7}
+@media (max-width:560px){.cc-cats{flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding:2px 0 6px;scrollbar-width:none}.cc-cats::-webkit-scrollbar{display:none}.cc-cats button{flex:none}}
+
+.cc-sections{gap:28px}
+.cc-section-h{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap;margin:0 0 16px}
+.cc-section-h h2{margin:0;font-family:var(--font-display);font-size:18px;font-weight:650}
+.cc-period{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-left:auto}
+.cc-period-save{color:var(--ok);font-weight:650;font-size:13.5px}
+/* room above the first row for the "Most popular" ribbon */
+.cc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,310px),1fr));gap:22px 18px;align-items:start;padding-top:10px}
+
+.cc-card{position:relative;display:flex;flex-direction:column;min-width:0;padding:24px 22px 18px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-1);transition:border-color var(--motion-fast) var(--ease-vyntex),transform var(--motion-fast) var(--ease-vyntex)}
+.cc-card:hover{border-color:var(--accent-line)}
+.cc-card.is-popular{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--glow)}
+.cc-card.retired{opacity:.72}
+.cc-pop{position:absolute;top:-11px;left:18px;padding:3px 11px;border-radius:999px;background:var(--grad-cta);color:var(--accent-ink);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+.cc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.cc-head h3{margin:0;font-family:var(--font-display);font-size:20px;font-weight:700;line-height:1.25;overflow-wrap:anywhere}
+.cc-head h3 a{color:var(--text);text-decoration:none}
+.cc-head h3 a:hover{color:var(--accent)}
+.cc-tag{margin:8px 0 0;color:var(--text-2);font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.cc-price{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin-top:16px}
+.cc-big{font-family:var(--font-display);font-size:38px;font-weight:800;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--text)}
+.cc-big.quote{font-size:30px;color:var(--accent)}
+.cc-suf{color:var(--text-2);font-size:14px;font-weight:600}
+.cc-second{display:flex;align-items:baseline;gap:5px;margin-top:4px}
+.cc-second b{color:var(--accent);font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+.cc-second span{color:var(--text-2);font-size:13.5px;font-weight:600}
+.cc-sub{margin:6px 0 0;color:var(--text-2);font-size:14px}
+.cc-save{margin:4px 0 0;color:var(--ok);font-size:13.5px;font-weight:650}
+.cc-lines{margin:16px 0 0;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;gap:7px}
+.cc-lines>div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;min-width:0}
+.cc-lines dt{color:var(--text-2);font-size:13.5px;min-width:0;overflow-wrap:anywhere}
+.cc-lines dd{margin:0;font-weight:750;font-size:13.5px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
+.cc-block{margin-top:16px}
+.cc-h{margin:0 0 10px;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+.cc-list{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:14px;line-height:1.45}
+.cc-list li{display:flex;gap:9px;align-items:flex-start;min-width:0;overflow-wrap:anywhere}
+.cc-list svg{width:15px;height:15px;flex:none;margin-top:3px}
+.cc-list .yes{color:var(--accent)}
+.cc-list .no{color:var(--text-3)}
+.cc-all{margin-top:8px}
+.cc-not summary{cursor:pointer;list-style:none;font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--text-2);display:inline-flex;align-items:center;gap:7px}
+.cc-not summary::-webkit-details-marker{display:none}
+.cc-not summary::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform var(--motion-fast) var(--ease-vyntex)}
+.cc-not[open] summary::before{transform:rotate(45deg)}
+.cc-not summary:hover{color:var(--text)}
+.cc-not[open] summary{margin-bottom:10px}
+.cc-best{margin:16px 0 0;font-size:13.5px;color:var(--text-2);overflow-wrap:anywhere}
+.cc-best b{color:var(--text);font-weight:700}
+.cc-foot{margin-top:auto;padding-top:16px}
+.cc-more{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14px;color:var(--accent);text-decoration:none}
+.cc-more svg{width:15px;height:15px;transition:transform var(--motion-fast) var(--ease-vyntex)}
+.cc-more:hover svg{transform:translateX(3px)}
+@media (max-width:560px){.cc-card{padding:22px 16px 16px}.cc-big{font-size:34px}}
+@media (prefers-reduced-motion:reduce){.cc-card,.cc-more svg,.cc-not summary::before{transition:none}}

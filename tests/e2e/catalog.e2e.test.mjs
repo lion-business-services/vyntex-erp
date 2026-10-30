@@ -19,7 +19,11 @@ const one = (dep, text, data) => dep.sql(`select '@@R@@' || coalesce(to_jsonb(($
 const insert = (list) => st.vyntex.sql(INSERT_SQL, { t: co.tenantId, d: JSON.stringify(list) });
 const tabs = () => owner.page.$$eval('[data-testid=catalog-books] [role=tab]', (els) => els.map((b) => ({ book: b.dataset.book, text: b.innerText.replace(/\s+/g, ' ').trim(), on: b.getAttribute('aria-selected') === 'true' })));
 const groups = () => owner.page.$$eval('[data-testid=catalog-group] b', (els) => els.map((b) => b.textContent));
-const toCatalog = async (q = '') => { await owner.go(`/${co.slug}/catalog${q}`); await owner.page.waitForSelector('[data-testid=catalog-list]'); };
+/** The compact list (the page opens on cards; the list is one click away and named in the address). */
+const toCatalog = async (q = '') => { await owner.go(`/${co.slug}/catalog${q ? q + '&' : '?'}view=list`); await owner.page.waitForSelector('[data-testid=catalog-list]'); };
+const toCards = async (q = '') => { await owner.go(`/${co.slug}/catalog${q}`); await owner.page.waitForSelector('[data-testid=catalog-cards]'); };
+const cats = () => owner.page.$$eval('[data-testid=catalog-cats] button', (els) => els.map((b) => ({ text: b.innerText.replace(/\s+/g, ' ').trim(), on: b.getAttribute('aria-pressed') === 'true' })));
+const cardNames = () => owner.page.$$eval('[data-testid=catalog-card] h3', (els) => els.map((h) => h.textContent));
 
 before(async () => {
   st = await startStack();
@@ -78,7 +82,7 @@ test('two books: sub-tabs with counts, the tab is in the address and survives a 
     { book: 'all', text: 'All 13', on: true }, { book: 'sample-agency-services', text: `${AGENCY} 9`, on: false }, { book: 'sample-software-plans', text: `${SOFTWARE} 4`, on: false },
   ]);
   await owner.page.click('[data-testid=catalog-books] [data-book=sample-software-plans]');
-  await owner.page.waitForFunction(() => location.search === '?book=sample-software-plans');
+  await owner.page.waitForFunction(() => location.search === '?book=sample-software-plans&view=list');
   assert.deepEqual(await groups(), ['Editions', 'ERP add-ons']);
   assert.match(await owner.page.innerText('[data-testid=catalog-sum]'), /^4 services/);
   await shot(owner, 'catalog-live-software');
@@ -91,8 +95,8 @@ test('two books: sub-tabs with counts, the tab is in the address and survives a 
   await owner.page.fill('.catalog-filters input', 'growth');
   await owner.page.waitForSelector('[data-testid=catalog-clear-empty]');
   await owner.page.click('[data-testid=catalog-clear-empty]');
-  const cats = await owner.page.$$eval('[data-testid=catalog-filter-category] option', (els) => els.map((o) => o.textContent));
-  assert.deepEqual(cats.slice(1), ['Editions', 'ERP add-ons'], 'the category filter offers the categories of the book');
+  const options = await owner.page.$$eval('[data-testid=catalog-filter-category] option', (els) => els.map((o) => o.textContent));
+  assert.deepEqual(options.slice(1), ['Editions', 'ERP add-ons'], 'the category filter offers the categories of the book');
 
   await insert([{ name: 'Loose Sample Service', category: 'Misc', i18n: null, extra: {}, tiers: [{ name: 'Standard', price: 40, unit: 'hour', extra: {} }] }]);
   await toCatalog('?book=other');
@@ -152,6 +156,50 @@ test('a service page shows Best for and the lists; editing it in the form keeps 
   assert.deepEqual(owner.errors, []);
 });
 
+test('cards, as in the Command Center: the categories as tabs, the price in large type, the terms, and plans with Monthly and Yearly', async () => {
+  await owner.page.setViewportSize({ width: 1280, height: 900 });
+  await toCards('?book=sample-agency-services');
+  assert.equal(await owner.page.getAttribute('[data-testid=catalog-view-cards]', 'aria-pressed'), 'true', 'the page opens on cards');
+  const first = await cats();
+  assert.equal(first[0].text, 'Agency packages 2'); assert.equal(first[0].on, true);
+  assert.deepEqual(first.map((x) => x.text.replace(/ \d+$/, '')), ['Agency packages', 'CRM', 'Websites', 'AI tools', 'Branding', 'Add-ons', 'Hourly rates']);
+  assert.deepEqual(await cardNames(), ['Growth Package', 'Enterprise Package'], 'one category at a time, in the order of the book');
+  const growth = await owner.page.locator('[data-testid=catalog-card]', { hasText: 'Growth Package' }).innerText();
+  assert.match(growth, /\$1,500[\s\S]*to build[\s\S]*\$497[\s\S]*\/mo/);
+  const ent = await owner.page.locator('[data-testid=catalog-card]', { hasText: 'Enterprise Package' }).innerText();
+  assert.match(ent, /Quote/); assert.doesNotMatch(ent, /\$0\b/);
+  await shot(owner, 'catalog-cards-agency');
+  await owner.page.click('[data-testid=catalog-cats] [data-cat=Websites]');
+  assert.deepEqual(await cardNames(), ['Business Website', 'Online Store']);
+  assert.match(await owner.page.locator('[data-testid=catalog-card]', { hasText: 'Business Website' }).innerText(), /From \$4,000/);
+  // a search shows every category that has a match, each with its heading
+  await owner.page.fill('.catalog-filters input', 'website');
+  await owner.page.waitForFunction(() => !document.querySelector('[data-testid=catalog-cats] [aria-pressed=true]'));
+  assert.ok((await cardNames()).includes('Business Website'));
+  await owner.page.fill('.catalog-filters input', '');
+
+  // software plans (a monthly and a yearly price) read like the pricing page, with a Monthly / Yearly switch
+  await insert([{ name: 'Sample Plan Pro', category: 'Plans', i18n: null, extra: { book: 'Sample Plans', bookOrder: 3, popular: true, users: 5, welcomeCredit: 100 },
+    tiers: [{ name: 'Monthly', price: 119, unit: 'month', extra: { kind: 'recurring' } }, { name: 'Yearly', price: 1309, unit: 'year', extra: { kind: 'recurring' } }, { name: 'Setup', price: 499, unit: 'flat', extra: { kind: 'setup' } }] }]);
+  await toCards('?book=sample-plans');
+  const plan = () => owner.page.locator('[data-testid=catalog-card]', { hasText: 'Sample Plan Pro' }).innerText();
+  assert.match(await plan(), /Most popular[\s\S]*\$119[\s\S]*per month[\s\S]*or \$1,309 per year[\s\S]*Saves \$119 a year[\s\S]*One-time setup[\s\S]*\$499[\s\S]*Users included[\s\S]*Up to 5[\s\S]*Welcome credit[\s\S]*\$100/i);
+  await owner.page.click('[data-testid=catalog-period-year]');
+  assert.match(await plan(), /\$1,309[\s\S]*per year[\s\S]*or \$119 per month/);
+  await shot(owner, 'catalog-cards-plans');
+  const gap = await owner.page.evaluate(() => document.querySelector('[data-testid=catalog-card]').getBoundingClientRect().top - document.querySelector('.cc-grid').getBoundingClientRect().top);
+  assert.ok(gap < 30, `the card sits at the top of its grid (${gap} px)`);
+  await toCards('?book=sample-software-plans');
+  assert.match(await owner.page.locator('[data-testid=catalog-card]', { hasText: 'ERP Starter' }).innerText(), /\$500[\s\S]*to build[\s\S]*\$55[\s\S]*\/mo per user/);
+  // the list is one click away and keeps the book
+  await owner.page.click('[data-testid=catalog-view-list]');
+  await owner.page.waitForFunction(() => location.search === '?book=sample-software-plans&view=list');
+  await owner.page.waitForSelector('[data-testid=catalog-list]');
+  await owner.page.click('[data-testid=catalog-view-cards]');
+  await owner.page.waitForSelector('[data-testid=catalog-cards]');
+  assert.deepEqual(owner.errors, []);
+});
+
 test('on a 390 px phone the sub-tabs, the list and a service page fit the screen', async () => {
   await owner.page.setViewportSize({ width: 390, height: 844 });
   const wide = () => owner.page.evaluate(() => document.documentElement.scrollWidth);
@@ -160,7 +208,10 @@ test('on a 390 px phone the sub-tabs, the list and a service page fit the screen
   const bar = await owner.page.locator('[data-testid=catalog-books]').boundingBox();
   assert.ok(bar.x >= 0 && bar.x + bar.width <= 390, 'the sub-tabs stay on screen (they scroll sideways inside themselves)');
   await shot(owner, 'catalog-live-390');
-  await owner.page.click('a.catalog-name:has-text("Growth Package")');
+  await toCards('?book=sample-agency-services');
+  assert.ok(await wide() <= 390, `the cards are ${await wide()} px wide`);
+  await shot(owner, 'catalog-cards-390');
+  await owner.page.click('[data-testid=catalog-card] h3 a:has-text("Growth Package")');
   await owner.page.waitForSelector('[data-testid=catalog-includes]');
   assert.ok(await wide() <= 390, `the service page is ${await wide()} px wide`);
   await shot(owner, 'catalog-live-service-390');

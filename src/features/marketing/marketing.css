@@ -717,3 +717,14 @@
 .mk-top:not(.compact) .mk-nav{gap:0}
 .mk-top:not(.compact) .mk-nav a{padding:9px 10px}
 .mk-top:not(.compact) .mk-top-signin{margin-left:0}
+
+/* the way back to vyntexusa.com, above the header */
+.mk-site{background:var(--surface-2);border-bottom:1px solid var(--line);font-size:13px}
+.mk-site-in{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:34px}
+.mk-site-back{display:inline-flex;align-items:center;gap:7px;color:var(--text-2);font-weight:650;text-decoration:none;padding:6px 0;border-radius:6px;transition:color var(--motion-fast) var(--ease-vyntex)}
+.mk-site-back svg{width:14px;height:14px;transition:transform var(--motion-fast) var(--ease-vyntex)}
+.mk-site-back:hover{color:var(--accent)}
+.mk-site-back:hover svg{transform:translateX(-3px)}
+.mk-site-back:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mk-site-tag{color:var(--text-3);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:760px){.mk-site-tag{display:none}}

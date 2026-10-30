@@ -1,6 +1,6 @@
 // One service: its price tiers, what starts when it is sold, how it reads in each language and where it is in use.
 import { useState } from 'react';
-import { LuArchive, LuArchiveRestore, LuArrowDown, LuArrowUp, LuCalendarClock, LuCopy, LuFileText, LuListChecks, LuLock, LuPencil, LuTrash2 } from 'react-icons/lu';
+import { LuArchive, LuArchiveRestore, LuArrowDown, LuArrowUp, LuCalendarClock, LuCheck, LuCopy, LuFileText, LuListChecks, LuLock, LuMinus, LuPencil, LuTrash2 } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { A, go } from '@/app/router';
 import { BackLink } from '@/app/Shell';
@@ -8,12 +8,12 @@ import { act } from '@/store/store';
 import { Badge, Button, Card, Empty, IconButton, PageHeader, confirmDialog, toast } from '@/ui';
 import { ActivityList } from '@/app/shared';
 import { deleteService, duplicateService, moveTier, setServiceActive } from '@/domain/actions';
-import { type Service, serviceDescription, serviceName, serviceUse } from '@/domain/actions/catalog';
+import { type Service, bookOf, serviceBestFor, serviceDescription, serviceExcludes, serviceHighlights, serviceName, serviceUse } from '@/domain/actions/catalog';
 import { moduleOn } from '@/domain/config';
 import { activityFor } from '@/domain/selectors';
 import type { Lang } from '@/domain/types';
 import { ServiceForm } from './forms';
-import { ExternalChips, categoryLabel, tierPrice, whoLabel } from './parts';
+import { ExternalChips, booksOf, bookSlug, categoryLabel, tierPrice, whoLabel } from './parts';
 
 const LANGS: Lang[] = ['en', 'es', 'zh'];
 
@@ -30,6 +30,10 @@ export function ServicePage({ id, canEdit }: { id: string; canEdit: boolean }) {
   const about = serviceDescription(s, lang);
   const openJobs = data.jobs.filter((j) => j.serviceId === s.id && j.status !== 'done').length;
   const written = LANGS.filter((l) => s.i18n?.[l]?.name || s.i18n?.[l]?.description);
+  const bestFor = serviceBestFor(s, lang); const included = serviceHighlights(s, lang); const excluded = serviceExcludes(s, lang);
+  const book = bookOf(s);
+  // back to the sub-tab the service is listed in
+  const back = book ? `/catalog?book=${encodeURIComponent(booksOf(data.catalog ?? []).find((b) => b.name === book)?.slug ?? bookSlug(book))}` : '/catalog';
 
   const copy = () => { const c = act(duplicateService, s.id); if (c) { toast(t('catalog.duplicated')); go(`/catalog/${c.id}`); } };
   const retire = async () => {
@@ -43,10 +47,10 @@ export function ServicePage({ id, canEdit }: { id: string; canEdit: boolean }) {
 
   return (
     <>
-      <BackLink to="/catalog">{t('catalog.back')}</BackLink>
+      <BackLink to={back}>{t('catalog.back')}</BackLink>
       <PageHeader
         title={<>{serviceName(s, lang)} {!s.active && <Badge>{t('catalog.retired')}</Badge>}</>}
-        sub={[categoryLabel(t, pack, s.category), s.code].filter(Boolean).join(' · ')}
+        sub={[book, categoryLabel(t, pack, s.category), s.code].filter(Boolean).join(' · ')}
         actions={canEdit ? <>
           <Button icon={<LuPencil aria-hidden="true" />} onClick={() => setEdit(true)} data-testid="catalog-edit">{t('common.edit')}</Button>
           <Button icon={<LuCopy aria-hidden="true" />} onClick={copy} data-testid="catalog-duplicate">{t('catalog.duplicate')}</Button>
@@ -65,7 +69,7 @@ export function ServicePage({ id, canEdit }: { id: string; canEdit: boolean }) {
                   {s.tiers.map((x, i) => (
                     <tr key={x.id} data-tier={x.id}>
                       <td className="t1">{x.name}{i === 0 && s.tiers.length > 1 && <> <Badge tone="accent" outline>{t('catalog.tier.first')}</Badge></>}<ExternalChips ids={x.externalIds} /></td>
-                      <td data-label={t('common.price')} className="num strong nowrap">{tierPrice(t, x)}</td>
+                      <td data-label={t('common.price')} className="num strong nowrap"><span className="catalog-amt">{x.kind === 'setup' && <span className="catalog-kind">{t('catalog.kind.setup')}</span>}<span className={x.quote && !(x.from && x.price > 0) ? 'catalog-quote' : undefined}>{tierPrice(t, x)}</span></span></td>
                       <td data-label={t('catalog.f.tierNote')} className="small">{x.note || null}</td>
                       {canEdit && s.tiers.length > 1 && (
                         <td className="catalog-tieracts"><span className="row tight nowrap">
@@ -79,6 +83,26 @@ export function ServicePage({ id, canEdit }: { id: string; canEdit: boolean }) {
               </table>
             </div>
           </Card>
+
+          {(bestFor || included.length > 0 || excluded.length > 0) && (
+            <Card title={t('catalog.inc.title')}>
+              <div className="catalog-inc" data-testid="catalog-includes">
+                {bestFor && <p className="catalog-bestfor"><b>{t('catalog.inc.bestFor')}</b> <span>{bestFor}</span></p>}
+                {(included.length > 0 || excluded.length > 0) && (
+                  <div className="catalog-inc-cols">
+                    {included.length > 0 && (
+                      <div><h3 className="catalog-inc-h">{t('catalog.inc.included')}</h3>
+                        <ul className="catalog-inc-list" data-testid="catalog-included">{included.map((x, i) => <li key={i}><LuCheck aria-hidden="true" className="catalog-inc-yes" /><span>{x}</span></li>)}</ul></div>
+                    )}
+                    {excluded.length > 0 && (
+                      <div><h3 className="catalog-inc-h">{t('catalog.inc.excluded')}</h3>
+                        <ul className="catalog-inc-list" data-testid="catalog-excluded">{excluded.map((x, i) => <li key={i}><LuMinus aria-hidden="true" className="catalog-inc-no" /><span>{x}</span></li>)}</ul></div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
 
           <Card title={t('catalog.starts.title')}>
             <div className="catalog-starts">
@@ -121,6 +145,7 @@ export function ServicePage({ id, canEdit }: { id: string; canEdit: boolean }) {
         <div className="stack">
           <Card title={t('common.details')}>
             <dl className="kv">
+              {book && <><dt>{t('catalog.f.book')}</dt><dd>{book}</dd></>}
               <dt>{t('catalog.f.category')}</dt><dd>{categoryLabel(t, pack, s.category)}</dd>
               <dt>{t('catalog.f.repeat')}</dt><dd>{t('jobs.rp.' + (s.repeat ?? 'once'))}</dd>
               <dt>{t('catalog.f.code')}</dt><dd>{s.code || <span className="dim">{t('catalog.notSet')}</span>}</dd>

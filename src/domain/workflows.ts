@@ -9,7 +9,7 @@ import type { Client, DemoState, Job, Lang, Lead } from './types';
 import { type Ctx, logActivity } from './context';
 import { makeT } from '@/i18n';
 import { addDays, today } from '@/lib/dates';
-import { type Service, playbookOf, playbookTasks, serviceName, serviceOf, startPlaybook, tierOf } from './actions/catalog';
+import { type Service, playbookOf, playbookTasks, serviceName, serviceOf, startPlaybook, tierAmount, tierOf } from './actions/catalog';
 import { type Engagement, createJob, fromService, periodFor, repeats } from './actions/jobs';
 import { createDocFromTemplate } from './actions/documents';
 import { queueMessage } from './actions/messages';
@@ -74,7 +74,7 @@ addWonLeadStep({
     }
     // a retired service is not sold again: it stays on the lead and no engagement is made for it
     const missing = services.filter((s) => s.active && s.id !== job.serviceId && !d.jobs.some((j) => j.leadId === lead.id && j.serviceId === s.id));
-    if (missing.length && first) job.price = tierOf(first, job.tierId)?.price ?? job.price;
+    if (missing.length && first) job.price = tierOf(first, job.tierId) ? tierAmount(tierOf(first, job.tierId)) : job.price;
     for (const s of missing) {
       const from = fromService(d, ctx, s.id);
       if (!from) continue;

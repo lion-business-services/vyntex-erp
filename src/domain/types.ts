@@ -584,12 +584,37 @@ export interface SecureAccessLog { id: string; at: ISODateTime; clientId: string
 export interface AuditEntry { id: string; at: ISODateTime; by: string; action: string; entity?: string; entityId?: string; summary?: string; ipHash?: string }
 
 // ---- service catalog
-export interface CatalogTier { id: string; name: string; price: number; unit: 'flat' | 'hour' | 'month' | 'quarter' | 'year'; note?: string; externalIds?: Record<string, string> }
+/** What a tier charges for: a setup fee, a recurring fee, hours, a one-time price or a price per unit. Only "setup" is labelled. */
+export type CatalogTierKind = 'setup' | 'recurring' | 'hourly' | 'one_time' | 'per_unit';
+export interface CatalogTier {
+  id: string; name: string; price: number; unit: 'flat' | 'hour' | 'month' | 'quarter' | 'year'; note?: string; externalIds?: Record<string, string>;
+  /** The price is quoted for each client: shown as "Quote" (or "From $X" with `from` and a price), never as $0. Kept in `extra`. */
+  quote?: boolean;
+  /** The price is a starting price: "From $4,000". Kept in `extra`. */
+  from?: boolean;
+  /** What a flat price is charged per, written out: "per form", "per user per month". Kept in `extra`. */
+  per?: string;
+  kind?: CatalogTierKind;
+}
+/** Text of a service in one language. The lists are "What's included" and "Not included", one item per entry. */
+export interface CatalogServiceText { name?: string; description?: string; highlights?: string[]; excludes?: string[]; bestFor?: string }
 export interface CatalogService {
   id: string;
   name: string;
-  /** Names and descriptions in other languages, when the business wrote them. */
-  i18n?: Partial<Record<Lang, { name?: string; description?: string }>>;
+  /** Names, descriptions and the lists of what is included in other languages, when the business wrote them. */
+  i18n?: Partial<Record<Lang, CatalogServiceText>>;
+  /** The catalog ("book") the service is listed in, e.g. "VYNTEX Services". A company with several books sees one tab per book. Kept in `extra`. */
+  book?: string;
+  /** Place of the book among the company's books (the smallest number of its services counts). Kept in `extra`. */
+  bookOrder?: number;
+  /** Place of the service within its category. Without it, services are sorted by name. Kept in `extra`. */
+  order?: number;
+  /** Place of the service's category within its book (the smallest number of its services counts). Kept in `extra`. */
+  categoryOrder?: number;
+  /** "What's included", "Not included" and "Best for" in the base language. Kept in `extra`. */
+  highlights?: string[];
+  excludes?: string[];
+  bestFor?: string;
   category: string;
   description?: string;
   active: boolean;

@@ -122,9 +122,9 @@ export function answerCatalog(n: string, env: Env): Reply {
   if (!list.length) return say(text(t('asst.cat.none')), { type: 'link', label: t('asst.cat.open'), to: '/catalog' });
   const one = namedService(n, env);
   // prices are the business's own list, not client money: anyone who may open the catalog may read them
-  const price = (s: (typeof list)[number]) => { const p = s.tiers.map((x) => x.price).filter((x) => x > 0); return p.length ? (p.length > 1 ? t('asst.cat.from', { price: money(Math.min(...p)) }) : money(p[0])) : t('asst.cat.noPrice'); };
+  const price = (s: (typeof list)[number]) => { const p = s.tiers.filter((x) => !x.quote || x.from).map((x) => x.price).filter((x) => x > 0); return p.length ? (p.length > 1 ? t('asst.cat.from', { price: money(Math.min(...p)) }) : money(p[0])) : t('asst.cat.noPrice'); };
   if (one) {
-    return say(text(t('asst.cat.one', { name: svcName(env, one), n: one.tiers.length })), { type: 'list', items: one.tiers.map((x) => ({ title: x.name, sub: [t('asst.cat.unit.' + x.unit), x.note].filter(Boolean).join(' · '), right: x.price > 0 ? money(x.price) : t('asst.cat.noPrice') })) },
+    return say(text(t('asst.cat.one', { name: svcName(env, one), n: one.tiers.length })), { type: 'list', items: one.tiers.map((x) => ({ title: x.name, sub: [t('asst.cat.unit.' + x.unit), x.note].filter(Boolean).join(' · '), right: x.price > 0 && (!x.quote || x.from) ? money(x.price) : t('asst.cat.noPrice') })) },
       { type: 'link', label: t('asst.sum.open', { name: svcName(env, one) }), to: `/catalog/${one.id}` });
   }
   return say(text(t('asst.cat.head', { n: list.length })), capped(list, (s) => ({ title: svcName(env, s), sub: s.category, right: price(s), to: `/catalog/${s.id}` }), { label: t('asst.more', { n: list.length - LIST_MAX }), to: '/catalog' }), { type: 'link', label: t('asst.cat.open'), to: '/catalog' });

@@ -13,7 +13,7 @@ import { downloadCsv, readCsvFile } from '@/features/data/csv';
 import { repeatsOf } from '@/features/jobs/parts';
 import { parseMoney } from '@/lib/money';
 import { IMPORT_COLUMNS, type ParsedCatalog, readCatalogCsv } from './csv';
-import { ExternalChips, categoriesOf, categoryLabel, whoLabel } from './parts';
+import { ExternalChips, booksOf, categoriesOf, categoryLabel, whoLabel } from './parts';
 
 const OTHER = '__other';
 /** Documents that are not prepared when a service is sold: a proposal comes before the sale, an invoice when the work is done, and an upload is not prepared by anyone. */
@@ -22,9 +22,12 @@ let seq = 0;
 const rowKey = () => 'r' + ++seq;
 
 /* ---------- a service ---------- */
-interface TierRow { key: string; id?: string; name: string; price: string; unit: CatalogTier['unit']; note: string; ids?: Record<string, string> }
+interface TierRow { key: string; id?: string; name: string; price: string; unit: CatalogTier['unit']; note: string; ids?: Record<string, string>; quote?: boolean; from?: boolean; per?: string; kind?: CatalogTier['kind'] }
+/** One item per line, for the lists of what is included. */
+const toLines = (text: string): string[] => text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
 
-export function ServiceForm({ service, onClose, onSaved }: { service?: Service; onClose: () => void; onSaved?: (s: Service) => void }) {
+/** `book`: the catalog a new service goes into, when it is added from that catalog's tab. */
+export function ServiceForm({ service, book, onClose, onSaved }: { service?: Service; book?: string; onClose: () => void; onSaved?: (s: Service) => void }) {
   const { t, data, pack, lang } = useApp();
   const uid = useId(); const id = (k: string) => uid + k;
   const showZh = DEPLOY.languages.includes('zh') || !!service?.i18n?.zh;
@@ -32,17 +35,23 @@ export function ServiceForm({ service, onClose, onSaved }: { service?: Service; 
   const lines = pack.serviceTypes.map((x) => x.id);
   const [v, setV] = useState(() => {
     // a service written before it had names per language shows its name in the language being used
-    const en = service?.i18n?.en?.name ?? (service && !service.i18n?.es?.name && lang !== 'es' ? service.name : '');
+    // a service with a Spanish name of its own keeps the base name as its English one, so saving never renames it
+    const en = service?.i18n?.en?.name ?? (service && (lang !== 'es' || service.i18n?.es?.name) ? service.name : '');
     const es = service?.i18n?.es?.name ?? (service && !service.i18n?.en?.name && lang === 'es' ? service.name : '');
     const category = service?.category ?? lines[0] ?? '';
     return {
       en, es, zh: service?.i18n?.zh?.name ?? '',
-      aboutEn: service?.i18n?.en?.description ?? (lang !== 'es' ? service?.description ?? '' : ''), aboutEs: service?.i18n?.es?.description ?? (lang === 'es' ? service?.description ?? '' : ''), aboutZh: service?.i18n?.zh?.description ?? '',
+      aboutEn: service?.i18n?.en?.description ?? (lang !== 'es' || service?.i18n?.es?.description ? service?.description ?? '' : ''), aboutEs: service?.i18n?.es?.description ?? (lang === 'es' ? service?.description ?? '' : ''), aboutZh: service?.i18n?.zh?.description ?? '',
       category, newCategory: '', repeat: (service?.repeat ?? 'once') as Repeat, playbookId: service?.playbookId ?? '', appointmentTypeId: service?.appointmentTypeId ?? '',
       docKinds: service?.docKinds ?? [], code: service?.code ?? '', internalNote: service?.internalNote ?? '', active: service?.active ?? true,
+      book: service ? service.book ?? '' : book ?? '',
+      bestForEn: service?.i18n?.en?.bestFor ?? service?.bestFor ?? '', bestForEs: service?.i18n?.es?.bestFor ?? '',
+      incEn: (service?.i18n?.en?.highlights ?? service?.highlights ?? []).join('\n'), incEs: (service?.i18n?.es?.highlights ?? []).join('\n'),
+      excEn: (service?.i18n?.en?.excludes ?? service?.excludes ?? []).join('\n'), excEs: (service?.i18n?.es?.excludes ?? []).join('\n'),
     };
   });
-  const [tiers, setTiers] = useState<TierRow[]>(() => (service?.tiers.length ? service.tiers.map((x) => ({ key: rowKey(), id: x.id, name: x.name, price: String(x.price), unit: x.unit, note: x.note ?? '', ids: x.externalIds }))
+  const books = booksOf(data.catalog ?? []);
+  const [tiers, setTiers] = useState<TierRow[]>(() => (service?.tiers.length ? service.tiers.map((x) => ({ key: rowKey(), id: x.id, name: x.name, price: x.quote && !x.price ? '' : String(x.price), unit: x.unit, note: x.note ?? '', ids: x.externalIds, quote: !!x.quote, from: !!x.from, per: x.per ?? '', kind: x.kind }))
     : [{ key: rowKey(), name: t('catalog.tier.standard'), price: '', unit: 'flat', note: '' }]));
   const [err, setErr] = useState<string[]>([]);
   const [msg, setMsg] = useState('');
@@ -65,10 +74,16 @@ export function ServiceForm({ service, onClose, onSaved }: { service?: Service; 
     if (bad.length) { setErr(bad); setMsg(t(bad.some((b) => b.startsWith('price:')) ? 'catalog.f.priceErr' : bad.includes('tiers') ? 'catalog.f.tierErr' : bad.includes('name') ? 'catalog.f.nameErr' : 'common.required')); return; }
     const saved = act(saveService, {
       name: v.en.trim() || v.es.trim(), description: v.aboutEn.trim() || v.aboutEs.trim() || undefined,
-      i18n: { en: { name: v.en, description: v.aboutEn }, es: { name: v.es, description: v.aboutEs }, zh: { name: v.zh, description: v.aboutZh } },
+      i18n: {
+        en: { name: v.en, description: v.aboutEn, bestFor: v.bestForEn, highlights: toLines(v.incEn), excludes: toLines(v.excEn) },
+        es: { name: v.es, description: v.aboutEs, bestFor: v.bestForEs, highlights: toLines(v.incEs), excludes: toLines(v.excEs) },
+        zh: { name: v.zh, description: v.aboutZh },
+      },
+      book: v.book, bestFor: v.bestForEn.trim() || v.bestForEs.trim(),
+      highlights: toLines(v.incEn).length ? toLines(v.incEn) : toLines(v.incEs), excludes: toLines(v.excEn).length ? toLines(v.excEn) : toLines(v.excEs),
       category: v.category === OTHER ? v.newCategory.trim() : v.category, active: v.active, repeat: v.repeat, playbookId: v.playbookId || undefined, appointmentTypeId: v.appointmentTypeId || undefined,
       docKinds: v.docKinds, code: v.code, internalNote: v.internalNote,
-      tiers: named.map((x) => ({ id: x.id, name: x.name, price: x.price.trim() ? parseMoney(x.price) ?? 0 : 0, unit: x.unit, note: x.note })),
+      tiers: named.map((x) => ({ id: x.id, name: x.name, price: x.price.trim() ? parseMoney(x.price) ?? 0 : 0, unit: x.unit, note: x.note, quote: !!x.quote, from: !!x.from, per: x.per ?? '', kind: x.kind })),
     }, service?.id);
     if (!saved) { setMsg(t('common.required')); return; }
     toast(t(service ? 'catalog.saved' : 'catalog.created', { name: saved.name }));
@@ -97,6 +112,10 @@ export function ServiceForm({ service, onClose, onSaved }: { service?: Service; 
             ? <Field label={t('catalog.f.categoryName')} htmlFor={id('newcat')} error={err.includes('category')}><input id={id('newcat')} value={v.newCategory} onChange={(e) => set('newCategory', e.target.value)} data-testid="catalog-f-newcategory" /></Field>
             : <Field label={`${t('catalog.f.code')} (${t('common.optional')})`} htmlFor={id('code')} hint={t('catalog.f.codeHint')}><input id={id('code')} value={v.code} onChange={(e) => set('code', e.target.value)} data-testid="catalog-f-code" /></Field>}
           {v.category === OTHER && <Field label={`${t('catalog.f.code')} (${t('common.optional')})`} htmlFor={id('code')} hint={t('catalog.f.codeHint')} full><input id={id('code')} value={v.code} onChange={(e) => set('code', e.target.value)} /></Field>}
+          <Field label={`${t('catalog.f.book')} (${t('common.optional')})`} htmlFor={id('book')} hint={t('catalog.f.bookHint')} full>
+            <input id={id('book')} value={v.book} onChange={(e) => set('book', e.target.value)} list={id('books')} autoComplete="off" data-testid="catalog-f-book" />
+            <datalist id={id('books')}>{books.map((b) => <option key={b.slug} value={b.name} />)}</datalist>
+          </Field>
         </div>
 
         <fieldset className={cx('catalog-tiers', err.includes('tiers') && 'err')}>
@@ -117,6 +136,12 @@ export function ServiceForm({ service, onClose, onSaved }: { service?: Service; 
                   <IconButton size="sm" label={t('catalog.f.up')} disabled={i === 0} onClick={() => move(i, -1)} data-testid="catalog-f-tier-up"><LuArrowUp /></IconButton>
                   <IconButton size="sm" label={t('catalog.f.down')} disabled={i === tiers.length - 1} onClick={() => move(i, 1)} data-testid="catalog-f-tier-down"><LuArrowDown /></IconButton>
                   <IconButton size="sm" label={linked(x) ? t('catalog.f.linkedTier') : t('catalog.f.removeTier')} disabled={tiers.length === 1 || linked(x)} onClick={() => setTiers((list) => list.filter((y) => y.key !== x.key))} data-testid="catalog-f-tier-remove"><LuTrash2 /></IconButton>
+                </span>
+                <span className="catalog-tr-more">
+                  <label className="check"><input type="checkbox" checked={!!x.quote} onChange={(e) => setTier(x.key, { quote: e.target.checked })} data-testid="catalog-f-tier-quote" /><span>{t('catalog.f.quote')}</span></label>
+                  <label className="check"><input type="checkbox" checked={!!x.from} onChange={(e) => setTier(x.key, { from: e.target.checked })} data-testid="catalog-f-tier-from" /><span>{t('catalog.f.from')}</span></label>
+                  <label className="catalog-tr-per"><span className="xs muted">{t('catalog.f.per')}</span>
+                    <input value={x.per ?? ''} onChange={(e) => setTier(x.key, { per: e.target.value })} placeholder={t('catalog.f.perHint')} data-testid="catalog-f-tier-per" /></label>
                 </span>
                 {linked(x) && <span className="catalog-tr-ext"><ExternalChips ids={x.ids} /></span>}
               </div>
@@ -152,6 +177,12 @@ export function ServiceForm({ service, onClose, onSaved }: { service?: Service; 
           <Field label={t('catalog.f.aboutEn')} htmlFor={id('aen')}><textarea id={id('aen')} rows={3} value={v.aboutEn} onChange={(e) => set('aboutEn', e.target.value)} lang="en" /></Field>
           <Field label={t('catalog.f.aboutEs')} htmlFor={id('aes')}><textarea id={id('aes')} rows={3} value={v.aboutEs} onChange={(e) => set('aboutEs', e.target.value)} lang="es" /></Field>
           {showZh && <Field label={`${t('catalog.f.aboutZh')} (${t('common.optional')})`} htmlFor={id('azh')} full><textarea id={id('azh')} rows={2} value={v.aboutZh} onChange={(e) => set('aboutZh', e.target.value)} lang="zh" /></Field>}
+          <Field label={t('catalog.f.bestForEn')} htmlFor={id('bfen')}><textarea id={id('bfen')} rows={2} value={v.bestForEn} onChange={(e) => set('bestForEn', e.target.value)} lang="en" data-testid="catalog-f-bestfor" /></Field>
+          <Field label={t('catalog.f.bestForEs')} htmlFor={id('bfes')}><textarea id={id('bfes')} rows={2} value={v.bestForEs} onChange={(e) => set('bestForEs', e.target.value)} lang="es" /></Field>
+          <Field label={t('catalog.f.incEn')} htmlFor={id('incen')} hint={t('catalog.f.linesHint')}><textarea id={id('incen')} rows={4} value={v.incEn} onChange={(e) => set('incEn', e.target.value)} lang="en" data-testid="catalog-f-included" /></Field>
+          <Field label={t('catalog.f.incEs')} htmlFor={id('inces')} hint={t('catalog.f.linesHint')}><textarea id={id('inces')} rows={4} value={v.incEs} onChange={(e) => set('incEs', e.target.value)} lang="es" /></Field>
+          <Field label={t('catalog.f.excEn')} htmlFor={id('excen')} hint={t('catalog.f.linesHint')}><textarea id={id('excen')} rows={3} value={v.excEn} onChange={(e) => set('excEn', e.target.value)} lang="en" data-testid="catalog-f-excluded" /></Field>
+          <Field label={t('catalog.f.excEs')} htmlFor={id('exces')} hint={t('catalog.f.linesHint')}><textarea id={id('exces')} rows={3} value={v.excEs} onChange={(e) => set('excEs', e.target.value)} lang="es" /></Field>
           <Field label={t('catalog.f.internal')} htmlFor={id('note')} hint={t('catalog.f.internalHint')} full><textarea id={id('note')} rows={2} value={v.internalNote} onChange={(e) => set('internalNote', e.target.value)} /></Field>
           <label className="check full"><input type="checkbox" checked={v.active} onChange={(e) => set('active', e.target.checked)} data-testid="catalog-f-active" /><span>{t('catalog.f.active')}</span></label>
         </div>

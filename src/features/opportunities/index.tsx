@@ -117,7 +117,7 @@ function List({ focus }: { focus?: string }) {
                         {o.note && <p className="small opportunities-note">{o.note}</p>}
                         {o.status === 'dismissed' && o.dismissedReason && <p className="small muted opportunities-note">{t('opportunities.reason')}: {o.dismissedReason}</p>}
                       </td>
-                      {showMoney && <td data-label={t('common.value')} className="num nowrap">{tier && sv ? <><b>{money(o.value ?? tier.price)}</b>{tier.unit !== 'flat' && <div className="xs muted">{tierPrice(t, { price: o.value ?? tier.price, unit: tier.unit })}</div>}</> : null}</td>}
+                      {showMoney && <td data-label={t('common.value')} className="num nowrap">{tier && sv && tier.quote && !o.value ? <b>{tierPrice(t, tier)}</b> : tier && sv ? <><b>{money(o.value ?? tier.price)}</b>{tier.unit !== 'flat' && <div className="xs muted">{tierPrice(t, { price: o.value ?? tier.price, unit: tier.unit })}</div>}</> : null}</td>}
                       <td data-label={t('opportunities.col.since')} className="small"><div className="opportunities-state"><StatusBadge o={o} /><span className="muted nowrap">{date(o.created)}</span></div></td>
                       <td className="opportunities-c-acts"><Actions o={o} /></td>
                     </tr>

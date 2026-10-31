@@ -6,6 +6,7 @@
 //   5. the VYNTEX Partner Portal                                                        tests/e2e/partners.e2e.test.mjs
 //   6. the public 7-day trial and the plan's users                                     tests/e2e/trial.e2e.test.mjs
 //   7. several catalogs ("books") on the Services page of a live workspace              tests/e2e/catalog.e2e.test.mjs
+//   8. a PDF uploaded, sent for signature, signed by the client, signed copy stored      tests/e2e/esign.e2e.test.mjs
 // Local stand-ins only: a throwaway PostgreSQL with every migration, the test double of the Supabase addresses, and
 // scripts/serve.mjs running the handlers of api/. Nothing here runs on Supabase or on Vercel.
 //   E2E_SKIP_BUILD=1   use the builds already in /tmp/vx-live and /tmp/vx-live-lbs
@@ -38,6 +39,8 @@ const results = [
     ['--test', '--test-concurrency=1', '--test-timeout=900000', path.join(here, 'trial.e2e.test.mjs')], { PGTEST_DIR: (process.env.PGTEST_DIR || '/tmp/vx-pg-live') + '-trial', E2E_SKIP_BUILD: '1' }),
   step('several catalogs on the Services page: sub-tabs, quoted prices and a service edited without losing a field, in a real browser, against local stand-ins',
     ['--test', '--test-concurrency=1', '--test-timeout=900000', path.join(here, 'catalog.e2e.test.mjs')], { PGTEST_DIR: (process.env.PGTEST_DIR || '/tmp/vx-pg-live') + '-catalog', E2E_SKIP_BUILD: '1' }),
+  step('a PDF uploaded in Documents, sent for signature from a live workspace, signed from the emailed link, in a real browser, against local stand-ins',
+    ['--test', '--test-concurrency=1', '--test-timeout=900000', path.join(here, 'esign.e2e.test.mjs')], { PGTEST_DIR: (process.env.PGTEST_DIR || '/tmp/vx-pg-live') + '-esign', E2E_SKIP_BUILD: '1' }),
 ];
 console.log(`== finished in ${((Date.now() - started) / 1000).toFixed(1)} s`);
 process.exit(results.every(Boolean) ? 0 : 1);

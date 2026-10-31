@@ -307,7 +307,7 @@ function ReadPages({ env, pages, view, images, url }: { env: EnvelopeX; pages: {
   const mode = pageMode(view, url, viewer, pages.length);
   return (
     <div className="es-pages es-read" data-testid="esign-pages">
-      {mode !== 'drawn' && <Note>{t(mode === 'viewer' ? 'esign.pages.viewer' : 'esign.pages.blank')}</Note>}
+      {(mode === 'viewer' || mode === 'blank') && <Note>{t(mode === 'viewer' ? 'esign.pages.viewer' : 'esign.pages.blank')}</Note>}
       {pages.map((size, i) => (
         <PageSheet key={i} index={i} size={size} view={view?.[i]} images={images} pdfUrl={url} mode={mode} label={t('esign.pages.page', { n: i + 1, total: pages.length })} blankNote={t('esign.pages.blankSheet')}>
           {env.fields.filter((f) => f.page === i + 1).map((f) => <FieldBox key={f.id} f={{ ...f, mine: false, color: signerIndex(env, f.signerId) }} page={size} label="" value={f.value && f.type !== 'signature' && f.type !== 'initials' ? f.value : undefined} ink={fieldImage(env, f) ?? undefined} inkName={fieldInkName(env, f) ?? undefined} />)}

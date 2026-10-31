@@ -104,7 +104,7 @@ export async function drawDocument(app: { data: DemoState; pack: IndustryPack; l
  * browser; while it is off a company workspace prepares drafts only, and the screens say so instead of pretending a
  * request went out.
  */
-export const SERVER_SIGNING = false;
+export const SERVER_SIGNING = true;
 /** True where a request can only be prepared, not sent: a company workspace, until the server's signing calls exist. */
 export const sendingPending = (): boolean => isLive() && !SERVER_SIGNING;
 /** The page layout a request keeps with it has to fit in its record (512 KB in the database, with room for the rest). */

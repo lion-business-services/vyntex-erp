@@ -4561,6 +4561,7 @@ var dict9 = {
   en: {
     "docs.title": "Documents",
     "docs.sub": "Estimates, agreements and invoices, written from the details of each {job}.",
+    "docs.upload": "Upload file",
     "docs.new": "New document",
     "docs.search": "Search number, title or {client}",
     "docs.kind": "Type of document",
@@ -4869,6 +4870,7 @@ var dict9 = {
   es: {
     "docs.title": "Documentos",
     "docs.sub": "Presupuestos, acuerdos y facturas, redactados con los datos de cada {job}.",
+    "docs.upload": "Subir archivo",
     "docs.new": "Nuevo documento",
     "docs.search": "Buscar n\xFAmero, t\xEDtulo o {client}",
     "docs.kind": "Tipo de documento",

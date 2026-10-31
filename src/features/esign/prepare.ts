@@ -10,6 +10,7 @@ import { tinyPdf } from '@/domain/esign/tinypdf';
 import type { SendBlocker, SignAnchor } from '@/domain/esign/envelope';
 import { bytesDataUrl, dataUrlBytes, pageFrame, pdfLib, readPages, sha256Hex, type PdfProblem } from '@/domain/esign/pdfkit';
 import { buildSignedPdf } from '@/domain/esign/stamp';
+import { pdfObjectUrl } from './pdfview';
 import { attachSignedCopy, remindEnvelope, sendEnvelope } from '@/domain/actions';
 import { attachEnvelopeSource, envelopeBlockers, type Done, type PreparedDocument } from '@/domain/actions/esign';
 import { PACKS } from '@/packs';
@@ -50,7 +51,9 @@ export async function fileBytes(ref: FileRef | undefined): Promise<Uint8Array | 
 /** An address this page made itself for a file it already holds, to show or open it. The caller releases it when done. */
 export async function objectUrl(ref: FileRef | undefined): Promise<string | null> {
   const bytes = await fileBytes(ref);
-  return bytes && ref ? URL.createObjectURL(new Blob([bytes as BlobPart], { type: ref.mime || 'application/octet-stream' })) : null;
+  if (!bytes || !ref) return null;
+  // a PDF is registered with its address, so its pages can be drawn on screen (pdfview.ts)
+  return isPdf(ref) ? pdfObjectUrl(bytes) : URL.createObjectURL(new Blob([bytes as BlobPart], { type: ref.mime || 'application/octet-stream' }));
 }
 export async function downloadFile(ref: FileRef | undefined, name?: string): Promise<boolean> {
   const bytes = await fileBytes(ref);

@@ -8,6 +8,7 @@ var __export = (target, all2) => {
 // src/domain/esign/index.ts
 var esign_exports = {};
 __export(esign_exports, {
+  CERT_IMG: () => CERT_IMG,
   DEFAULT_EXPIRY_DAYS: () => DEFAULT_EXPIRY_DAYS,
   DEFAULT_REMIND_EVERY: () => DEFAULT_REMIND_EVERY,
   EMAIL_RE: () => EMAIL_RE,
@@ -18703,7 +18704,19 @@ function wrapper(m) {
 // src/domain/esign/certificate.ts
 var L = {
   en: {
-    title: "Completion certificate",
+    title: "Certificate of Completion",
+    kicker: "Electronic signature record",
+    status: "Completed",
+    statusLine: (n, at) => `${n === 1 ? "The signer" : `All ${n} signers`} signed. Completed ${at}.`,
+    open: "In progress",
+    openLine: (n, m) => `${n} of ${m} signers signed.`,
+    pDoc: "Document",
+    pHash: "Integrity",
+    pSigners: "Signers",
+    pConsent: "Consent to sign electronically",
+    pSignature: "Signature",
+    noInk: "No signature image recorded",
+    record: (p) => `Recorded with ${p}`,
     doc: "Document",
     number: "Document number",
     id: "Request ID",
@@ -18736,6 +18749,18 @@ var L = {
   },
   es: {
     title: "Certificado de finalizaci\xF3n",
+    kicker: "Registro de firma electr\xF3nica",
+    status: "Completado",
+    statusLine: (n, at) => `${n === 1 ? "El firmante firm\xF3" : `Los ${n} firmantes firmaron`}. Completado ${at}.`,
+    open: "En curso",
+    openLine: (n, m) => `${n} de ${m} firmantes firmaron.`,
+    pDoc: "Documento",
+    pHash: "Integridad",
+    pSigners: "Firmantes",
+    pConsent: "Consentimiento para firmar electr\xF3nicamente",
+    pSignature: "Firma",
+    noInk: "Sin imagen de firma registrada",
+    record: (p) => `Registrado con ${p}`,
     doc: "Documento",
     number: "N\xFAmero de documento",
     id: "ID de la solicitud",
@@ -18779,18 +18804,22 @@ function certificateModel(i) {
   const e = i.env;
   const at = (iso) => utcStamp(iso) || t.notRecorded;
   const rows = [
-    { label: t.doc, value: i.docTitle },
-    ...i.docNumber ? [{ label: t.number, value: i.docNumber }] : [],
-    { label: t.id, value: e.id },
-    { label: t.company, value: [i.company, i.sentBy].filter(Boolean).join(" \xB7 ") },
-    { label: t.order, value: e.ordered && e.signers.length > 1 ? t.seq : t.par },
-    { label: t.sent, value: at(e.sentAt) },
-    { label: t.completed, value: at(e.completedAt) },
-    { label: t.original, value: i.hashes.original, mono: true },
-    { label: t.signed, value: i.hashes.signed, mono: true }
+    { label: t.doc, value: i.docTitle, part: "doc" },
+    ...i.docNumber ? [{ label: t.number, value: i.docNumber, part: "doc" }] : [],
+    { label: t.id, value: e.id, part: "doc" },
+    { label: t.company, value: [i.company, i.sentBy].filter(Boolean).join(" \xB7 "), part: "doc" },
+    { label: t.order, value: e.ordered && e.signers.length > 1 ? t.seq : t.par, part: "doc" },
+    { label: t.sent, value: at(e.sentAt), part: "doc" },
+    { label: t.completed, value: at(e.completedAt), part: "doc" },
+    { label: t.original, value: i.hashes.original, mono: true, part: "hash" },
+    { label: t.signed, value: i.hashes.signed, mono: true, part: "hash" }
   ];
-  const signers = [...e.signers].sort((a, b2) => a.order - b2.order).map((s, n) => ({
+  const ordered = [...e.signers].sort((a, b2) => a.order - b2.order);
+  const signers = ordered.map((s, n) => ({
     heading: `${t.signer} ${n + 1}`,
+    name: s.name,
+    ink: s.signature || void 0,
+    signed: !!s.signedAt,
     rows: [
       { label: t.name, value: s.name },
       ...s.typedName && s.typedName !== s.name ? [{ label: t.typed, value: s.typedName }] : [],
@@ -18802,84 +18831,223 @@ function certificateModel(i) {
       { label: t.consent, value: s.consent ? t.consentYes(at(s.consentAt ?? s.signedAt)) : t.notRecorded }
     ]
   }));
-  if (e.consentText) rows.push({ label: t.consentText, value: e.consentText });
-  return { title: t.title, rows, signers, note: `${t.note(i.product)} ${t.signedNote}`, sample: i.sample ? t.sample : void 0, footer: `${i.company} \xB7 ${e.id}` };
+  if (e.consentText) rows.push({ label: t.consentText, value: e.consentText, part: "consent" });
+  const done = signers.filter((s) => s.signed).length;
+  const complete = e.status === "completed";
+  return {
+    title: t.title,
+    rows,
+    signers,
+    status: complete ? t.status : t.open,
+    statusLine: complete ? t.statusLine(signers.length, at(e.completedAt)) : t.openLine(done, signers.length),
+    parts: { doc: t.pDoc, hash: t.pHash, signers: t.pSigners, consent: t.pConsent, signature: t.pSignature, noInk: t.noInk, record: t.record(i.product) },
+    note: `${t.note(i.product)} ${t.signedNote}`,
+    sample: i.sample ? t.sample : void 0,
+    footer: `${i.company} \xB7 ${e.id}`,
+    product: i.product
+  };
 }
 var INK = [0.086, 0.125, 0.18];
 var HEAD = [0.043, 0.106, 0.2];
-var MUTED = [0.33, 0.39, 0.48];
-var LINE = [0.82, 0.85, 0.89];
-function layoutCertificate(model, m, size, lang) {
+var MUTED = [0.36, 0.41, 0.49];
+var LINE = [0.85, 0.87, 0.9];
+var PANEL = [0.972, 0.977, 0.985];
+var WHITE = [1, 1, 1];
+var BAND = [0.02, 0.027, 0.047];
+var ACCENT = [0, 0.73, 0.9];
+var OK = [0.07, 0.5, 0.33];
+var OK_SOFT = [0.9, 0.97, 0.93];
+var WAIT = [0.62, 0.42, 0.04];
+var WAIT_SOFT = [0.99, 0.95, 0.86];
+var CERT_IMG = { mark: "cert:mark", wordmark: "cert:wordmark", ink: (n) => `cert:ink:${n}` };
+function layoutCertificate(model, m, size, lang, look = {}) {
   const wrap = wrapper(m);
-  const W = size.w, H = size.h, M = Math.min(56, W * 0.09), CW = W - M * 2, labelW = Math.min(150, CW * 0.32);
+  const W = size.w, H = size.h, M = Math.min(46, W * 0.08), CW = W - M * 2;
+  const band = look.brand?.band ?? BAND;
+  const accent = look.brand?.accent ?? ACCENT;
   const pages = [];
   let ops = [];
   let y = 0;
-  const open = () => {
-    ops = [];
-    pages.push({ w: W, h: H, ops });
-    y = H - M;
-  };
-  const need = (h) => {
-    if (y - h < 58) open();
-  };
   const text = (s, x, yy, f, sz, c) => {
     if (s) ops.push({ t: "text", x, y: yy, s, f, size: sz, c });
   };
-  const rule3 = (yy, c, w = 0.7) => ops.push({ t: "line", x1: M, y1: yy, x2: W - M, y2: yy, w, c });
-  const row = (r) => {
-    const sz = r.mono ? Math.min(9, (CW - labelW) / 36) : 9.5;
-    const lines = wrap(r.value, "regular", sz, CW - labelW);
-    const label = wrap(r.label, "bold", 9, labelW - 10);
-    const n = Math.max(lines.length, label.length);
-    need(n * 12.5 + 6);
-    let yy = y;
-    label.forEach((s, k) => text(s, M, y - 12.5 * (k + 1), "bold", 9, HEAD));
-    for (const s of lines) {
-      yy -= 12.5;
-      text(s, M + labelW, yy, "regular", sz, INK);
+  const right = (s, xr, yy, f, sz, c) => text(s, xr - m.width(s, f, sz), yy, f, sz, c);
+  const rect = (x, yy, w, h, fill, stroke, sw = 0.8) => ops.push({ t: "rect", x, y: yy, w, h, ...fill ? { fill } : {}, ...stroke ? { stroke, sw } : {} });
+  const rule3 = (yy, c, w = 0.7, x1 = M, x2 = W - M) => ops.push({ t: "line", x1, y1: yy, x2, y2: yy, w, c });
+  const spaced = (s) => s.toUpperCase().split("").join(" ").replace(/ {3}/g, "   ");
+  const fit = (s, f, sz, max) => wrap(s, f, sz, max)[0] ?? "";
+  const header = (first) => {
+    const bh = first ? 92 : 46;
+    rect(0, H - bh, W, bh, band);
+    rect(0, H - bh - 2.2, W, 2.2, accent);
+    const sz = look.sizes ?? {};
+    const midY = H - bh / 2;
+    let x = M;
+    const markH = first ? 54 : 26;
+    if (look.brand?.mark && sz.mark) {
+      const w = markH * sz.mark.w / sz.mark.h;
+      ops.push({ t: "img", key: CERT_IMG.mark, x, y: midY - markH / 2, w, h: markH });
+      x += w + (first ? 10 : 6);
     }
-    y -= n * 12.5 + 6;
+    if (look.brand?.wordmark && sz.wordmark) {
+      const wh = first ? 17 : 10;
+      const ww = wh * sz.wordmark.w / sz.wordmark.h;
+      ops.push({ t: "img", key: CERT_IMG.wordmark, x, y: midY - wh / 2 + (first ? 7 : 0), w: ww, h: wh });
+      if (first) text(spaced(model.product.replace(/^VYNTEX\s*/i, "") || model.product), x + 1, midY - 16, "bold", 7, accent);
+    } else if (!(look.brand?.mark && sz.mark)) {
+      text(fit(model.product, "bold", first ? 16 : 11, CW / 2), x, midY - (first ? 6 : 4), "bold", first ? 16 : 11, WHITE);
+    }
+    const tsz = first ? 17 : 10.5;
+    right(fit(model.title, "bold", tsz, CW / 2), W - M, first ? midY + 2 : midY - 4, "bold", tsz, WHITE);
+    if (first) right(spaced(words(lang).kicker), W - M, midY - 14, "regular", 7, accent);
+    y = H - bh - 2.2 - (first ? 24 : 22);
   };
-  open();
-  y -= 20;
-  text(wrap(model.title, "bold", 17, CW)[0] ?? "", M, y, "bold", 17, HEAD);
-  y -= 12;
-  rule3(y, HEAD, 1.4);
-  y -= 8;
-  if (model.sample) {
-    for (const s of wrap(model.sample, "bold", 9.5, CW)) {
-      y -= 13;
-      text(s, M, y, "bold", 9.5, HEAD);
-    }
-    y -= 8;
-  }
-  for (const r of model.rows) row(r);
-  for (const s of model.signers) {
-    need(13 * 4 + 30);
-    y -= 8;
-    rule3(y, LINE);
-    y -= 18;
-    text(s.heading, M, y, "bold", 11, HEAD);
+  const open = (first = false) => {
+    ops = [];
+    pages.push({ w: W, h: H, ops });
+    header(first);
+  };
+  const need = (h) => {
+    if (y - h < 64) open();
+  };
+  const section = (title) => {
+    need(40);
+    y -= 12;
+    text(spaced(title), M, y, "bold", 7.5, HEAD);
+    rule3(y + 2.5, LINE, 0.7, M + m.width(spaced(title), "bold", 7.5) + 8);
     y -= 6;
-    for (const r of s.rows) row(r);
+  };
+  const LH = 11;
+  const GAP = 2.5;
+  const rowH = (r, width, labelW) => {
+    const sz = r.mono ? Math.min(8.4, (width - labelW) / 37) : 8.8;
+    return Math.max(wrap(r.value, "regular", sz, width - labelW).length, wrap(r.label, "bold", 7.8, labelW - 8).length) * LH + GAP;
+  };
+  const rowsAt = (list, x, width, labelW) => {
+    let used = 0;
+    for (const r of list) {
+      const sz = r.mono ? Math.min(8.4, (width - labelW) / 37) : 8.8;
+      const lines = wrap(r.value, "regular", sz, width - labelW);
+      const label = wrap(r.label, "bold", 7.8, labelW - 8);
+      label.forEach((s, k) => text(s, x, y - used - LH * (k + 1) + 1, "bold", 7.8, MUTED));
+      lines.forEach((s, k) => text(s, x + labelW, y - used - LH * (k + 1) + 1, "regular", sz, INK));
+      used += rowH(r, width, labelW);
+    }
+    return used;
+  };
+  const measureRows = (list, width, labelW) => list.reduce((a, r) => a + rowH(r, width, labelW), 0);
+  const colW = (CW - 18) / 2;
+  const gridAt = (list, labelW) => {
+    let used = 0;
+    const top = y;
+    for (let k = 0; k < list.length; k += 2) {
+      const pair = list.slice(k, k + 2);
+      y = top - used;
+      rowsAt([pair[0]], M, colW, labelW);
+      if (pair[1]) rowsAt([pair[1]], M + colW + 18, colW, labelW);
+      used += Math.max(...pair.map((r) => rowH(r, colW, labelW)));
+    }
+    y = top;
+    return used;
+  };
+  const measureGrid = (list, labelW) => {
+    let h = 0;
+    for (let k = 0; k < list.length; k += 2) h += Math.max(...list.slice(k, k + 2).map((r) => rowH(r, colW, labelW)));
+    return h;
+  };
+  open(true);
+  const done = model.status === words(lang).status;
+  const pill = model.status.toUpperCase();
+  const pw = m.width(pill, "bold", 8) + 18;
+  rect(M, y - 14, pw, 18, done ? OK_SOFT : WAIT_SOFT, done ? OK : WAIT, 0.8);
+  text(pill, M + 9, y - 8.5, "bold", 8, done ? OK : WAIT);
+  text(fit(model.statusLine, "regular", 9.5, CW - pw - 12), M + pw + 10, y - 8.5, "regular", 9.5, INK);
+  y -= 26;
+  if (model.sample) {
+    const ls = wrap(model.sample, "bold", 9, CW - 20);
+    rect(M, y - ls.length * 12 - 10, CW, ls.length * 12 + 10, WAIT_SOFT, WAIT, 0.8);
+    ls.forEach((s, k) => text(s, M + 10, y - 13 - 12 * k, "bold", 9, WAIT));
+    y -= ls.length * 12 + 16;
   }
-  const note = wrap(model.note, "regular", 8.5, CW);
-  need(note.length * 11.5 + 20);
-  y -= 10;
-  rule3(y, LINE);
+  section(model.parts.doc);
+  const doc = model.rows.filter((r) => (r.part ?? (r.mono ? "hash" : "doc")) === "doc");
+  const [docTitle, ...facts] = doc;
+  if (docTitle) {
+    need(measureRows([docTitle], CW, 92));
+    y -= rowsAt([docTitle], M, CW, 92);
+  }
+  need(measureGrid(facts, 92));
+  y -= gridAt(facts, 92);
+  const hash = model.rows.filter((r) => (r.part ?? (r.mono ? "hash" : "doc")) === "hash");
+  if (hash.length) {
+    y -= 6;
+    section(model.parts.hash);
+    const hh = measureRows(hash, CW - 20, 112) + 8;
+    need(hh + 6);
+    rect(M, y - hh, CW, hh, PANEL, LINE, 0.6);
+    y -= 3;
+    const used = rowsAt(hash, M + 10, CW - 20, 112);
+    y -= used + 11;
+  }
+  y -= 4;
+  section(model.parts.signers);
+  const sigW = Math.min(170, CW * 0.36);
+  const leftW = CW - sigW - 30;
+  model.signers.forEach((s, n) => {
+    const rows = s.rows.slice(1);
+    const lw = Math.min(104, leftW * 0.36);
+    const body = measureRows(rows, leftW, lw);
+    const ch = Math.max(body + 30, 92);
+    need(ch + 10);
+    const top = y;
+    rect(M, top - ch, CW, ch, WHITE, LINE, 0.8);
+    rect(M, top - ch, 3, ch, s.signed ? accent : WAIT);
+    text(fit(`${s.heading} \xB7 ${s.name}`, "bold", 10.5, leftW), M + 14, top - 17, "bold", 10.5, HEAD);
+    y = top - 22;
+    rowsAt(rows, M + 14, leftW, lw);
+    const px = M + CW - sigW - 12, py = top - ch + 12, ph = ch - 24;
+    rect(px, py, sigW, ph, PANEL, LINE, 0.6);
+    text(spaced(model.parts.signature), px + 8, py + ph - 12, "bold", 6.5, MUTED);
+    const dim = look.sizes?.ink?.[n];
+    if (s.ink && dim) {
+      const boxW = sigW - 16, boxH = ph - 34;
+      const k = Math.min(boxW / dim.w, boxH / dim.h);
+      ops.push({ t: "img", key: CERT_IMG.ink(n), x: px + 8 + (boxW - dim.w * k) / 2, y: py + 16 + (boxH - dim.h * k) / 2, w: dim.w * k, h: dim.h * k });
+    } else {
+      const nm = fit(s.signed ? s.name : model.parts.noInk, s.signed ? "italic" : "regular", s.signed ? 14 : 8, sigW - 16);
+      text(nm, px + 8, py + ph / 2 - 4, s.signed ? "italic" : "regular", s.signed ? 14 : 8, s.signed ? HEAD : MUTED);
+    }
+    rule3(py + 13, LINE, 0.6, px + 8, px + sigW - 8);
+    text(fit(s.name, "regular", 7.5, sigW - 16), px + 8, py + 4, "regular", 7.5, MUTED);
+    y = top - ch - 10;
+  });
+  const consent = model.rows.filter((r) => r.part === "consent");
+  if (consent.length) {
+    y -= 2;
+    section(model.parts.consent);
+    const ls = wrap(consent[0].value, "italic", 9, CW - 24);
+    const h = ls.length * 12 + 12;
+    need(h + 4);
+    rect(M, y - h, CW, h, PANEL);
+    rect(M, y - h, 3, h, accent);
+    ls.forEach((s, k) => text(s, M + 14, y - 14 - 12 * k, "italic", 9, INK));
+    y -= h + 10;
+  }
+  const note = wrap(model.note, "regular", 7.5, CW);
+  need(note.length * 10 + 16);
   y -= 4;
   for (const s of note) {
-    y -= 11.5;
-    text(s, M, y, "regular", 8.5, MUTED);
+    y -= 10;
+    text(s, M, y, "regular", 7.5, MUTED);
   }
   const t = words(lang);
   pages.forEach((p, k) => {
-    p.ops.push({ t: "line", x1: M, y1: 42, x2: W - M, y2: 42, w: 0.6, c: LINE });
-    const foot = wrap(model.footer, "regular", 8, CW - 150)[0] ?? "";
-    p.ops.push({ t: "text", x: M, y: 30, s: foot, f: "regular", size: 8, c: MUTED });
-    const label = wrap(t.page(k + 1, pages.length), "regular", 8, 150)[0] ?? "";
-    p.ops.push({ t: "text", x: W - M - m.width(label, "regular", 8), y: 30, s: label, f: "regular", size: 8, c: MUTED });
+    p.ops.push({ t: "line", x1: M, y1: 44, x2: W - M, y2: 44, w: 0.6, c: LINE });
+    const label = wrap(t.page(k + 1, pages.length), "regular", 7.5, 150)[0] ?? "";
+    const rec = [model.parts.record, look.brand?.site].filter(Boolean).join(" \xB7 ");
+    p.ops.push({ t: "text", x: M, y: 32, s: wrap(rec, "bold", 7.5, CW - 160)[0] ?? "", f: "bold", size: 7.5, c: HEAD });
+    p.ops.push({ t: "text", x: M, y: 22, s: wrap(model.footer, "regular", 7, CW - 160)[0] ?? "", f: "regular", size: 7, c: MUTED });
+    p.ops.push({ t: "text", x: W - M - m.width(label, "regular", 7.5), y: 32, s: label, f: "regular", size: 7.5, c: MUTED });
   });
   return pages;
 }
@@ -19026,10 +19194,33 @@ async function buildSignedPdf(source, env, i) {
   const first = pageFrame(out.getPages()[0]).size;
   const size = { w: Math.max(396, Math.min(first.w, first.h)), h: Math.max(560, Math.max(first.w, first.h)) };
   const model = certificateModel({ ...i, env, hashes: { original, signed }, lang, sample });
-  const sheets = layoutCertificate(model, kit.measure, size, lang);
+  const images = {};
+  const embed = async (key, bytes2) => {
+    if (!bytes2 || bytes2.length < 8) return void 0;
+    const png = bytes2[0] === 137 && bytes2[1] === 80;
+    try {
+      const img = png ? await out.embedPng(bytes2) : await out.embedJpg(bytes2);
+      images[key] = img;
+      return { w: img.width, h: img.height };
+    } catch {
+      return void 0;
+    }
+  };
+  const sizes = {
+    mark: await embed(CERT_IMG.mark, i.brand?.mark),
+    wordmark: await embed(CERT_IMG.wordmark, i.brand?.wordmark),
+    ink: await Promise.all(model.signers.map(async (s, n) => {
+      try {
+        return s.ink ? await embed(CERT_IMG.ink(n), dataUrlBytes(s.ink)) : void 0;
+      } catch {
+        return void 0;
+      }
+    }))
+  };
+  const sheets = layoutCertificate(model, kit.measure, size, lang, { brand: i.brand, sizes });
   for (const sheet of sheets) {
     const page = out.addPage([sheet.w, sheet.h]);
-    drawOps(lib, page, sheet.ops, kit.fonts);
+    drawOps(lib, page, sheet.ops, kit.fonts, images);
     if (sample) watermark(lib, page, kit.fonts, mark);
   }
   out.setSubject(`${model.title} ${env.id}`);

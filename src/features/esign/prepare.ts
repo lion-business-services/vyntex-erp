@@ -229,7 +229,7 @@ export async function finishEnvelope(envelopeId: string): Promise<'done' | 'alre
     if (!source) return 'failed';
     const d = getSnapshot().data;
     const doc = d.docs.find((x) => x.id === e.docId);
-    const out = await buildSignedPdf(source, find() ?? e, { docTitle: e.title, docNumber: e.docNumber ?? doc?.number, company: d.company.legalName || d.company.name, sentBy: d.users.find((u) => u.id === e.createdBy)?.name, product: DEPLOY.productName });
+    const out = await buildSignedPdf(source, find() ?? e, { docTitle: e.title, docNumber: e.docNumber ?? doc?.number, company: d.company.legalName || d.company.name, sentBy: d.users.find((u) => u.id === e.createdBy)?.name, product: DEPLOY.productName, brand: await certificateBrand() });
     const name = (e.docNumber || e.title).replace(/[^\w.-]+/g, '-') + '-signed.pdf';
     const file = await storeBytes(out.bytes, name, { clientId: e.clientId, jobId: e.jobId, docId: e.docId, folder: 'signature' });
     if (!file || find()?.signedFile) return file ? 'already' : 'failed';
@@ -244,6 +244,13 @@ export async function finishEnvelope(envelopeId: string): Promise<'done' | 'alre
  * The PDF with every box drawn on it as an outline and a label: an exact check of where the boxes will land, for a file
  * whose pages cannot be drawn on screen.
  */
+/** The VYNTEX logo for the certificate header, read from the site's own brand files. LBS writes its name instead. */
+async function certificateBrand(): Promise<{ mark?: Uint8Array; wordmark?: Uint8Array; site?: string } | undefined> {
+  if (DEPLOY.id === 'lbs') return undefined;
+  const get = async (p: string) => { try { const r = await fetch(p); return r.ok ? new Uint8Array(await r.arrayBuffer()) : undefined; } catch { return undefined; } };
+  return { mark: await get('/brand/vyntex-mark.jpg'), wordmark: await get('/brand/vyntex-wordmark.jpg'), site: 'erp.vyntexusa.com' };
+}
+
 export async function placementPreview(source: Uint8Array, fields: SignField[], label: (f: SignField) => string): Promise<Uint8Array> {
   const lib = await pdfLib();
   const pdf = await lib.PDFDocument.load(source, { updateMetadata: false });

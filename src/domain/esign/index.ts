@@ -5,7 +5,7 @@ export * from './envelope';
 export * from './merge';
 export * from './templates';
 export * from './text';
-export { certificateModel, layoutCertificate, roleLabel, utcStamp, watermarkText, type CertificateInput, type CertificateModel, type CertRow } from './certificate';
+export { certificateModel, layoutCertificate, roleLabel, utcStamp, watermarkText, type CertificateInput, type CertificateModel, type CertRow, type CertificateBrand, CERT_IMG } from './certificate';
 export { buildSignedPdf, type SignedCopy, type SignedCopyInput } from './stamp';
 export { bytesDataUrl, dataUrlBytes, drawOps, openFonts, pageFrame, pdfLib, readPages, sha256Hex, type Fonts, type PdfLib, type PdfProblem } from './pdfkit';
 export { tinyPdf } from './tinypdf';

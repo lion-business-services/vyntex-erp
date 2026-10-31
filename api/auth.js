@@ -1,7 +1,9 @@
 // /api/auth/*: sign-in, the second sign-in step, fresh identity checks, sign-out, invitations and passwords.
 //
-// There is NO sign-up route. An account exists only because a member with the "users" capability invited that
-// address (invite/accept below), or because the platform operator invited the first owner of a company.
+// There is NO sign-up route. An account exists only because a member with the "users" capability invited that address
+// (invite/accept below), because the platform operator invited the first owner of a company, or (VYNTEX ERP only)
+// because a visitor asked for a seven-day trial (trial/request, api/_lib/trial.js): that too ends in an owner invitation
+// emailed to the address, and the account is made only when the link is opened (invite/accept).
 // The browser never talks to Supabase: it talks to these routes, and the Supabase tokens stay inside a sealed,
 // HttpOnly cookie (api/_lib/session.js).
 //
@@ -16,8 +18,11 @@
 //   POST  signout-all       every browser and device
 //   POST  invite/check      { token }           what the invitation is for (no account needed)
 //   POST  invite/accept     { token, password, name? }
+//   POST  partner-invite/check, partner-invite/accept    the same for a VYNTEX Partner Portal invitation (no company membership)
 //   POST  password/reset    { email }  or  { token, password }  (or { password } to retry after a refused password)
 //   POST  password/update   { password }        needs a fresh identity check
+//   GET   trial/status      { available }       VYNTEX ERP only (LBS Command: 404)
+//   POST  trial/request     { business, owner, email, edition, language, consent, website }   VYNTEX ERP only
 //
 // Every answer is { ok: true, ... } or { ok: false, error: <code> }. Wrong email or wrong password give the same
 // answer, the same way, whether or not the account exists.
@@ -34,6 +39,7 @@ import { sha256Hex, randomToken, sealWith, openWith, deriveKey } from './_lib/cr
 import { sendSystemEmail, resetEmail, emailConfigured } from './_lib/mail.js';
 import { need, secureCookies } from './_lib/env.js';
 import { randomBytes } from 'node:crypto';
+import { trialStatus, trialRequest } from './_lib/trial.js';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const CODE = /^\d{6}$/;
@@ -57,7 +63,12 @@ async function contextOf(session) {
  * whatever the database says: the same rule is set in that database at setup (docs/SERVER.md), and this line makes
  * sure a setup step that was forgotten does not leave the door open.
  */
-const mfaRequired = (ctx) => (ctx.memberships || []).some((m) => m.mfa_required || (deployId() === 'lbs' && m.role !== 'worker'));
+const mfaRequired = (ctx) => (ctx.memberships || []).some((m) => m.mfa_required || (deployId() === 'lbs' && m.role !== 'worker'))
+  // A Partner Portal role (partner or VYNTEX partner staff) always needs it, with or without a company membership (0070, gap G1).
+  || !!(ctx.partner && ctx.partner.mfa_required);
+
+/** Does the account belong anywhere: a company, or the Partner Portal? An account that belongs nowhere is signed out. */
+const belongs = (ctx) => (ctx.memberships || []).length > 0 || !!ctx.partner;
 
 /** What sign-in still needs: 'ok', 'verify' (enter a code) or 'enroll' (add an authenticator first). */
 function mfaState(ctx) {
@@ -68,7 +79,7 @@ function mfaState(ctx) {
 
 function applyContext(session, ctx) {
   session.m = mfaState(ctx);
-  const idles = (ctx.memberships || []).map((m) => Number(m.idle_minutes)).filter((n) => Number.isFinite(n) && n > 0);
+  const idles = [...(ctx.memberships || []).map((m) => Number(m.idle_minutes)), Number(ctx.partner?.idle_minutes)].filter((n) => Number.isFinite(n) && n > 0);
   session.idle = idles.length ? Math.min(...idles) : 30;
   return session;
 }
@@ -86,8 +97,9 @@ function publicSession(session, ctx) {
     stepUp: { fresh: steppedUp(session), expiresAt: steppedUp(session) ? new Date((session.su + STEPUP_SECONDS) * 1000).toISOString() : null },
     idleMinutes: session.idle,
     expiresAt: new Date((session.iat + envInt('SESSION_MAX_HOURS', 12, 1, 72) * 3600) * 1000).toISOString(),
+    partner: ctx.partner ? { kind: ctx.partner.kind === 'staff' ? 'staff' : 'partner', role: String(ctx.partner.role || '') } : null,
     memberships: (ctx.memberships || []).map((m) => ({
-      tenantId: m.tenant_id, slug: m.slug, name: m.name, industry: m.industry, plan: m.plan, status: m.status,
+      tenantId: m.tenant_id, slug: m.slug, name: m.name, industry: m.industry, plan: m.plan, status: m.status, trialExpiresAt: m.trial_expires_at ?? null,
       role: m.role, memberId: m.member_id, workerId: m.worker_id, memberName: m.member_name,
       capabilities: m.capabilities || [], mfaRequired: !!m.mfa_required || (deployId() === 'lbs' && m.role !== 'worker'),
     })),
@@ -143,7 +155,7 @@ async function getSession(request) {
     throw e;
   }
   // Signed out everywhere, or no longer a member of any company: the session is over.
-  if (!ctx.live || !(ctx.memberships || []).length) {
+  if (!ctx.live || !belongs(ctx)) {
     await auth.logout(session.at, 'local');
     return anonymous(clearCookies());
   }
@@ -157,11 +169,11 @@ async function getSession(request) {
 // signin
 // ---------------------------------------------------------------------------------------------------------------------
 
-/** After Supabase Auth accepted a password: build the session, refuse an account that belongs to no company. */
+/** After Supabase Auth accepted a password: build the session, refuse an account that belongs to no company and no partner. */
 async function establish(grant, request) {
   const session = newSession(grant);
   const ctx = await contextOf(session);
-  if (!(ctx.memberships || []).length) {
+  if (!belongs(ctx)) {
     await auth.logout(session.at, 'local');
     return null;
   }
@@ -373,21 +385,30 @@ async function signout(request, everywhere) {
 // ---------------------------------------------------------------------------------------------------------------------
 const TOKEN = /^[A-Za-z0-9_-]{20,200}$/;
 
-async function inviteCheck(request) {
+// A company invitation (app.invitations) and a Partner Portal invitation (partner.invitations, 0070) run the same steps
+// with different database functions. A partner invitation never creates a company membership.
+const INVITES = {
+  company: { peek: 'invite_peek', claim: 'invite_claim', release: 'invite_release', complete: 'invite_complete' },
+  partner: { peek: 'partner_invite_peek', claim: 'partner_invite_claim', release: 'partner_invite_release', complete: 'partner_invite_complete' },
+};
+
+async function inviteCheck(request, kind = 'company') {
   assertConfigured();
   assertCsrf(request, null);
   await limit('invite.addr', addressKey(request), 20, 600);
   const body = await readJson(request, 2048);
   if (!TOKEN.test(String(body.token || ''))) return fail(400, 'invite_invalid');
   // Service role here and below: the person has no account yet, so there is no token of theirs to call with.
-  const r = await serviceRpc('invite_peek', { p_token_hash: sha256Hex(body.token) });
+  const r = await serviceRpc(INVITES[kind].peek, { p_token_hash: sha256Hex(body.token) });
   if (!r.ok) throw upstreamError(r);
   // Unknown, used, revoked and expired all look the same from outside.
   if (!r.data) return fail(400, 'invite_invalid');
+  if (kind === 'partner') return ok({ partner: r.data.partner, staff: !!r.data.staff, emailHint: r.data.email_hint, expiresAt: r.data.expires_at });
   return ok({ company: r.data.company, emailHint: r.data.email_hint, expiresAt: r.data.expires_at });
 }
 
-async function inviteAccept(request) {
+async function inviteAccept(request, kind = 'company') {
+  const fns = INVITES[kind];
   assertConfigured();
   assertCsrf(request, null);
   await limit('invite.addr', addressKey(request), 20, 600);
@@ -396,11 +417,11 @@ async function inviteAccept(request) {
   if (!TOKEN.test(String(body.token || ''))) return fail(400, 'invite_invalid');
   const hash = sha256Hex(body.token);
 
-  const claimed = await serviceRpc('invite_claim', { p_token_hash: hash });
+  const claimed = await serviceRpc(fns.claim, { p_token_hash: hash });
   if (!claimed.ok) throw upstreamError(claimed);
   const inv = claimed.data;
   if (!inv) return fail(400, 'invite_invalid');
-  const release = () => serviceRpc('invite_release', { p_token_hash: hash });
+  const release = () => serviceRpc(fns.release, { p_token_hash: hash });
 
   let createdUser = null;
   try {
@@ -424,11 +445,20 @@ async function inviteAccept(request) {
       return fail(created.status === 0 || created.status >= 500 ? 503 : 502, created.status === 0 || created.status >= 500 ? 'auth_unavailable' : 'upstream_error');
     }
 
-    const done = await serviceRpc('invite_complete', { p_token_hash: hash, p_user: userId, p_name: typeof body.name === 'string' ? body.name.slice(0, 200) : null, p_ip_hash: ipHash(request) });
+    const done = await serviceRpc(fns.complete, { p_token_hash: hash, p_user: userId, p_name: typeof body.name === 'string' ? body.name.slice(0, 200) : null, p_ip_hash: ipHash(request) });
     if (!done.ok) {
       if (createdUser) await admin.deleteUser(createdUser);
       await release();
+      // the account already belongs to an ERP company or to VYNTEX staff: it cannot become a partner account
+      if (kind === 'partner' && done.hint === 'account_in_use') return fail(409, 'account_in_use');
       return fail(400, 'invite_invalid');
+    }
+    if (kind === 'partner') {
+      const grant = await auth.password(inv.email, password);
+      if (!grant.ok) return ok({ signedIn: false, partner: true });
+      const made = await establish(grant.data, request);
+      if (!made) return ok({ signedIn: false, partner: true });
+      return ok({ signedIn: true, partner: true, mfa: made.session.m, csrf: csrfToken(made.session.csrf) }, { cookies: cookiesFor(made.session) });
     }
     const grant = await auth.password(inv.email, password);
     if (!grant.ok) return ok({ signedIn: false, slug: done.data.slug, tenantId: done.data.tenant_id });
@@ -496,7 +526,10 @@ async function passwordReset(request) {
   const weak = passwordProblem(password, pending.email);
   if (weak) return fail(400, 'weak_password', { reason: weak }, { cookies: [resetCookie(sealWith(resetKeys(), pending, 'vx-reset', 'r1'), 600)] });
 
-  const changed = await auth.updateUser(pending.at, { password });
+  // Service role, by user id: see admin.setPassword. The id comes from Supabase's own answer to the one-time token.
+  if (!pending.uid) return fail(400, 'reset_invalid', {}, { cookies: [resetCookie('', 0)] });
+  const changed = await admin.setPassword(pending.uid, password);
+  if (!changed.ok && changed.status === 422) return fail(400, 'weak_password', { reason: 'too_short' }, { cookies: [resetCookie(sealWith(resetKeys(), pending, 'vx-reset', 'r1'), 600)] });
   if (!changed.ok) return fail(changed.status === 0 || changed.status >= 500 ? 503 : 400, changed.status === 0 || changed.status >= 500 ? 'auth_unavailable' : 'reset_invalid', {}, { cookies: [resetCookie('', 0)] });
   // A reset ends every session, including the one the link created. The person signs in again (with the second step, if they have one).
   await auth.logout(pending.at, 'global');
@@ -530,14 +563,22 @@ const POST_ROUTES = {
   'stepup': stepup,
   'signout': (r) => signout(r, false),
   'signout-all': (r) => signout(r, true),
-  'invite/check': inviteCheck,
-  'invite/accept': inviteAccept,
+  'invite/check': (r) => inviteCheck(r, 'company'),
+  'invite/accept': (r) => inviteAccept(r, 'company'),
+  'partner-invite/check': (r) => inviteCheck(r, 'partner'),
+  'partner-invite/accept': (r) => inviteAccept(r, 'partner'),
   'password/reset': passwordReset,
   'password/update': passwordUpdate,
 };
 
 const handle = entry('auth', async (request, path) => {
   if (path === 'session') return request.method === 'GET' ? getSession(request) : methodNotAllowed('GET');
+  // The public seven-day trial exists on VYNTEX ERP only. On LBS Command these addresses do not exist.
+  if (path === 'trial/status' || path === 'trial/request') {
+    if (deployId() !== 'vyntex') return fail(404, 'not_found');
+    if (path === 'trial/status') return request.method === 'GET' ? trialStatus() : methodNotAllowed('GET');
+    return request.method === 'POST' ? trialRequest(request) : methodNotAllowed('POST');
+  }
   const route = Object.hasOwn(POST_ROUTES, path) ? POST_ROUTES[path] : null;
   // Anything else does not exist. In particular there is no "signup", "register" or "users" route.
   if (!route) return fail(404, 'not_found');

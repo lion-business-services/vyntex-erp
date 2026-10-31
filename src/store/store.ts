@@ -354,7 +354,11 @@ export function bootLive(live: WorkspaceData, who: WorkspaceSession, sync: SyncF
   const role: ViewAs = who.role === 'worker' ? `worker:${who.actorId}` : who.role;
   const pack = DEPLOY.lockedEdition ?? who.industry;
   // the plan is the company's: the plan picker of the demo has no say here
-  const tier = plansFor(pack).find((p) => p.id === who.planId)?.tier;
+  // Trial shows the edition's highest exploration tier; live provider permissions remain server-side.
+  const plans = plansFor(pack);
+  const tier = who.planId === 'trial'
+    ? plans.length ? plans[plans.length - 1].tier : prefs.planTier
+    : plans.find((p) => p.id === who.planId)?.tier;
   prefs = { ...prefs, pack, viewAs: role, lang: who.lang && offered(who.lang) ? who.lang : prefs.lang, planTier: tier ?? prefs.planTier };
   data = liveData(live);
   acked = clone(data);

@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check:pricing": "node scripts/check-pricing.mjs",
     "typecheck:local": "tsc --noEmit -p tsconfig.local.json",
-    "check": "node scripts/check-pricing.mjs && node scripts/check-i18n.mjs && node scripts/check-seeds.mjs",
+    "check": "node scripts/check-pricing.mjs && node scripts/check-i18n.mjs && node scripts/check-seeds.mjs && node scripts/partners/build-catalog-seed.mjs --check",
     "build:preview": "node scripts/build-preview.mjs",
     "test:db": "bash supabase/tests/run_local.sh",
     "test:unit": "node --test tests/unit/*.test.mjs",

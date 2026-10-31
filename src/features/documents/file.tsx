@@ -17,6 +17,7 @@ import { isOpenEnvelope } from '@/domain/esign/envelope';
 import { readPages } from '@/domain/esign/pdfkit';
 import { ACCEPT_ATTR, downloadFile, fileBytes, fileSize, isImage, isPdf, openFile, uploadLimit } from '@/features/esign/prepare';
 import { PageSheet, pageMode, useViewer } from '@/features/esign/pages';
+import { pdfObjectUrl, releasePdfUrl } from '@/features/esign/pdfview';
 import { EnvelopeCard } from './EnvelopeCard';
 import { HistoryCard } from './detail';
 import { storeFile } from './upload';
@@ -33,11 +34,11 @@ export function FilePreview({ file }: { file: FileRef }) {
       const bytes = await fileBytes(file);
       if (!live) return;
       if (!bytes) { setState({ problem: 'gone' }); return; }
-      url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: file.mime }));
+      url = isPdf(file) ? pdfObjectUrl(bytes) : URL.createObjectURL(new Blob([bytes as BlobPart], { type: file.mime }));
       if (isPdf(file)) { const r = await readPages(bytes); if (!live) return; setState(r.ok ? { url, pages: r.pages } : { url, problem: r.reason }); }
       else setState({ url });
     })();
-    return () => { live = false; if (url) URL.revokeObjectURL(url); };
+    return () => { live = false; if (url) releasePdfUrl(url); };
   }, [file]);
   if (state.problem === 'gone') return <Note tone="bad">{t('docs.file.gone')}</Note>;
   if (isImage(file)) return state.url ? <img className="docs-img" src={state.url} alt={file.name} data-testid="docs-file-image" /> : <p className="muted small" role="status">{t('docs.file.loading')}</p>;
@@ -49,7 +50,7 @@ export function FilePreview({ file }: { file: FileRef }) {
   const first = state.pages.slice(0, 6);
   return (
     <div className="es-pages es-read" data-testid="docs-file-pages" data-mode={mode}>
-      <Note>{t(mode === 'viewer' ? 'docs.file.viewer' : 'docs.file.blank')}</Note>
+      {mode !== 'pdf' && <Note>{t(mode === 'viewer' ? 'docs.file.viewer' : 'docs.file.blank')}</Note>}
       {first.map((size, i) => <PageSheet key={i} index={i} size={size} pdfUrl={state.url} mode={mode} label={t('esign.pages.page', { n: i + 1, total: state.pages!.length })} blankNote={t('esign.pages.blankSheet')} />)}
       {state.pages.length > first.length && <p className="small muted">{t('docs.file.morePages', { n: state.pages.length - first.length })}</p>}
     </div>

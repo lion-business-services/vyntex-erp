@@ -11,7 +11,7 @@ import { randomBytes, createHash, createHmac } from 'node:crypto';
 import path from 'node:path';
 import { setTestEnv, Browser, seen, secrets, assertNoLeak, root, ORIGIN } from './helpers.mjs';
 
-const PG = '/tmp/vx-pg-public';
+const PG = process.env.VX_PG_PUBLIC_DIR || '/tmp/vx-pg-public';
 const PORT = 4741;
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 const sha = (v) => createHash('sha256').update(v).digest('hex');

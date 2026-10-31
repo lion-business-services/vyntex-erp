@@ -242,11 +242,13 @@ async def sales(browser):
             await pg.click(f'[data-testid=pr-billing-{billing}]'); await pg.wait_for_timeout(100)
             for p in plans:
                 price = (await pg.inner_text(f"[data-testid=pr-price-{p['id']}]")).strip()
-                setup = (await pg.inner_text(f"[data-testid=pr-setup-{p['id']}]")).strip()
+                # a plan without a setup fee shows no setup line at all
+                setup_el = pg.locator(f"[data-testid=pr-setup-{p['id']}]")
+                setup = (await setup_el.inner_text()).strip() if await setup_el.count() else ''
                 name = (await pg.inner_text(f"[data-testid=pr-name-{p['id']}]")).strip()
                 want = usd(p['monthly_usd'] if billing == 'monthly' else p['yearly_usd'])
                 if want not in price: bad.append(f'{pid} {p["id"]} {billing}: {price} != {want}')
-                if usd(p['setup_usd']) not in setup: bad.append(f'{pid} {p["id"]} setup: {setup}')
+                if (p['setup_usd'] > 0 and usd(p['setup_usd']) not in setup) or (p['setup_usd'] == 0 and setup): bad.append(f'{pid} {p["id"]} setup: {setup}')
                 if p['name'] not in name: bad.append(f'{pid} {p["id"]} name: {name}')
     # back to an edition with plans: the checks below read the add-ons and the rules of the pricing file
     await pg.select_option('[data-testid=pr-industry]', 'build'); await pg.wait_for_timeout(200)

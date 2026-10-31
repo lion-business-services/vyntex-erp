@@ -65,6 +65,8 @@ export const liveProtected: ProtectedOperations = {
     const email = input.email.trim();
     // the server makes the link and emails it to the invited address; the inviter never sees it
     const a = await rpc<never>('member_invite', { email, role: input.role, name: input.name.trim(), lang: getSnapshot().prefs.lang }, { idem: newKey() });
+    // the plan's users are all taken (api/ws.js, from the pricing file): the screen explains how to upgrade
+    if (!a.ok && a.code === 'seat_limit') return refuse('seat_limit');
     if (!a.ok) return no(a);
     const answer = a.data as unknown as { invitation?: { id: string; email: string; role: TeamUser['role']; expiresAt?: string }; delivery?: string; link?: string };
     const inv = answer.invitation;

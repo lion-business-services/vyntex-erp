@@ -8,7 +8,7 @@
 //   service role key  bypasses row level security. Used only by the functions in the "service" part below, and each
 //                     one says why a person's token cannot do that job. Everything else goes through userRpc().
 //
-// A failed call returns { ok: false, status, sqlstate, code, word }. Nothing else from the upstream answer is kept:
+// A failed call returns { ok: false, status, sqlstate, code, word, hint }. Nothing else from the upstream answer is kept:
 // its text can describe tables, accounts and keys, so it is not returned, not logged, and never reaches a browser.
 import { need, env } from './env.js';
 
@@ -29,7 +29,9 @@ function failure(status, payload) {
   const code = [p.error_code, p.code, p.error].find((v) => typeof v === 'string' && /^[a-z][a-z0-9_]{2,60}$/.test(v)) || '';
   const message = typeof p.message === 'string' ? p.message : typeof p.msg === 'string' ? p.msg : '';
   const word = KNOWN_WORDS.has(message) ? message : '';
-  return { ok: false, status, sqlstate, code, word };
+  // The HINT of a refusal raised on purpose: one snake_case word chosen by our own functions (never upstream text).
+  const hint = typeof p.hint === 'string' && /^[a-z][a-z0-9_]{2,40}$/.test(p.hint) ? p.hint : '';
+  return { ok: false, status, sqlstate, code, word, hint };
 }
 
 async function call(path, { method = 'GET', key = 'anon', token, body, raw, contentType, headers } = {}) {
@@ -123,6 +125,13 @@ export const admin = {
    * point. The address counts as confirmed because the invitation token was delivered to that mailbox.
    */
   createUser: (email, password) => jsonCall('/auth/v1/admin/users', { method: 'POST', key: 'service', body: { email, password, email_confirm: true } }),
+  /**
+   * Sets a new password after a password reset link was accepted. Supabase refuses a password change from the reset
+   * session itself when the account has an authenticator (that session is only aal1), and asking for the authenticator
+   * code here would lock out anyone who lost their phone. The link already proved the mailbox; the authenticator is
+   * still asked for at the next sign-in.
+   */
+  setPassword: (userId, password) => jsonCall('/auth/v1/admin/users/' + encodeURIComponent(userId), { method: 'PUT', key: 'service', body: { password } }),
   /** Removes an account that was created a moment ago for an invitation that then could not be completed. */
   deleteUser: (userId) => jsonCall('/auth/v1/admin/users/' + encodeURIComponent(userId), { method: 'DELETE', key: 'service' }),
   /** Removes an authenticator after a recovery code was used: the person cannot produce a code to do it themselves. */

@@ -5,12 +5,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { loadImages, paintPage } from '@/features/documents/paint';
 import type { PageSize, PageView } from '@/domain/esign/types';
+import { canDraw, drawPdfPage } from './pdfview';
 
 /** The parts of a pointer event the signature screens read. Written out because both type setups of this project must accept it. */
 export interface PEvent { clientX: number; clientY: number; pointerId: number; button: number; shiftKey: boolean; pointerType?: string; preventDefault(): void; stopPropagation(): void; target: EventTarget | null; currentTarget: EventTarget | null }
 
 /** How the pages of a document can be shown here. */
-export type PageMode = 'drawn' | 'viewer' | 'blank';
+export type PageMode = 'drawn' | 'pdf' | 'viewer' | 'blank';
 
 const blockedListeners = new Set<() => void>();
 const notify = () => blockedListeners.forEach((f) => f());
@@ -62,7 +63,35 @@ export function useViewer(): boolean {
 }
 /** A viewer is started for every page shown, each with the whole file: fine for a form, too heavy for a long file, which gets empty sheets instead. */
 export const VIEWER_MAX_PAGES = 12;
-export const pageMode = (view: PageView[] | undefined, pdfUrl: string | null | undefined, viewer: boolean, pages = 1): PageMode => (view?.length ? 'drawn' : pdfUrl && viewer && pages <= VIEWER_MAX_PAGES ? 'viewer' : 'blank');
+/** A generated document is drawn from its layout; an uploaded PDF is drawn with pdf.js (pdfview.ts) when this page can read it. */
+export const pageMode = (view: PageView[] | undefined, pdfUrl: string | null | undefined, viewer: boolean, pages = 1): PageMode => (view?.length ? 'drawn' : canDraw(pdfUrl) ? 'pdf' : pdfUrl && viewer && pages <= VIEWER_MAX_PAGES ? 'viewer' : 'blank');
+
+/** One page of an uploaded PDF, drawn when it comes near the screen and again when its width changes. Falls back to an empty sheet. */
+function PdfCanvas({ url, index, blank }: { url: string; index: number; blank: ReactNode }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const [state, setState] = useState<'wait' | 'ok' | 'fail'>('wait');
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    let live = true; let width = 0; let busy = false; let again = false;
+    const draw = () => {
+      if (!live || !c.clientWidth) return;
+      if (busy) { again = true; return; }
+      if (Math.abs(c.clientWidth - width) < 2) return;
+      busy = true; width = c.clientWidth;
+      void drawPdfPage(url, index, c).then((ok) => { busy = false; if (!live) return; setState(ok ? 'ok' : 'fail'); if (again) { again = false; draw(); } });
+    };
+    const io = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) draw(); }, { rootMargin: '600px 0px' }) : null;
+    if (io) io.observe(c); else draw();
+    let t = 0;
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { clearTimeout(t); t = window.setTimeout(draw, 150); }) : null;
+    ro?.observe(c);
+    return () => { live = false; io?.disconnect(); ro?.disconnect(); clearTimeout(t); };
+  }, [url, index]);
+  return <>
+    <canvas ref={ref} className="es-canvas es-pdfpage" aria-hidden="true" data-state={state} />
+    {state === 'fail' && blank}
+  </>;
+}
 
 function Canvas({ page, images }: { page: PageView; images?: Record<string, string> }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -91,6 +120,7 @@ export function PageSheet({ index, size, view, images, pdfUrl, mode, label, blan
   return (
     <div className={'es-page' + (className ? ' ' + className : '')} style={{ aspectRatio: `${size.w} / ${size.h}` }} data-page={index} data-mode={mode} role="group" aria-label={label} ref={sheetRef} onPointerDown={onPointerDown}>
       {mode === 'drawn' && view ? <Canvas page={view} images={images} />
+        : mode === 'pdf' && pdfUrl ? <PdfCanvas url={pdfUrl} index={index} blank={<div className="es-blank" aria-hidden="true"><b>{index + 1}</b>{blankNote && <span>{blankNote}</span>}</div>} />
         : mode === 'viewer' && pdfUrl ? <iframe className="es-pdf" src={`${pdfUrl}#page=${index + 1}&toolbar=0&navpanes=0&scrollbar=0&view=Fit`} title={label} tabIndex={-1} aria-hidden="true" />
         : <div className="es-blank" aria-hidden="true"><b>{index + 1}</b>{blankNote && <span>{blankNote}</span>}</div>}
       <div className="es-overlay">{children}</div>

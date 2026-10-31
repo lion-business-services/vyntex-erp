@@ -4,11 +4,12 @@ import type { ReactNode } from 'react';
 import { LuFlaskConical } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { A } from '@/app/router';
-import { Avatar, Badge, type Tone } from '@/ui';
+import { Badge, type Tone } from '@/ui';
 import type { TFn } from '@/i18n';
 import type { DemoState, RevealRequest, SecureAccessLog } from '@/domain/types';
 import { revealState } from '@/domain/actions/security';
 import { DEPLOY } from '@/config/deployment';
+import { PersonAvatar } from '@/app/person';
 
 /** The name behind an id in a log: a person of the team, or the system itself. */
 export function whoName(d: DemoState, t: TFn, id: string | undefined): string {
@@ -21,7 +22,7 @@ export function Person({ id }: { id: string | undefined }) {
   const { data, t } = useApp();
   const name = whoName(data, t, id);
   const known = !!id && data.users.some((u) => u.id === id);
-  return <span className="security-person">{known && <Avatar name={name} size="sm" />}<span>{name}</span></span>;
+  return <span className="security-person">{known && <PersonAvatar name={name} size="sm" />}<span>{name}</span></span>;
 }
 
 /** A refusal in words. The codes are the gateway's (`not_allowed`, `needs_other_person`, `expired`, ...). */

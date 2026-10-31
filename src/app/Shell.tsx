@@ -9,7 +9,7 @@ import { useApp } from './hooks';
 import { A, Link, appPath, go, navigate, refPath, useRoute } from './router';
 import { BrandLockup } from '@/brand';
 import { ClientPaymentModal, TaskFormModal } from './forms';
-import { Avatar, IconButton, Modal, cx, confirmDialog, toast } from '@/ui';
+import { IconButton, Modal, cx, confirmDialog, toast } from '@/ui';
 import { mutateQuiet as mutate, resetDemo, setLanguage, setPrefs, switchPack } from '@/store/store';
 import { PACK_LIST } from '@/packs';
 import { plansFor, planName, type PlanTier } from '@/lib/pricing';
@@ -19,13 +19,17 @@ import { byId, notices } from '@/domain/selectors';
 import { pick } from '@/i18n';
 import { BRAND } from '@/config/brand';
 import { DEPLOY } from '@/config/deployment';
+import { INTERNAL_PLAN } from '@/config/plans';
 import { money } from '@/lib/money';
+import { session } from '@/platform/session';
+import { useStoredImage } from '@/features/settings/image';
 import { GROUPS, TEAM_ICON_OFFICE, modulesFor, type ModuleDef } from './modules';
 import { searchAll } from './search';
 import { assistantOn } from '@/features/assistant/deploy';
 import { ThemeToggle } from '@/ui/ThemeToggle';
 import { switchTheme } from '@/ui/theme';
 import './shell-ext.css';
+import { PersonAvatar } from '@/app/person';
 
 // Read straight from the build constant where a branch must leave the other product's wording out of the bundle.
 declare const __VX_DEPLOY__: string | undefined;
@@ -86,6 +90,12 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
   const style = accent ? ({ '--accent': accent, '--accent-soft': accent + '22', '--accent-line': accent + '66', '--accent-ink': inkOn(accent) } as React.CSSProperties) : undefined;
   const actor = isWorker ? byId(data.workers, prefs.viewAs.slice(7))?.name : app.user?.name;
   const sample = !app.live;
+  const liveSession = app.live ? session() : null;
+  const internal = liveSession?.planId === INTERNAL_PLAN;
+  const logoSrc = useStoredImage(data.company.logo);
+  const trialDays = liveSession?.planId === 'trial' && liveSession.trialExpiresAt
+    ? Math.max(0, Math.ceil((Date.parse(liveSession.trialExpiresAt) - Date.now()) / 86_400_000))
+    : null;
 
   return (
     <div className="shell" style={style}>
@@ -97,8 +107,10 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
           <IconButton label={t('nav.closeMenu')} className="hamb" onClick={() => setMenu(false)}><LuX /></IconButton>
         </div>
         <div className="side-brand">
-          <div className="logo">{data.company.logo ? <img src={data.company.logo} alt="" /> : data.company.initials}</div>
-          <div className="grow"><b>{data.company.name}</b><small>{product}</small></div>
+          {/* a live workspace keeps a path to a private file: it is read through a short-lived address */}
+          <div className="logo">{logoSrc ? <img src={logoSrc} alt="" /> : data.company.initials}</div>
+          {/* VYNTEX's own workspace (plan "internal", free) is known by its name alone, without an edition under it */}
+          <div className="grow"><b>{data.company.name}</b>{!internal && <small>{product}</small>}</div>
         </div>
         <nav className="nav">
           {groups.map((g) => {
@@ -144,9 +156,20 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
               {bell && <NotificationsPanel onClose={() => setBell(false)} />}
             </div>
           )}
-          {actor && <span className="row tight nowrap" title={t(isWorker ? 'role.worker' : 'role.' + prefs.viewAs)} data-testid="actor"><Avatar name={actor} size="sm" accent /><span className="small strong hide-s">{actor}</span></span>}
+          {actor && <span className="row tight nowrap" title={t(isWorker ? 'role.worker' : 'role.' + prefs.viewAs)} data-testid="actor"><PersonAvatar user={isWorker ? undefined : app.user} name={actor} size="sm" accent /><span className="small strong hide-s">{actor}</span></span>}
         </div>
-        <main className="content" id="main" tabIndex={-1}>{children}</main>
+        <main className="content" id="main" tabIndex={-1}>
+          {trialDays !== null && <div className="vx-trial-banner" role="status">
+            <strong>{trialDays > 0
+              ? (app.lang === 'es' ? `${trialDays === 1 ? 'Queda 1 día' : `Quedan ${trialDays} días`} de su prueba gratuita` : `${trialDays} ${trialDays === 1 ? 'day' : 'days'} left in your free trial`)
+              : (app.lang === 'es' ? 'Su prueba gratuita terminó' : 'Your free trial has ended')}</strong>
+            <span>{trialDays > 0
+              ? (app.lang === 'es' ? 'Elija un plan cuando quiera: todo lo que configure se conserva.' : 'Choose a plan whenever you are ready: everything you set up is kept.')
+              : (app.lang === 'es' ? 'Elija un plan para seguir trabajando. Sus datos se conservan.' : 'Choose a plan to keep working. Your data is kept.')}</span>
+            <A to="/settings/billing" data-testid="trial-choose-plan">{app.lang === 'es' ? 'Elegir un plan' : 'Choose a plan'} →</A>
+          </div>}
+          {children}
+        </main>
       </div>
       {search && <CommandPalette onClose={() => setSearch(false)} modules={visible} onQuick={setQuick} />}
       {quick === 'task' && <TaskFormModal onClose={() => setQuick(null)} />}

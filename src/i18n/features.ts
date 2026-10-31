@@ -21,6 +21,7 @@ import { dict as compliance } from '@/features/compliance/i18n';
 import { dict as pricingCopy } from '@/lib/pricing-copy';
 import { dict as marketingSections } from '@/features/marketing/sections/i18n';
 import { dict as marketingPages } from '@/features/marketing/pages-i18n';
+import { dict as marketingTrial } from '@/features/marketing/trial-i18n';
 
 import { dict as appointments } from '@/features/appointments/i18n';
 import { dict as catalog } from '@/features/catalog/i18n';
@@ -40,15 +41,17 @@ import { dict as auth } from '@/features/auth/i18n';
 import { dict as publicPages } from '@/features/public/i18n';
 import { dict as settingsLbs } from '@/features/settings/i18n-lbs';
 import { dict as admin } from '@/features/admin/i18n';
+import { dict as partners } from '@/features/partners/i18n';
 import { dict as floor } from '@/features/floor/i18n';
 import { dict as memberships } from '@/features/memberships/i18n';
 import { dict as commissions } from '@/features/commissions/i18n';
+import { dict as billing } from '@/features/billing/i18n';
 
 // Read straight from the build constant so the bundler leaves the sales wording out of a deployment without sales pages.
 declare const __VX_DEPLOY__: string | undefined;
 
 /** Wording of the sales pages, the guided tour and the plans: only in a deployment that has them. */
-const sales: Dict[] = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? [] : [marketing, tour, pricingCopy, marketingSections, marketingPages, admin];
+const sales: Dict[] = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? [] : [marketing, tour, pricingCopy, marketingSections, marketingPages, marketingTrial, admin, billing, partners];
 
 /** Lines that read differently in LBS Command. They come last, so they replace the shared line of the same key. */
 const lbsOnly: Dict[] = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? [settingsLbs] : [];

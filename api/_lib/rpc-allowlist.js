@@ -17,6 +17,8 @@ export const RPCS = {
   // people and access
   member_invite: { stepUp: true, special: 'invite' }, member_set_role: { stepUp: true }, member_disable: { stepUp: true },
   invite_list: { stepUp: false, read: true }, invite_revoke: { stepUp: false }, session_revoke_member: { stepUp: true },
+  // how many people count against the plan's users (0078): the Team page shows it, the invitation route enforces it
+  seat_usage: { stepUp: false, read: true },
   grant_decide: { stepUp: false }, grant_revoke: { stepUp: false },
   member_enable: { stepUp: true }, member_update_profile: { stepUp: false },
   // appointments, credits, cash

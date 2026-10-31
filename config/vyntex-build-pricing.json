@@ -1,17 +1,17 @@
 {
   "product": "VYNTEX BUILD",
   "owner": "VYNTEX, LLC",
-  "version": "2026-09-26h",
+  "version": "2026-10-30a",
   "notes": "Single source of truth for VYNTEX BUILD plans. Use for Stripe (test mode first), the VYNTEX ERP Center and the catalog page. Do not change prices without Daysi's approval.",
   "plans": [
     {
       "id": "foundation",
       "name": "Foundation",
       "name_es": "Cimiento",
-      "monthly_usd": 59,
-      "yearly_usd": 708,
+      "monthly_usd": 89,
+      "yearly_usd": 1068,
       "yearly_free_months": 0,
-      "setup_usd": 299,
+      "setup_usd": 0,
       "users": 1,
       "welcome_credit": null,
       "features": [
@@ -26,10 +26,10 @@
       "name": "Builder",
       "name_es": "Constructor",
       "most_popular": true,
-      "monthly_usd": 119,
-      "yearly_usd": 1309,
+      "monthly_usd": 169,
+      "yearly_usd": 1859,
       "yearly_free_months": 1,
-      "setup_usd": 499,
+      "setup_usd": 0,
       "users": 5,
       "welcome_credit": {
         "amount_usd": 100,
@@ -52,10 +52,10 @@
       "id": "master_builder",
       "name": "Master Builder",
       "name_es": "Maestro Constructor",
-      "monthly_usd": 169,
-      "yearly_usd": 1690,
+      "monthly_usd": 225,
+      "yearly_usd": 2250,
       "yearly_free_months": 2,
-      "setup_usd": 599,
+      "setup_usd": 0,
       "users": "unlimited",
       "welcome_credit": {
         "amount_usd": 250,
@@ -155,9 +155,9 @@
         "name": "Essential",
         "name_es": "Esencial",
         "same_features_as": "foundation",
-        "monthly_usd": 59,
-        "yearly_usd": 708,
-        "setup_usd": 299
+        "monthly_usd": 89,
+        "yearly_usd": 1068,
+        "setup_usd": 0
       },
       {
         "id": "pro",
@@ -165,18 +165,18 @@
         "name_es": "Pro",
         "most_popular": true,
         "same_features_as": "builder",
-        "monthly_usd": 119,
-        "yearly_usd": 1309,
-        "setup_usd": 499
+        "monthly_usd": 169,
+        "yearly_usd": 1859,
+        "setup_usd": 0
       },
       {
         "id": "elite",
         "name": "Elite",
         "name_es": "Élite",
         "same_features_as": "master_builder",
-        "monthly_usd": 169,
-        "yearly_usd": 1690,
-        "setup_usd": 599
+        "monthly_usd": 225,
+        "yearly_usd": 2250,
+        "setup_usd": 0
       }
     ]
   }

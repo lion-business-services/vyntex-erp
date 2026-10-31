@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { LuArrowRightLeft, LuChevronDown } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { A } from '@/app/router';
-import { Avatar, cx } from '@/ui';
+import { cx } from '@/ui';
 import { PriorityBadge, stageTone } from '@/app/shared';
 import { byId } from '@/domain/selectors';
 import { stagesOf } from '@/domain/config';
@@ -11,6 +11,7 @@ import type { Lead, LeadStage } from '@/domain/types';
 import { money, sum } from '@/lib/money';
 import type { LeadSignals } from './model';
 import { ContactAge, HotMark, NextStepLine } from './parts';
+import { PersonAvatar } from '@/app/person';
 
 /** A column shows this many cards at first. A pipeline with hundreds of leads in one stage stays quick to draw. */
 const COLUMN_CARDS = 40;
@@ -44,7 +45,7 @@ export function Board({ leads, signals, onMove }: { leads: Lead[]; signals: (l: 
                     <div className="row between nowrap top"><A to={`/leads/${l.id}`} className="t leads-name">{l.name}</A><PriorityBadge pri={l.pri} /></div>
                     <div className="small muted">{t('ty_' + l.type)}{l.value ? ` · ${money(l.value)}` : ''}</div>
                     {sig.open && <div><NextStepLine lead={l} signals={sig} plain={!full} compact /></div>}
-                    {full && sig.open && <div className="leads-kfoot">{owner ? <span className="row tight nowrap xs dim"><Avatar name={owner.name} size="sm" />{owner.name.split(' ')[0]}</span> : <span className="xs dim">{t('common.unassigned')}</span>}<span className="row tight nowrap"><HotMark signals={sig} /><ContactAge signals={sig} compact /></span></div>}
+                    {full && sig.open && <div className="leads-kfoot">{owner ? <span className="row tight nowrap xs dim"><PersonAvatar user={owner} name={owner.name} size="sm" />{owner.name.split(' ')[0]}</span> : <span className="xs dim">{t('common.unassigned')}</span>}<span className="row tight nowrap"><HotMark signals={sig} /><ContactAge signals={sig} compact /></span></div>}
                     {canWrite && <label className="leads-move"><span><LuArrowRightLeft aria-hidden="true" />{t('leads.moveTo')}<LuChevronDown aria-hidden="true" /></span>
                       <select value={l.status} onChange={(e) => moveTo(l, e.target.value as LeadStage)} aria-label={`${t('leads.moveTo')}: ${l.name}`}>
                         {stages.map((x) => <option key={x.id} value={x.id}>{t('ls_' + x.id)}</option>)}

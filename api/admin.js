@@ -6,6 +6,8 @@
 //   POST  companies                   { name, slug, industry, plan, ownerEmail, ownerName?, lang? } -> { company, link, delivery }
 //   POST  companies/<id>/invite       { ownerEmail, ownerName?, lang? }   a new invitation for the first owner
 //   POST  companies/<id>/status       { status: 'active' | 'suspended' }
+//   GET   demo-requests               the latest 100 "Request a demo" submissions, each with the workspace already made
+//                                     for that email (or null)                                    -> { requests }
 //
 // Every call is made with the operator's own token, so the database decides (app.require_operator: an active operator
 // whose session passed the second sign-in step). This file adds the session, the origin and csrf checks and the limits.
@@ -51,6 +53,13 @@ async function companies(request) {
   const r = await userRpc(session.at, 'operator_companies', {});
   if (!r.ok) throw refused(r, cookies);
   return ok({ companies: Array.isArray(r.data) ? r.data : [] }, { cookies });
+}
+
+async function demoRequests(request) {
+  const { session, cookies } = await guard(request);
+  const r = await userRpc(session.at, 'operator_demo_requests', {});
+  if (!r.ok) throw refused(r, cookies);
+  return ok({ requests: Array.isArray(r.data) ? r.data : [] }, { cookies });
 }
 
 async function create(request) {
@@ -103,6 +112,7 @@ const handle = entry('admin', async (request, path) => {
   if (deployId() !== 'vyntex') return fail(404, 'not_found');
   const m = request.method;
   if (path === 'context') return m === 'GET' ? context(request) : methodNotAllowed('GET');
+  if (path === 'demo-requests') return m === 'GET' ? demoRequests(request) : methodNotAllowed('GET');
   if (path === 'companies') return m === 'GET' ? companies(request) : m === 'POST' ? create(request) : methodNotAllowed('GET, POST');
   const one = /^companies\/([0-9a-fA-F-]{36})\/(invite|status)$/.exec(path);
   if (one && isUuid(one[1])) {

@@ -7,7 +7,7 @@ import { emit } from '../rules/engine';
 import { addDaysFrom, today } from '@/lib/dates';
 import { uid } from '@/lib/id';
 import { money2, sum } from '@/lib/money';
-import { serviceName, serviceOf, startPlaybook, tierOf } from './catalog';
+import { serviceName, serviceOf, startPlaybook, tierAmount, tierOf } from './catalog';
 import { evaluateCrossSell, settleOpportunities } from './opportunities';
 
 /** What an engagement keeps on top of a job: the unit its price is quoted in, taken from the catalog tier. The database keeps unknown fields. */
@@ -78,7 +78,7 @@ export function fromService(d: DemoState, ctx: Ctx, serviceId: string, tierId?: 
   const tier = tierOf(s, tierId);
   const types = ctx.pack.serviceTypes.map((x) => x.id);
   const type = types.includes(s.category) ? s.category : types.includes('other') ? 'other' : types[0];
-  return { name: serviceName(s, ctx.lang), type, serviceId: s.id, tierId: tier?.id, price: tier?.price ?? 0, unit: tier?.unit, repeat: s.repeat ?? 'once' };
+  return { name: serviceName(s, ctx.lang), type, serviceId: s.id, tierId: tier?.id, price: tierAmount(tier), unit: tier?.unit, repeat: s.repeat ?? 'once' };
 }
 /** A playbook belongs to work the client has agreed to: it starts once the engagement is past the proposal. */
 const underWay = (s: JobStatus) => s === 'contract' || s === 'progress';

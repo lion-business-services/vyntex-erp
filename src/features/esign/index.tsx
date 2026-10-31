@@ -27,6 +27,7 @@ import { saveFile } from '@/features/documents/pdf';
 import { FieldEditor } from './fields';
 import { FieldBox, SigningFlow, type SigningAdapter } from './signing';
 import { PageSheet, pageMode, pageSizes, useViewer } from './pages';
+import { pdfObjectUrl, releasePdfUrl } from './pdfview';
 import { downloadFile, drawDocument, ensureSource, finishEnvelope, objectUrl, openFile, placementPreview, remindRequest, sendDrawn, sendingPending, type DrawnDocument, type DrawProblem } from './prepare';
 import './esign.css';
 
@@ -180,10 +181,10 @@ function useDrawn(env: EnvelopeX, doc: DocRecord | undefined) {
       if (!live) return;
       if (!r.ok) { setState({ problem: r.reason }); return; }
       // an uploaded PDF has no drawing: the browser's own viewer shows it, from an address this page made for it
-      if (!r.doc.view) url = URL.createObjectURL(new Blob([r.doc.bytes as BlobPart], { type: 'application/pdf' }));
+      if (!r.doc.view) url = pdfObjectUrl(r.doc.bytes);
       setState({ doc: r.doc, url });
     });
-    return () => { live = false; if (url) URL.revokeObjectURL(url); };
+    return () => { live = false; releasePdfUrl(url); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stamp, env.lang]);
   return state;
@@ -306,7 +307,7 @@ function ReadPages({ env, pages, view, images, url }: { env: EnvelopeX; pages: {
   const mode = pageMode(view, url, viewer, pages.length);
   return (
     <div className="es-pages es-read" data-testid="esign-pages">
-      {mode !== 'drawn' && <Note>{t(mode === 'viewer' ? 'esign.pages.viewer' : 'esign.pages.blank')}</Note>}
+      {(mode === 'viewer' || mode === 'blank') && <Note>{t(mode === 'viewer' ? 'esign.pages.viewer' : 'esign.pages.blank')}</Note>}
       {pages.map((size, i) => (
         <PageSheet key={i} index={i} size={size} view={view?.[i]} images={images} pdfUrl={url} mode={mode} label={t('esign.pages.page', { n: i + 1, total: pages.length })} blankNote={t('esign.pages.blankSheet')}>
           {env.fields.filter((f) => f.page === i + 1).map((f) => <FieldBox key={f.id} f={{ ...f, mine: false, color: signerIndex(env, f.signerId) }} page={size} label="" value={f.value && f.type !== 'signature' && f.type !== 'initials' ? f.value : undefined} ink={fieldImage(env, f) ?? undefined} inkName={fieldInkName(env, f) ?? undefined} />)}

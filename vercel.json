@@ -40,6 +40,30 @@
       "destination": "/api/public?vxpath=:path*"
     },
     {
+      "source": "/api/billing/:path*",
+      "destination": "/api/billing?vxpath=:path*"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/pricing.html"
+    },
+    {
+      "source": "/request-demo",
+      "destination": "/request-demo.html"
+    },
+    {
+      "source": "/demo",
+      "destination": "/demo.html"
+    },
+    {
+      "source": "/start-trial",
+      "destination": "/start-trial.html"
+    },
+    {
+      "source": "/api/partners/:path*",
+      "destination": "/api/partners?vxpath=:path*"
+    },
+    {
       "source": "/((?!api/|assets/|brand/|brand-lbs/)[^.]*)",
       "destination": "/index.html"
     }
@@ -117,6 +141,24 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/(pricing|request-demo|demo|start-trial)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/((?!(?:pricing|request-demo|demo|start-trial)$)[^.]+)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
         }
       ]
     },

@@ -221,3 +221,37 @@ registerFinance({ register, hooks });
 import { messagingTick, messagingDaily } from './messaging.js';
 hooks.tick.push(({ enqueue: q }) => messagingTick({ enqueue: (kind, ...rest) => (kind === 'messaging.send' ? false : q(kind, ...rest)) }));
 hooks.daily.push(messagingDaily);
+
+// ---------------------------------------------------------------------------------------------------------------------
+// VYNTEX billing (Stripe): an event the webhook could not finish right away, and the daily pass (grace periods, the
+// trial and payment reminders). VYNTEX ERP only; without Stripe settings both do nothing.
+import { handleEvent as billingEvent, daily as billingDaily } from '../billing/core.js';
+import { billingDeps } from '../billing/deps.js';
+import { stripeConfigured } from '../billing/stripe.js';
+import { deployId } from '../env.js';
+
+register('billing.event', async (job) => {
+  const id = String(job.payload?.stripe || '');
+  if (!/^evt_[A-Za-z0-9]{6,80}$/.test(id)) throw new JobError('bad_event', { permanent: true });
+  try {
+    const out = await billingEvent(billingDeps(null), id);
+    if (job.payload?.event) await serviceRpc('webhook_mark', { p_id: job.payload.event, p_status: out && out.ignored ? 'ignored' : 'processed', p_error: null, p_job: null });
+  } catch (e) {
+    throw new JobError(e && e.code ? String(e.code).slice(0, 60) : 'billing_event_failed', { permanent: e && e.code === 'not_configured' });
+  }
+});
+
+register('billing.daily', async () => {
+  if (!stripeConfigured() && deployId() !== 'vyntex') return;
+  const out = await billingDaily(billingDeps(null));
+  log('billing', 'daily', out);
+});
+
+hooks.daily.push(async ({ enqueue: q }) => {
+  if (deployId() !== 'vyntex') return;
+  await q('billing.daily', {}, { idem: 'billing:' + new Date().toISOString().slice(0, 10), maxAttempts: 3 });
+});
+
+// VYNTEX Partner Portal (api/_lib/partners/jobs.js): the notification outbox on every tick, offers and follow-ups daily.
+import { registerPartnerJobs } from '../partners/jobs.js';
+registerPartnerJobs({ register, hooks, JobError });

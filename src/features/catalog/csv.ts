@@ -8,8 +8,11 @@ import { parseCsvRecords } from '@/features/data/csv';
 import { parseMoney } from '@/lib/money';
 
 /** Column names of the file. They stay in English in every language so a file made in one office opens in another. */
-export const COLUMNS = ['category', 'service', 'service_es', 'description', 'description_es', 'code', 'repeats', 'active', 'tier', 'price', 'unit', 'note', 'playbook', 'documents', 'appointment_type', 'external_ids'] as const;
-/** The columns an import reads. The rest are information: a playbook or an id of a connected system is never set from a file. */
+export const COLUMNS = ['category', 'service', 'service_es', 'description', 'description_es', 'code', 'repeats', 'active', 'tier', 'price', 'unit', 'note', 'playbook', 'documents', 'appointment_type', 'external_ids', 'book', 'quoted', 'from_price', 'per', 'kind'] as const;
+/**
+ * The columns of the empty file an import starts from. An import also reads `book` when a file has it (the catalog a new
+ * service goes into). The rest are information: a playbook or an id of a connected system is never set from a file.
+ */
 export const IMPORT_COLUMNS = COLUMNS.slice(0, 12);
 type Column = (typeof COLUMNS)[number];
 
@@ -17,7 +20,7 @@ type Column = (typeof COLUMNS)[number];
 const ALIASES: Record<string, Column> = {
   categoria: 'category', servicio: 'service', name: 'service', nombre: 'service', servicioes: 'service_es', nombrees: 'service_es', servicees: 'service_es', descripcion: 'description',
   descripciones: 'description_es', descriptiones: 'description_es', codigo: 'code', sku: 'code', serepite: 'repeats', repeat: 'repeats', frecuencia: 'repeats', activo: 'active', nivel: 'tier',
-  tiername: 'tier', variation: 'tier', precio: 'price', unidad: 'unit', nota: 'note', notes: 'note',
+  tiername: 'tier', variation: 'tier', precio: 'price', unidad: 'unit', nota: 'note', notes: 'note', catalog: 'book', catalogo: 'book',
 };
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
 /** Anything else, an empty cell included, means the service is active. */
@@ -43,7 +46,7 @@ export function readCatalogCsv(text: string, pack: IndustryPack): ParsedCatalog 
       category: line(category) ?? category, service: cell(r, 'service'), serviceEs: cell(r, 'service_es'), description: cell(r, 'description'), descriptionEs: cell(r, 'description_es'), code: cell(r, 'code'),
       repeat: REPEAT_WORDS[repeat] ?? repeat, active: !NO.has(active), tier: cell(r, 'tier'),
       // an empty price is zero (quoted for each client); text that is not a number is refused by the import
-      price: cell(r, 'price') ? parseMoney(cell(r, 'price')) ?? NaN : 0, unit: UNIT_WORDS[unit] ?? unit, note: cell(r, 'note'),
+      price: cell(r, 'price') ? parseMoney(cell(r, 'price')) ?? NaN : 0, unit: UNIT_WORDS[unit] ?? unit, note: cell(r, 'note'), book: cell(r, 'book'),
     };
   });
   const found = (Object.keys(at) as Column[]);
@@ -59,7 +62,8 @@ export function catalogCsvRows(d: DemoState, services: CatalogService[], t: TFn,
     const appt = (d.apptTypes ?? []).find((a) => a.id === s.appointmentTypeId);
     for (const tier of s.tiers) {
       out.push([category, s.i18n?.en?.name || s.name, s.i18n?.es?.name ?? '', s.i18n?.en?.description || s.description || '', s.i18n?.es?.description ?? '', s.code ?? '', s.repeat ?? 'once', s.active,
-        tier.name, tier.price, tier.unit, tier.note ?? '', playbookOf(d, s.playbookId)?.name ?? '', (s.docKinds ?? []).join('; '), appt ? appt.name.en : '', [ext(s.externalIds), ext(tier.externalIds)].filter(Boolean).join(' | ')]);
+        tier.name, tier.price, tier.unit, tier.note ?? '', playbookOf(d, s.playbookId)?.name ?? '', (s.docKinds ?? []).join('; '), appt ? appt.name.en : '', [ext(s.externalIds), ext(tier.externalIds)].filter(Boolean).join(' | '),
+        s.book ?? '', !!tier.quote, !!tier.from, tier.per ?? '', tier.kind ?? '']);
     }
   }
   return out;

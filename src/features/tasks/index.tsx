@@ -24,6 +24,7 @@ import { ClientRequestModal, RequestsView } from './request';
 import '@/features/leads/work.css';
 import '@/features/leads/board.css';
 import './tasks.css';
+import { PersonAvatar } from '@/app/person';
 
 const PRIORITIES: Priority[] = ['high', 'medium', 'low'];
 const PRI_RANK: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
@@ -261,7 +262,7 @@ function Board({ tasks, onMove, onEdit, rich }: { tasks: Task[]; onMove: (task: 
                     <TaskRef task={rich ? x : { ...x, clientId: undefined }} />
                     {rich && <TaskMarks task={x} />}
                     <div className="tasks-meta">
-                      <span className="small tasks-who" title={who || undefined}>{who ? <><Avatar name={who} size="sm" /><span className="clip">{who}</span></> : <span className="dim">{t('common.unassigned')}</span>}</span>
+                      <span className="small tasks-who" title={who || undefined}>{who ? <><PersonAvatar name={who} size="sm" /><span className="clip">{who}</span></> : <span className="dim">{t('common.unassigned')}</span>}</span>
                       <DueBadge due={x.due} done={done} />
                     </div>
                     {x.auto && <span className="tasks-auto" title={t('tasks.autoHint')}><LuZap aria-hidden="true" />{t('tasks.auto')}</span>}
@@ -308,7 +309,7 @@ function BoardBy({ tasks, by, onEdit, canAssign }: { tasks: Task[]; by: 'person'
             <section key={k || 'none'} className={cx('kcol', over === k && 'over')} aria-label={label(k)} data-col={k}
               onDragOver={(e) => { if (mayDrop) { e.preventDefault(); setOver(k); } }} onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(null); }}
               onDrop={(e) => { e.preventDefault(); setOver(null); const task = tasks.find((x) => x.id === (e.dataTransfer.getData('text/plain') || dragging)); if (task) drop(task, k); setDragging(null); }}>
-              <div className="kcol-h"><span className="row tight">{by === 'person' && <Avatar name={label(k)} size="sm" />}<span className="clip">{label(k)}</span> <span className="count">{col.length}</span></span></div>
+              <div className="kcol-h"><span className="row tight">{by === 'person' && <PersonAvatar name={label(k)} size="sm" />}<span className="clip">{label(k)}</span> <span className="count">{col.length}</span></span></div>
               <div className="kcol-b">
                 {col.map((x) => (
                   <article key={x.id} className={cx('kcard tasks-card', dragging === x.id && 'drag')} draggable={mayDrop} data-task={x.id}
@@ -317,7 +318,7 @@ function BoardBy({ tasks, by, onEdit, canAssign }: { tasks: Task[]; by: 'person'
                     <TaskRef task={x} />
                     {by === 'person' && <TaskMarks task={x} />}
                     <div className="tasks-meta">
-                      <span className="small tasks-who">{by === 'type' ? <><Avatar name={assigneeName(data, x.assignee) || '?'} size="sm" /><span className="clip">{assigneeName(data, x.assignee) || t('common.unassigned')}</span></> : <Badge tone="neutral">{t('ts.' + x.status)}</Badge>}</span>
+                      <span className="small tasks-who">{by === 'type' ? <><PersonAvatar name={assigneeName(data, x.assignee) || '?'} size="sm" /><span className="clip">{assigneeName(data, x.assignee) || t('common.unassigned')}</span></> : <Badge tone="neutral">{t('ts.' + x.status)}</Badge>}</span>
                       <DueBadge due={x.due} />
                     </div>
                   </article>

@@ -10,6 +10,7 @@ import { tinyPdf } from '@/domain/esign/tinypdf';
 import type { SendBlocker, SignAnchor } from '@/domain/esign/envelope';
 import { bytesDataUrl, dataUrlBytes, pageFrame, pdfLib, readPages, sha256Hex, type PdfProblem } from '@/domain/esign/pdfkit';
 import { buildSignedPdf } from '@/domain/esign/stamp';
+import { pdfObjectUrl } from './pdfview';
 import { attachSignedCopy, remindEnvelope, sendEnvelope } from '@/domain/actions';
 import { attachEnvelopeSource, envelopeBlockers, type Done, type PreparedDocument } from '@/domain/actions/esign';
 import { PACKS } from '@/packs';
@@ -50,7 +51,9 @@ export async function fileBytes(ref: FileRef | undefined): Promise<Uint8Array | 
 /** An address this page made itself for a file it already holds, to show or open it. The caller releases it when done. */
 export async function objectUrl(ref: FileRef | undefined): Promise<string | null> {
   const bytes = await fileBytes(ref);
-  return bytes && ref ? URL.createObjectURL(new Blob([bytes as BlobPart], { type: ref.mime || 'application/octet-stream' })) : null;
+  if (!bytes || !ref) return null;
+  // a PDF is registered with its address, so its pages can be drawn on screen (pdfview.ts)
+  return isPdf(ref) ? pdfObjectUrl(bytes) : URL.createObjectURL(new Blob([bytes as BlobPart], { type: ref.mime || 'application/octet-stream' }));
 }
 export async function downloadFile(ref: FileRef | undefined, name?: string): Promise<boolean> {
   const bytes = await fileBytes(ref);
@@ -101,7 +104,7 @@ export async function drawDocument(app: { data: DemoState; pack: IndustryPack; l
  * browser; while it is off a company workspace prepares drafts only, and the screens say so instead of pretending a
  * request went out.
  */
-export const SERVER_SIGNING = false;
+export const SERVER_SIGNING = true;
 /** True where a request can only be prepared, not sent: a company workspace, until the server's signing calls exist. */
 export const sendingPending = (): boolean => isLive() && !SERVER_SIGNING;
 /** The page layout a request keeps with it has to fit in its record (512 KB in the database, with room for the rest). */
@@ -229,7 +232,7 @@ export async function finishEnvelope(envelopeId: string): Promise<'done' | 'alre
     if (!source) return 'failed';
     const d = getSnapshot().data;
     const doc = d.docs.find((x) => x.id === e.docId);
-    const out = await buildSignedPdf(source, find() ?? e, { docTitle: e.title, docNumber: e.docNumber ?? doc?.number, company: d.company.legalName || d.company.name, sentBy: d.users.find((u) => u.id === e.createdBy)?.name, product: DEPLOY.productName });
+    const out = await buildSignedPdf(source, find() ?? e, { docTitle: e.title, docNumber: e.docNumber ?? doc?.number, company: d.company.legalName || d.company.name, sentBy: d.users.find((u) => u.id === e.createdBy)?.name, product: DEPLOY.productName, brand: await certificateBrand() });
     const name = (e.docNumber || e.title).replace(/[^\w.-]+/g, '-') + '-signed.pdf';
     const file = await storeBytes(out.bytes, name, { clientId: e.clientId, jobId: e.jobId, docId: e.docId, folder: 'signature' });
     if (!file || find()?.signedFile) return file ? 'already' : 'failed';
@@ -244,6 +247,13 @@ export async function finishEnvelope(envelopeId: string): Promise<'done' | 'alre
  * The PDF with every box drawn on it as an outline and a label: an exact check of where the boxes will land, for a file
  * whose pages cannot be drawn on screen.
  */
+/** The VYNTEX logo for the certificate header, read from the site's own brand files. LBS writes its name instead. */
+async function certificateBrand(): Promise<{ mark?: Uint8Array; wordmark?: Uint8Array; site?: string } | undefined> {
+  if (DEPLOY.id === 'lbs') return undefined;
+  const get = async (p: string) => { try { const r = await fetch(p); return r.ok ? new Uint8Array(await r.arrayBuffer()) : undefined; } catch { return undefined; } };
+  return { mark: await get('/brand/vyntex-mark.jpg'), wordmark: await get('/brand/vyntex-wordmark.jpg'), site: 'erp.vyntexusa.com' };
+}
+
 export async function placementPreview(source: Uint8Array, fields: SignField[], label: (f: SignField) => string): Promise<Uint8Array> {
   const lib = await pdfLib();
   const pdf = await lib.PDFDocument.load(source, { updateMetadata: false });

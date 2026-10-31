@@ -64,6 +64,8 @@ export function JobForm({ job, clientId, serviceId, onClose, onSaved }: { job?: 
   const isNew = v.clientId === NEW;
   const client = byId(data.clients, v.clientId);
   const service = byId(services, v.serviceId) as Service | undefined;
+  /** A quoted tier puts no price on the work: the person types the agreed amount. */
+  const quoted = !!(service && v.tierId ? service.tiers.find((x) => x.id === v.tierId) : service?.tiers[0])?.quote;
   const id = (k: string) => uid + k;
 
   /** The address follows the client until someone types a different one. In an office, so do the office and the person responsible on a new engagement. */
@@ -183,7 +185,7 @@ export function JobForm({ job, clientId, serviceId, onClose, onSaved }: { job?: 
           {hasCatalog && service && service.tiers.length > 1 && (
             <Field label={t('jobs.f.tier')} htmlFor={id('tier')}>
               <select id={id('tier')} value={v.tierId} onChange={(e) => pickService(service.id, e.target.value)} data-testid="jobs-f-tier">
-                {service.tiers.map((x) => <option key={x.id} value={x.id}>{x.name}{showMoney ? ` · ${tierPrice(t, x)}` : ''}</option>)}
+                {service.tiers.map((x) => <option key={x.id} value={x.id}>{x.name}{showMoney ? ` · ${tierPrice(t, x, true)}` : ''}</option>)}
               </select>
             </Field>
           )}
@@ -215,7 +217,7 @@ export function JobForm({ job, clientId, serviceId, onClose, onSaved }: { job?: 
           <Field label={t('end')} htmlFor={id('end')} error={err.includes('end')}><input id={id('end')} type="date" value={v.end} min={v.start || undefined} onChange={(e) => set('end', e.target.value)} data-testid="jobs-f-end" /></Field>
           {!pack.recurring && repeatField}
           {showMoney && (
-            <Field label={t('contract')} htmlFor={id('price')} error={err.includes('price')} hint={service && !err.includes('price') ? t('jobs.f.priceFrom') : !job ? t('jobs.f.priceHint') : undefined}>
+            <Field label={t('contract')} htmlFor={id('price')} error={err.includes('price')} hint={service && !err.includes('price') ? t(quoted && !v.price.trim() ? 'catalog.tier.enterPrice' : 'jobs.f.priceFrom') : !job ? t('jobs.f.priceHint') : undefined}>
               <input id={id('price')} type="number" min={0} step="0.01" inputMode="decimal" value={v.price} onChange={(e) => set('price', e.target.value)} data-testid="jobs-f-price" />
             </Field>
           )}

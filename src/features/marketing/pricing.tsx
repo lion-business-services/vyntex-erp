@@ -15,6 +15,8 @@ import { pick } from '@/i18n';
 import { Arrow, CircuitTrace, Reveal } from '@/brand';
 import { Badge, cx, type Tone } from '@/ui';
 import { MkPage, editionWord, usePageTitle } from './parts';
+import { BRAND } from '@/config/brand';
+import { GET_STARTED } from './get-started';
 import './pages.css';
 
 export type Billing = 'monthly' | 'yearly';
@@ -204,13 +206,16 @@ function PlanPricing() {
                         </p>
                       </div>
                       <dl className="mkp-facts">
-                        <div><dt>{t('mk.pr.setup')}</dt><dd data-testid={`pr-setup-${p.id}`}>{money(p.setup)}</dd></div>
+                        {p.setup > 0 && <div><dt>{t('mk.pr.setup')}</dt><dd data-testid={`pr-setup-${p.id}`}>{money(p.setup)}</dd></div>}
                         <div><dt>{t('mk.p2.pr.users')}</dt><dd data-testid={`pr-users-${p.id}`}>{usersValue(t, p)}</dd></div>
                         <div><dt>{t('mk.p2.pr.credit')}</dt>{p.welcomeCredit ? <dd>{money(p.welcomeCredit.amount_usd)}</dd> : <dd className="none">{t('mk.p2.pr.creditNone')}</dd>}</div>
                       </dl>
+                      <div className="mkp-plan-act">
                       <button type="button" className={cx('btn lg block mkp-pick', on && 'on')} aria-pressed={on} onClick={() => setTier(p.tier)} data-testid={`pr-plan-${p.id}`}>
                         {on ? <span><LuCheck aria-hidden="true" />{t('mk.pr.selected', { plan: name })}</span> : t('mk.pr.select', { plan: name })}
                       </button>
+                      <Link to="/start-trial" className="mkp-quiet mkp-plan-trial" data-testid={`pr-trial-${p.id}`}>{t('mk.tr.ctaPlan')}<Arrow /></Link>
+                      </div>
                     </div>
                     <div className="mkp-plan-b">
                       <div className="mkp-plan-feats">
@@ -247,7 +252,7 @@ function PlanPricing() {
                 <p className="mkp-fine">{t('mk.pr.first.sub')}</p>
               </div>
               <dl className="mkp-sum" data-testid="pr-first">
-                <div><dt>{t('mk.pr.first.setup')}</dt><dd data-testid="pr-first-setup">{money(chosen.setup)}</dd></div>
+                {chosen.setup > 0 && <div><dt>{t('mk.pr.first.setup')}</dt><dd data-testid="pr-first-setup">{money(chosen.setup)}</dd></div>}
                 <div><dt>{t(billing === 'yearly' ? 'mk.pr.first.year' : 'mk.pr.first.month', { plan: planName(chosen, lang) })}</dt><dd data-testid="pr-first-period">{money(period)}</dd></div>
                 <div className="total"><dt>{t('mk.pr.first.total')}</dt><dd key={`${chosen.id}-${billing}`} data-testid="pr-first-total">{money(chosen.setup + period)}</dd></div>
               </dl>
@@ -296,6 +301,25 @@ function PlanPricing() {
                 );
               })}
             </div>
+          </div>
+        </section>
+
+        <section className="mkp-sec mkp-gs-sec" aria-labelledby="pr-gs-h" data-testid="pr-get-started">
+          <div className="mkp-wrap">
+            <Reveal as="header" className="mkp-sec-h">
+              <h2 id="pr-gs-h">{t('mk.p2.gs.h')}</h2>
+              <p>{t('mk.p2.gs.sub')}</p>
+            </Reveal>
+            <Reveal delay={80}>
+              <ol className="mkp-gs-steps">
+                {GET_STARTED.map((k) => <li key={k}><h3>{t(`mk.p2.gs.${k}.h`)}</h3><p>{t(`mk.p2.gs.${k}.p`)}</p></li>)}
+              </ol>
+              <div className="mkp-gs-act">
+                <Link to="/demo" className="btn lg" data-testid="pr-gs-demo">{t('mk.p2.gs.demo')}<Arrow /></Link>
+                <Link to="/request-demo" className="btn primary lg" data-testid="pr-gs-request">{t('mk.p2.cta.request')}<Arrow /></Link>
+              </div>
+              <p className="mkp-gs-help" data-testid="pr-gs-help">{t('mk.p2.gs.help', { phone: BRAND.phone, email: BRAND.email })}</p>
+            </Reveal>
           </div>
         </section>
 

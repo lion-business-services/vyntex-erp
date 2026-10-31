@@ -80,7 +80,7 @@ function PlansLadder() {
               <div className="mks-pl-plan-h"><h4>{planName(p, lang)}</h4>{p.mostPopular && <span className="mks-pl-pop">{t('mk.s.pl.popular')}</span>}</div>
               <p className="mks-pl-price"><b>{money(p.monthly)}</b><span>{t('mk.s.pl.perMonth')}</span></p>
               <dl>
-                <div><dt>{t('mk.s.pl.setup')}</dt><dd>{money(p.setup)}</dd></div>
+                {p.setup > 0 && <div><dt>{t('mk.s.pl.setup')}</dt><dd>{money(p.setup)}</dd></div>}
                 <div><dt>{t('mk.s.pl.users')}</dt><dd>{users(p)}</dd></div>
               </dl>
             </li>

@@ -69,7 +69,7 @@ test('winning a lead with nothing connected records no connected-app run; with t
 });
 
 test('the field samples get catalog, signature, review, social and opportunity records from their own work', async () => {
-  for (const id of ['build', 'clean', 'landscape', 'wash', 'haul', 'snow', 'turnover', 'events']) {
+  for (const id of ['build', 'clean', 'landscape', 'wash', 'haul', 'snow', 'turnover', 'events', 'hvac', 'plumbing']) {
     const { pack, d } = await sample(id);
     addFieldExtras(d, pack, 'en');
     assert.equal(d.catalog.length, pack.serviceTypes.length, id);

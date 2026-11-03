@@ -5,7 +5,7 @@
 export type Lang = 'en' | 'es' | 'zh';
 /** Text an edition ships in several languages. English and Spanish are always present. Read it with `pick()` from '@/i18n'. */
 export type L10n<T = string> = { en: T; es: T; zh?: T };
-export type IndustryId = 'build' | 'clean' | 'landscape' | 'wash' | 'haul' | 'snow' | 'turnover' | 'events' | 'practice' | 'barber';
+export type IndustryId = 'build' | 'clean' | 'landscape' | 'wash' | 'haul' | 'snow' | 'turnover' | 'events' | 'hvac' | 'plumbing' | 'practice' | 'barber';
 /** YYYY-MM-DD */
 export type ISODate = string;
 /** Full ISO timestamp */

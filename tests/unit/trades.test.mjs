@@ -1,0 +1,95 @@
+// Unit tests for the HVAC and plumbing editions' own automations (src/packs/hvac/rules.ts, src/packs/plumbing/rules.ts),
+// run through the real rules engine on each edition's sample business: an emergency call raises the urgent callback,
+// the manager alert and a DRAFT text (nothing is sent); a signed install or permitted job gets its permit tasks;
+// a finished job gets its trade's closeout tasks. Run with `npm run test:unit` (node --test).
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { load, blank } from './bundle.mjs';
+
+const { actions, PACKS, loadSeed, seedOf, makeT } = await load(`
+  export * as actions from '@/domain/actions';
+  export { PACKS } from '@/packs';
+  export { loadSeed, seedOf } from '@/packs/seeds';
+  export { makeT } from '@/i18n';
+`);
+const clone = (v) => JSON.parse(JSON.stringify(v));
+async function sample(id) {
+  const pack = PACKS[id]; await loadSeed(id);
+  const d = { ...blank(pack), ...clone(seedOf(id)('en')), rules: clone(pack.rules) };
+  d.automation = { enabled: {}, runs: [] };
+  // texting is off in a new field workspace until the company turns it on; the emergency drafts are texts
+  d.settings = { ...(d.settings || {}), messages: { ...(d.settings?.messages || {}), channels: { ...(d.settings?.messages?.channels || {}), text: true } } };
+  return { pack, d, ctx: { pack, lang: 'en', t: makeT('en', pack), actor: d.users[0].id } };
+}
+const ran = (d, id) => d.automation.runs.filter((r) => r.ruleId === id);
+/** Records added since `ids` was taken (lists may grow at either end). */
+const idsOf = (list) => new Set(list.map((x) => x.id));
+const added = (list, ids) => list.filter((x) => !ids.has(x.id));
+
+for (const [id, prefix] of [['hvac', 'hv'], ['plumbing', 'pl']]) {
+  test(`${id}: every shipped rule is unique, active by default where safe, and never sends a client message by itself`, () => {
+    const pack = PACKS[id];
+    const ids = pack.rules.map((r) => r.id);
+    assert.equal(new Set(ids).size, ids.length, 'rule ids are unique');
+    const own = pack.rules.filter((r) => r.id.startsWith(prefix + '-'));
+    assert.ok(own.length >= 14, 'the trade rules are there');
+    for (const r of pack.rules) for (const s of r.then) if (s.do === 'message') assert.equal(s.params.mode, 'draft', r.id + ' prepares drafts only');
+    for (const k of ['lead-intake', 'job-completed', 'connected-won', 'connected-paid']) assert.ok(ids.includes(k), k + ' is kept from the field blueprint');
+  });
+
+  test(`${id}: an emergency call raises the urgent callback, alerts the manager and drafts the text`, async () => {
+    const { d, ctx } = await sample(id);
+    const tasks = idsOf(d.tasks); const msgs = idsOf(d.messages);
+    actions.createLead(d, ctx, { name: 'Quinn Tester', phone: '609-555-0199', email: 'quinn@example.com', address: '1 Sample Way', type: 'emergency', source: 'phone', pri: 'high', ownerId: '', value: 0, smsOptIn: true });
+    const run = ran(d, prefix + '-emergency-triage');
+    assert.equal(run.length, 1, 'the triage rule ran once');
+    assert.equal(run[0].status, 'ok');
+    const urgent = added(d.tasks, tasks).find((x) => /EMERGENCY/.test(x.title));
+    assert.ok(urgent && urgent.pri === 'high', 'an urgent callback task');
+    const fresh = added(d.messages, msgs);
+    assert.ok(fresh.some((m) => m.status === 'draft' && /Quinn/.test(m.body)), 'a draft text to the client');
+    assert.ok(!fresh.some((m) => m.channel !== 'system' && m.status === 'sent'), 'nothing went out to the client');
+    // without texting consent the draft is not even prepared (consent is captured per person)
+    const before = idsOf(d.messages);
+    actions.createLead(d, ctx, { name: 'Sam NoConsent', phone: '609-555-0197', address: '3 Sample Way', type: 'emergency', source: 'phone', pri: 'high', ownerId: '', value: 0 });
+    assert.ok(!added(d.messages, before).some((m) => m.channel === 'text'), 'no text draft without consent');
+    // a non-emergency lead does not trigger it
+    actions.createLead(d, ctx, { name: 'Robin Calm', phone: '609-555-0198', address: '2 Sample Way', type: 'other', source: 'website', pri: 'low', ownerId: '', value: 0 });
+    assert.equal(ran(d, prefix + '-emergency-triage').length, 2);
+  });
+}
+
+test('hvac: a signed install gets the permit, equipment and load calculation tasks; a finished install its warranty and inspection', async () => {
+  const { d, ctx } = await sample('hvac');
+  const client = d.clients[0];
+  const job = actions.createJob(d, ctx, { name: 'Sample install', clientId: client.id, type: 'install', status: 'estimate', price: 9000 });
+  const before = idsOf(d.tasks);
+  actions.updateJob(d, ctx, job.id, { status: 'contract' });
+  assert.equal(ran(d, 'hv-install-permit').length, 1);
+  const titles = added(d.tasks, before).map((x) => x.title).join(' | ');
+  assert.match(titles, /mechanical permit/); assert.match(titles, /Order the equipment/); assert.match(titles, /Manual J/);
+  actions.updateJob(d, ctx, job.id, { status: 'done' });
+  assert.equal(ran(d, 'hv-install-closeout').length, 1);
+  assert.equal(ran(d, 'hv-refrigerant-log').length, 1);
+  assert.equal(ran(d, 'hv-plan-offer').length, 0, 'an install is not offered the repair follow-up');
+});
+
+test('plumbing: a signed repipe gets the permit and 811 tasks; a finished backflow test files the report and tags the client', async () => {
+  const { d, ctx } = await sample('plumbing');
+  const client = d.clients[0];
+  const job = actions.createJob(d, ctx, { name: 'Sample repipe', clientId: client.id, type: 'repipe', status: 'estimate', price: 9000 });
+  const before = idsOf(d.tasks);
+  actions.updateJob(d, ctx, job.id, { status: 'contract' });
+  assert.equal(ran(d, 'pl-permit').length, 1);
+  assert.match(added(d.tasks, before).map((x) => x.title).join(' | '), /811/);
+  const test2 = actions.createJob(d, ctx, { name: 'Sample backflow', clientId: client.id, type: 'backflow', status: 'progress', price: 300 });
+  actions.updateJob(d, ctx, test2.id, { status: 'done' });
+  assert.equal(ran(d, 'pl-backflow-due').length, 1);
+});
+
+test('the non-urgent drafts are emails, so they work in a new field workspace before texting is turned on', () => {
+  for (const id of ['hvac', 'plumbing']) {
+    const urgent = new Set(['hv-emergency-triage', 'pl-emergency-triage', 'pl-gas-safety']);
+    for (const r of PACKS[id].rules) for (const s of r.then) if (s.do === 'message') assert.equal(s.params.channel, urgent.has(r.id) ? 'text' : 'email', r.id);
+  }
+});

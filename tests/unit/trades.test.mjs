@@ -117,3 +117,28 @@ test('each trade edition has its own sections, pipeline, sources, task and clien
     }
   }
 });
+
+test('the trade sections: listed by each trade edition only, and their sample records point at the sample business', async () => {
+  const { TRADE_SECTIONS, sampleFor } = await load(`export { TRADE_SECTIONS, sampleFor } from '@/features/trade/store';`);
+  for (const pack of Object.values(PACKS)) {
+    const own = TRADE_SECTIONS[pack.id] ?? [];
+    for (const id of ['dispatch', 'equipment', 'agreements', 'permits', 'refrigerant', 'backflow', 'camera']) assert.equal(pack.modules.includes(id), own.includes(id), `${pack.id} ${id}`);
+  }
+  for (const id of ['hvac', 'plumbing']) {
+    await loadSeed(id);
+    for (const lang of ['en', 'es']) {
+      const d = { ...blank(PACKS[id]), ...clone(seedOf(id)(lang)) };
+      const s = sampleFor(id, lang, d);
+      const client = (x) => d.clients.some((c) => c.id === x), job = (x) => d.jobs.some((j) => j.id === x), worker = (x) => d.workers.some((w) => w.id === x);
+      for (const e of s.equipment) assert.ok(client(e.clientId), `${id} equipment ${e.id}`);
+      for (const p of s.permits) assert.ok(job(p.jobId), `${id} permit ${p.id}`);
+      for (const r of s.refrigerant) assert.ok(client(r.clientId) && worker(r.workerId) && (!r.jobId || job(r.jobId)), `${id} refrigerant ${r.id}`);
+      for (const x of s.devices) assert.ok(client(x.clientId), `${id} device ${x.id}`);
+      for (const x of s.inspections) assert.ok(client(x.clientId) && worker(x.workerId) && (!x.jobId || job(x.jobId)), `${id} inspection ${x.id}`);
+      assert.ok(s.dispatch.length >= 4 && s.dispatch.some((x) => x.urgent), `${id} board has work and an emergency`);
+      for (const x of s.dispatch) if (x.workerId) assert.ok(worker(x.workerId), `${id} dispatch ${x.id}`);
+      assert.ok(!/[—–]/.test(JSON.stringify(s)), 'no long dashes');
+    }
+    assert.ok(id === 'hvac' ? sampleFor(id, 'en', { ...blank(PACKS[id]), ...clone(seedOf(id)('en')) }).refrigerant.length > 0 : sampleFor(id, 'en', { ...blank(PACKS[id]), ...clone(seedOf(id)('en')) }).devices.length > 0);
+  }
+});

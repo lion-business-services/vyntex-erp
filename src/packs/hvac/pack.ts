@@ -1,6 +1,7 @@
 // VYNTEX HVAC: industry pack for heating, cooling and indoor air quality contractors.
 // Everything industry-specific lives here and in its rules and sample business. The app core never checks the industry id.
 import type { IndustryPack } from '../types';
+import type { ModuleId } from '@/domain/types';
 import { FIELD_MODULES, FIELD_RULES, fieldPack } from '../blueprint';
 import { hvacRules } from './rules';
 
@@ -86,6 +87,7 @@ export const hvacPack: IndustryPack = /* @__PURE__ */ fieldPack({
       "search": "Search client, address, equipment or job",
       "confirmReset": "Throw away your edits and rebuild this document from the job details?",
       "dash.kpi.recurringClients": "Maintenance plan members",
+      "nav.equipment": "Equipment & warranties",
       "dash.hint.recurring": "Plans with tune-ups on the calendar",
       "dash.kpi.pipelineValue": "Open quotes",
       "dash.hint.pipeline": "Quotes and options out: {n}",
@@ -153,6 +155,7 @@ export const hvacPack: IndustryPack = /* @__PURE__ */ fieldPack({
       "search": "Buscar cliente, dirección, equipo o trabajo",
       "confirmReset": "¿Descartar sus cambios y volver a crear este documento con los datos del trabajo?",
       "dash.kpi.recurringClients": "Miembros del plan de mantenimiento",
+      "nav.equipment": "Equipo y garantías",
       "dash.hint.recurring": "Planes con mantenimientos en la agenda",
       "dash.kpi.pipelineValue": "Cotizaciones abiertas",
       "dash.hint.pipeline": "Cotizaciones y opciones enviadas: {n}",
@@ -161,7 +164,8 @@ export const hvacPack: IndustryPack = /* @__PURE__ */ fieldPack({
     },
   },
   // the field sections an HVAC or plumbing shop uses every day; no Opportunities or 1099 & compliance pages (owner decision, Nov 4, 2026)
-  modules: FIELD_MODULES.filter((m) => m !== 'opportunities' && m !== 'compliance'),
+  // plus the trade sections right after Jobs (demo level: shown in the public demo only, src/features/trade)
+  modules: ((m) => [...m.slice(0, m.indexOf('jobs') + 1), 'dispatch', 'agreements', 'equipment', 'permits', 'refrigerant', ...m.slice(m.indexOf('jobs') + 1)])(FIELD_MODULES.filter((m) => m !== 'opportunities' && m !== 'compliance')) as ModuleId[],
   leadStages: [
     { id: 'new', label: { en: 'New call', es: 'Llamada nueva' }, kind: 'open', role: 'new' },
     { id: 'contacted', label: { en: 'Contacted', es: 'Contactado' }, kind: 'open', role: 'contacted' },

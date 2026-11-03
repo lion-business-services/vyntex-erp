@@ -499,7 +499,9 @@ export type ModuleId =
   | 'reports' | 'compliance' | 'automations' | 'assistant' | 'settings' | 'catalog' | 'opportunities' | 'reviews' | 'integrations'
   | 'social' | 'cash' | 'payroll' | 'bookkeeping' | 'licensing' | 'deadlines' | 'security' | 'audit'
   // the barbershop edition: the live floor (chairs, walk-in queue, kiosk, display), memberships and gift cards, barber pay
-  | 'floor' | 'memberships' | 'commissions';
+  | 'floor' | 'memberships' | 'commissions'
+  // the HVAC and plumbing editions' trade sections (demo level, src/features/trade)
+  | 'dispatch' | 'equipment' | 'agreements' | 'permits' | 'refrigerant' | 'backflow' | 'camera';
 
 /** A pipeline stage. `kind` is what the rest of the app reasons about; the id and label are free. */
 export interface StageDef {

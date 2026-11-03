@@ -6,6 +6,7 @@
 //            are never written to browser storage, and every change is sent to the server right after it is made.
 //
 // The pages do not know which one is running: they use `useStore`, `act`, `mutate` and the selectors either way.
+import { resetTrade } from '@/features/trade/store';
 import { addFieldExtras } from '@/packs/field-extras';
 import { demoClearLinks, demoCtxLinks } from '@/platform/demo-links';
 import { useSyncExternalStore } from 'react';
@@ -276,6 +277,7 @@ export function resetDemo() {
   if (!seedReady(id)) { void loadSeed(id).then(() => { if (prefs.pack === id) resetDemo(); }, () => undefined); return; }
   storage.del(dataKey(id));
   demoClearLinks();
+  resetTrade();
   prefs = { ...prefs, viewAs: 'owner' };
   data = freshData(id, prefs.lang);
   sampleLoaded = true;

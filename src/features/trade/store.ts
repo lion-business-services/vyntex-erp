@@ -6,11 +6,11 @@ import { useSyncExternalStore } from 'react';
 import type { IndustryId, Lang } from '@/domain/types';
 import { sampleFor } from './sample';
 
-export type SectionId = 'dispatch' | 'equipment' | 'agreements' | 'permits' | 'refrigerant' | 'backflow' | 'camera';
+export type SectionId = 'dispatch' | 'agreements' | 'equipment' | 'supplies' | 'permits';
 /** The trade sections of each edition, in menu order. */
 export const TRADE_SECTIONS: Partial<Record<IndustryId, SectionId[]>> = {
-  hvac: ['dispatch', 'agreements', 'equipment', 'permits', 'refrigerant'],
-  plumbing: ['dispatch', 'agreements', 'equipment', 'backflow', 'camera', 'permits'],
+  hvac: ['dispatch', 'agreements', 'equipment', 'supplies', 'permits'],
+  plumbing: ['dispatch', 'agreements', 'equipment', 'supplies', 'permits'],
 };
 
 export type EquipStatus = 'good' | 'watch' | 'replace';
@@ -29,10 +29,15 @@ export interface Inspection { id: string; clientId: string; jobId?: string; date
 export type DispatchState = 'waiting' | 'en_route' | 'on_site' | 'done';
 export interface Dispatch { id: string; ref: { type: 'job' | 'lead'; id: string }; workerId?: string; window: string; state: DispatchState; urgent?: boolean; title: string; clientName: string; address: string }
 export interface OnCall { workerId: string }
+/** The company's own stock: parts and supplies in the warehouse (`where: 'shop'`) or on a technician's truck (a worker id). */
+export interface StockItem { id: string; name: string; group: 'parts' | 'refrigerant' | 'consumables' | 'pipe' | 'fixtures'; where: string; qty: number; min: number; unit: string; cost: number; vendor: string }
+/** Tools and test instruments the team uses, who has them and when they are due for calibration or service. */
+export interface Tool { id: string; name: string; serial: string; holder: string; calibrationDue?: string; serviceDue?: string; status: 'ok' | 'service' | 'out' }
 
 export interface TradeState {
   equipment: Equipment[]; permits: Permit[]; refrigerant: RefrigerantEntry[]; devices: Device[]; inspections: Inspection[];
   dispatch: Dispatch[]; onCall: OnCall;
+  stock: StockItem[]; tools: Tool[];
   /** What was already booked, sent or quoted from these screens (`visit:j12`, `test:b5`...), so nothing is done twice. */
   done: Record<string, true>;
 }

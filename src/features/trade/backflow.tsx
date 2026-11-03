@@ -1,5 +1,6 @@
 // Backflow devices: every device at every account with its test due date, last result and whether the report reached
 // the water utility. Recording a test sets the next due date; a failed test becomes a repair task.
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import type { PageProps } from '@/app/modules';
 import { A } from '@/app/router';
@@ -9,7 +10,7 @@ import { Badge, Button, Card, FormModal, Stat, cx, toast } from '@/ui';
 import { Head, daysTo, useTrade } from './common';
 import type { Device } from './store';
 
-export default function BackflowPage(_: PageProps) {
+export default function BackflowPage({ tabs, section }: PageProps & { tabs?: ReactNode; section?: string }) {
   const { s, set, tx, client, date, task, data, taskAll, isDone, markDone } = useTrade();
   const [testing, setTesting] = useState<Device | null>(null);
   const due30 = s.devices.filter((d) => { const n = daysTo(d.due); return n !== undefined && n >= 0 && n <= 30; });
@@ -28,7 +29,7 @@ export default function BackflowPage(_: PageProps) {
   const dueCell = (d: Device) => { const n = daysTo(d.due) ?? 0; return <span className={cx(n < 0 && 'neg', n >= 0 && n <= 30 && 'warn-t')}>{date(d.due)}{n < 0 ? ' · ' + tx(`${-n} days late`, `${-n} días tarde`) : n <= 30 ? ' · ' + tx(`in ${n} days`, `en ${n} días`) : ''}</span>; };
   return (
     <div className="trade">
-      <Head title={tx('Backflow devices', 'Dispositivos de reflujo')} sub={tx('Yearly tests, results and utility reports. Nothing is missed.', 'Pruebas anuales, resultados y reportes a la compañía de agua. No se pasa nada.')}
+      <Head tabs={tabs} title={section ?? tx('Backflow devices', 'Dispositivos de reflujo')} sub={tx('Yearly tests, results and utility reports. Nothing is missed.', 'Pruebas anuales, resultados y reportes a la compañía de agua. No se pasa nada.')}
         auto={handleAll} autoLabel={tx('Book all due tests', 'Agendar pruebas pendientes')} autoCount={toBook.length} />
       <div className="kpis">
         <Stat label={tx('Devices tracked', 'Dispositivos registrados')} value={String(s.devices.length)} hint={price ? tx(`${new Set(s.devices.map((d) => d.clientId)).size} accounts · about ${money(s.devices.length * price)} a year`, `${new Set(s.devices.map((d) => d.clientId)).size} cuentas · unos ${money(s.devices.length * price)} al año`) : undefined} />

@@ -1,5 +1,6 @@
 // Camera inspections: each sewer or drain line inspected, drawn as a line with what was found at each foot, the advice,
 // and one click to send the video link and to turn the finding into a quote in Leads.
+import type { ReactNode } from 'react';
 import type { PageProps } from '@/app/modules';
 import { A } from '@/app/router';
 import { Badge, Button, Card, Stat } from '@/ui';
@@ -8,7 +9,7 @@ import type { Finding, Inspection } from './store';
 
 const COLOR: Record<Finding['kind'], string> = { ok: 'ok', grease: 'warn', offset: 'warn', belly: 'warn', roots: 'bad', crack: 'bad' };
 
-export default function CameraPage(_: PageProps) {
+export default function CameraPage({ tabs, section }: PageProps & { tabs?: ReactNode; section?: string }) {
   const { s, set, tx, client, worker, job, date, lead, taskAll } = useTrade();
   const kind: Record<Finding['kind'], string> = { ok: tx('Clear', 'Libre'), grease: tx('Grease', 'Grasa'), offset: tx('Offset joint', 'Unión desfasada'), belly: tx('Belly (sag)', 'Hundimiento'), roots: tx('Roots', 'Raíces'), crack: tx('Crack / break', 'Grieta / rotura') };
   const serious = s.inspections.filter((i) => i.findings.some((f) => f.kind === 'roots' || f.kind === 'crack'));
@@ -21,7 +22,7 @@ export default function CameraPage(_: PageProps) {
   const patch = (id: string, p: Partial<Inspection>) => set((st) => ({ ...st, inspections: st.inspections.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
   return (
     <div className="trade">
-      <Head title={tx('Camera inspections', 'Inspecciones con cámara')} sub={tx('What the camera found, foot by foot. Findings become quotes.', 'Lo que encontró la cámara, pie por pie. Los hallazgos se convierten en cotizaciones.')}
+      <Head tabs={tabs} title={section ?? tx('Camera inspections', 'Inspecciones con cámara')} sub={tx('What the camera found, foot by foot. Findings become quotes.', 'Lo que encontró la cámara, pie por pie. Los hallazgos se convierten en cotizaciones.')}
         auto={() => sendAll()} autoLabel={tx('Send all videos', 'Enviar todos los videos')} autoCount={unsent.length} />
       <div className="kpis">
         <Stat label={tx('Inspections', 'Inspecciones')} value={String(s.inspections.length)} hint={tx(`${s.inspections.reduce((n, i) => n + i.length, 0)} feet of line on video`, `${s.inspections.reduce((n, i) => n + i.length, 0)} pies de línea en video`)} />

@@ -1,5 +1,6 @@
 // Refrigerant log (EPA Section 608 recordkeeping): every pound added or recovered, by job, technician, refrigerant and
 // cylinder, with leaks that are still open. Totals for the month and for each refrigerant.
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { LuPlus } from 'react-icons/lu';
 import type { PageProps } from '@/app/modules';
@@ -10,7 +11,7 @@ import { Head, daysTo, useTrade } from './common';
 
 const lb = (n: number) => (Math.round(n * 100) / 100).toString();
 
-export default function RefrigerantPage(_: PageProps) {
+export default function RefrigerantPage({ tabs, section }: PageProps & { tabs?: ReactNode; section?: string }) {
   const { s, set, tx, data, job, client, worker, date, can, taskAll, isDone } = useTrade();
   const [adding, setAdding] = useState(false);
   const recent = s.refrigerant.filter((r) => (daysTo(r.date) ?? -999) >= -90);
@@ -25,7 +26,7 @@ export default function RefrigerantPage(_: PageProps) {
   };
   return (
     <div className="trade">
-      <Head title={tx('Refrigerant log', 'Registro de refrigerante')} sub={tx('EPA 608 records: every pound added or recovered, and every open leak.', 'Registros EPA 608: cada libra agregada o recuperada y cada fuga abierta.')}
+      <Head tabs={tabs} title={section ?? tx('Refrigerant log', 'Registro de refrigerante')} sub={tx('EPA 608 records: every pound added or recovered, and every open leak.', 'Registros EPA 608: cada libra agregada o recuperada y cada fuga abierta.')}
         auto={() => repairAll()} autoLabel={tx('Book all leak repairs', 'Agendar reparaciones de fugas')} autoCount={leaks.filter((r) => !isDone('leak:' + r.id)).length}
         more={can('write') ? <Button icon={<LuPlus aria-hidden="true" />} onClick={() => setAdding(true)} data-testid="ref-add">{tx('Log refrigerant', 'Registrar refrigerante')}</Button> : undefined} />
       <div className="kpis">

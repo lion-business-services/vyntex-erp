@@ -7,7 +7,7 @@ import {
   LuAlarmClock, LuArmchair, LuBadgeCheck, LuCrown, LuPercent, LuBanknote, LuBookOpen, LuBriefcase, LuCalculator, LuCalendarClock, LuCalendarDays, LuChartColumn, LuFileText, LuHandCoins,
   LuHardHat, LuLayoutDashboard, LuLightbulb, LuListChecks, LuLock, LuMail, LuPlug, LuScrollText, LuSettings, LuShare2, LuShieldCheck, LuSignature, LuSparkles,
   LuStar, LuUserPlus, LuUsers, LuUsersRound, LuWallet, LuZap,
-  LuTruck, LuWrench, LuCalendarCheck, LuClipboardCheck, LuThermometerSnowflake, LuDroplet, LuVideo,
+  LuTruck, LuWrench, LuCalendarCheck, LuClipboardCheck, LuPackageOpen,
 } from 'react-icons/lu';
 import type { ModuleId } from '@/domain/types';
 import type { Permission } from '@/domain/permissions';
@@ -60,11 +60,9 @@ export const MODULES: ModuleDef[] = [
   // ---- the HVAC and plumbing trade sections (demo level)
   { id: 'dispatch', path: 'dispatch', perm: 'jobs', group: 'work', icon: LuTruck, labelKey: 'nav.dispatch', page: lazy(() => import('@/features/trade/dispatch')), when: trade('dispatch') },
   { id: 'agreements', path: 'agreements', perm: 'clients', group: 'work', icon: LuCalendarCheck, labelKey: 'nav.agreements', page: lazy(() => import('@/features/trade/agreements')), when: trade('agreements') },
-  { id: 'equipment', path: 'equipment', perm: 'clients', group: 'work', icon: LuWrench, labelKey: 'nav.equipment', page: lazy(() => import('@/features/trade/equipment')), when: trade('equipment') },
-  { id: 'backflow', path: 'backflow', perm: 'jobs', group: 'work', icon: LuDroplet, labelKey: 'nav.backflow', page: lazy(() => import('@/features/trade/backflow')), when: trade('backflow') },
-  { id: 'camera', path: 'camera', perm: 'jobs', group: 'work', icon: LuVideo, labelKey: 'nav.camera', page: lazy(() => import('@/features/trade/camera')), when: trade('camera') },
-  { id: 'permits', path: 'permits', perm: 'jobs', group: 'work', icon: LuClipboardCheck, labelKey: 'nav.permits', page: lazy(() => import('@/features/trade/permits')), when: trade('permits') },
-  { id: 'refrigerant', path: 'refrigerant', perm: 'jobs', group: 'work', icon: LuThermometerSnowflake, labelKey: 'nav.refrigerant', page: lazy(() => import('@/features/trade/refrigerant')), when: trade('refrigerant') },
+  { id: 'equipment', path: 'equipment', perm: 'clients', group: 'work', icon: LuWrench, labelKey: 'nav.equipment', page: lazy(() => import('@/features/trade/client-equipment')), when: trade('equipment') },
+  { id: 'supplies', path: 'supplies', perm: 'jobs', group: 'work', icon: LuPackageOpen, labelKey: 'nav.supplies', page: lazy(() => import('@/features/trade/supplies')), when: trade('supplies') },
+  { id: 'permits', path: 'permits', perm: 'jobs', group: 'work', icon: LuClipboardCheck, labelKey: 'nav.permits', page: lazy(() => import('@/features/trade/compliance')), when: trade('permits') },
   { id: 'calendar', path: 'calendar', perm: 'calendar', group: 'work', icon: LuCalendarDays, labelKey: 'nav.calendar', page: lazy(() => import('@/features/calendar')) },
   { id: 'tasks', path: 'tasks', perm: 'tasks', group: 'work', icon: LuListChecks, labelKey: 'nav.tasks', page: lazy(() => import('@/features/tasks')), count: ({ data }) => data.tasks.filter(isOverdue).length, countBad: true },
   // ---- business

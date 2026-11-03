@@ -2,7 +2,7 @@
 // (w1...) and jobs (j1...) of src/packs/<edition>/seed.ts; no real brand, model or permit number.
 import type { DemoState, IndustryId, Lang } from '@/domain/types';
 import { addDays } from '@/lib/dates';
-import type { Device, Dispatch, Equipment, Inspection, Permit, RefrigerantEntry, TradeState } from './store';
+import type { Device, Dispatch, Equipment, Inspection, Permit, RefrigerantEntry, StockItem, Tool, TradeState } from './store';
 
 const yearsAgo = (y: number, days = 0) => addDays(-Math.round(y * 365) - days);
 const inYears = (y: number, days = 0) => addDays(Math.round(y * 365) + days);
@@ -29,6 +29,90 @@ function board(d: DemoState, tx: (en: string, es: string) => string, windows: st
   for (const l of d.leads.filter((x) => x.status === 'scheduled').slice(0, 2))
     out.push({ id: 'dv-' + l.id, ref: { type: 'lead', id: l.id }, window: windows[(out.length + 1) % windows.length], state: 'waiting', title: tx('Estimate visit', 'Visita de presupuesto'), clientName: l.name, address: l.address });
   return out;
+}
+
+type Tx = (en: string, es: string) => string;
+/** Warehouse and truck stock, and the team's tools and instruments. Generic part names only, no brands. */
+function inventory(pack: IndustryId, tx: Tx): { stock: StockItem[]; tools: Tool[] } {
+  let n = 0;
+  const item = (name: string, group: StockItem['group'], where: string, qty: number, min: number, unit: string, cost: number, vendor: string): StockItem => ({ id: 'st' + ++n, name, group, where, qty, min, unit, cost, vendor });
+  if (pack === 'hvac') {
+    const sup = tx('HVAC supply house', 'Distribuidor de HVAC');
+    const ea = tx('each', 'pza');
+    const stock: StockItem[] = [
+      item(tx('Dual run capacitor 45/5 µF', 'Capacitor doble 45/5 µF'), 'parts', 'shop', 14, 10, ea, 18, sup),
+      item(tx('Contactor, 30 amp single pole', 'Contactor, 30 amperes un polo'), 'parts', 'shop', 6, 8, ea, 22, sup),
+      item(tx('Hot surface igniter, universal', 'Encendedor de superficie caliente, universal'), 'parts', 'shop', 4, 6, ea, 38, sup),
+      item(tx('Flame sensor, universal', 'Sensor de flama, universal'), 'parts', 'shop', 9, 6, ea, 14, sup),
+      item(tx('Condensate pump', 'Bomba de condensado'), 'parts', 'shop', 3, 2, ea, 64, sup),
+      item(tx('Smart thermostat', 'Termostato inteligente'), 'parts', 'shop', 5, 4, ea, 165, sup),
+      item(tx('Filter 16x25x1, case of 12', 'Filtro 16x25x1, caja de 12'), 'consumables', 'shop', 7, 6, tx('case', 'caja'), 42, sup),
+      item(tx('Filter 20x25x4 media', 'Filtro de medio 20x25x4'), 'consumables', 'shop', 2, 6, ea, 36, sup),
+      item('R-410A', 'refrigerant', 'shop', 75, 50, 'lb', 14, sup),
+      item('R-454B', 'refrigerant', 'shop', 20, 40, 'lb', 19, sup),
+      item(tx('Line set 3/8 x 3/4, 50 ft', 'Línea de refrigerante 3/8 x 3/4, 50 pies'), 'pipe', 'shop', 3, 2, ea, 245, sup),
+      item(tx('Brazing rods 15%, 1 lb', 'Varillas para soldar 15%, 1 lb'), 'consumables', 'shop', 2, 3, tx('pack', 'paquete'), 68, sup),
+      item(tx('Dual run capacitor 45/5 µF', 'Capacitor doble 45/5 µF'), 'parts', 'w1', 1, 3, ea, 18, sup),
+      item(tx('Contactor, 30 amp single pole', 'Contactor, 30 amperes un polo'), 'parts', 'w1', 2, 2, ea, 22, sup),
+      item('R-454B', 'refrigerant', 'w1', 4, 10, 'lb', 19, sup),
+      item(tx('Dual run capacitor 45/5 µF', 'Capacitor doble 45/5 µF'), 'parts', 'w2', 3, 3, ea, 18, sup),
+      item(tx('Hot surface igniter, universal', 'Encendedor de superficie caliente, universal'), 'parts', 'w2', 0, 2, ea, 38, sup),
+      item(tx('Flame sensor, universal', 'Sensor de flama, universal'), 'parts', 'w2', 2, 2, ea, 14, sup),
+      item('R-410A', 'refrigerant', 'w2', 12, 10, 'lb', 14, sup),
+      item(tx('Dual run capacitor 45/5 µF', 'Capacitor doble 45/5 µF'), 'parts', 'w3', 0, 3, ea, 18, sup),
+      item(tx('Filter 16x25x1, case of 12', 'Filtro 16x25x1, caja de 12'), 'consumables', 'w3', 1, 1, tx('case', 'caja'), 42, sup),
+      item('R-410A', 'refrigerant', 'w3', 6, 10, 'lb', 14, sup),
+      item(tx('Belts and pleated filters, rooftop kit', 'Bandas y filtros plisados, kit de techo'), 'consumables', 'w7', 1, 2, tx('kit', 'kit'), 85, sup),
+    ];
+    const tools: Tool[] = [
+      { id: 'tl1', name: tx('Combustion analyzer', 'Analizador de combustión'), serial: 'SMP-CA-0117', holder: 'w2', calibrationDue: addDays(12), status: 'ok' },
+      { id: 'tl2', name: tx('Refrigerant recovery machine', 'Máquina recuperadora de refrigerante'), serial: 'SMP-RM-0042', holder: 'w1', serviceDue: addDays(40), status: 'ok' },
+      { id: 'tl3', name: tx('Vacuum pump, 8 CFM', 'Bomba de vacío, 8 CFM'), serial: 'SMP-VP-0230', holder: 'w1', serviceDue: addDays(-5), status: 'service' },
+      { id: 'tl4', name: tx('Micron gauge', 'Vacuómetro de micrones'), serial: 'SMP-MG-0090', holder: 'w1', calibrationDue: addDays(150), status: 'ok' },
+      { id: 'tl5', name: tx('Digital manifold gauges', 'Manómetros digitales'), serial: 'SMP-DM-0311', holder: 'w3', calibrationDue: addDays(-2), status: 'ok' },
+      { id: 'tl6', name: tx('Electronic leak detector', 'Detector electrónico de fugas'), serial: 'SMP-LD-0158', holder: 'w3', calibrationDue: addDays(90), status: 'ok' },
+      { id: 'tl7', name: tx('Refrigerant scale', 'Báscula de refrigerante'), serial: 'SMP-RS-0074', holder: 'w2', calibrationDue: addDays(200), status: 'ok' },
+      { id: 'tl8', name: tx('Static pressure kit', 'Kit de presión estática'), serial: 'SMP-SP-0019', holder: 'shop', status: 'ok' },
+      { id: 'tl9', name: tx('Nitrogen regulator and cylinder', 'Regulador y cilindro de nitrógeno'), serial: 'SMP-NR-0031', holder: 'w7', serviceDue: addDays(60), status: 'ok' },
+    ];
+    return { stock, tools };
+  }
+  const sup = tx('Plumbing supply house', 'Distribuidor de plomería');
+  const ea = tx('each', 'pza');
+  const stock: StockItem[] = [
+    item(tx('PEX pipe 3/4 in, 100 ft coil', 'Tubo PEX 3/4, rollo de 100 pies'), 'pipe', 'shop', 4, 3, tx('coil', 'rollo'), 96, sup),
+    item(tx('PEX pipe 1/2 in, 100 ft coil', 'Tubo PEX 1/2, rollo de 100 pies'), 'pipe', 'shop', 2, 4, tx('coil', 'rollo'), 58, sup),
+    item(tx('PEX crimp rings 1/2 in, bag of 100', 'Anillos PEX 1/2, bolsa de 100'), 'parts', 'shop', 6, 4, tx('bag', 'bolsa'), 24, sup),
+    item(tx('Push-fit coupling 3/4 in', 'Copla de presión 3/4'), 'parts', 'shop', 18, 20, ea, 11, sup),
+    item(tx('Quarter turn ball valve 3/4 in', 'Llave de bola de cuarto de vuelta 3/4'), 'parts', 'shop', 12, 10, ea, 16, sup),
+    item(tx('Wax ring with bolts', 'Anillo de cera con tornillos'), 'fixtures', 'shop', 22, 15, ea, 6, sup),
+    item(tx('Toilet fill valve', 'Válvula de llenado de inodoro'), 'fixtures', 'shop', 9, 10, ea, 12, sup),
+    item(tx('Faucet cartridge, single handle', 'Cartucho de llave, una manija'), 'fixtures', 'shop', 5, 8, ea, 21, sup),
+    item(tx('Gas water heater, 40 gallon', 'Calentador de gas, 40 galones'), 'fixtures', 'shop', 1, 2, ea, 720, sup),
+    item(tx('Thermal expansion tank, 2 gallon', 'Tanque de expansión térmica, 2 galones'), 'parts', 'shop', 3, 3, ea, 48, sup),
+    item(tx('Pressure reducing valve 3/4 in', 'Válvula reductora de presión 3/4'), 'parts', 'shop', 2, 2, ea, 118, sup),
+    item(tx('Backflow RPZ rebuild kit, 1 in', 'Kit de reparación RPZ, 1 pulgada'), 'parts', 'shop', 0, 2, ea, 145, sup),
+    item(tx('Wax ring with bolts', 'Anillo de cera con tornillos'), 'fixtures', 'w2', 1, 4, ea, 6, sup),
+    item(tx('Push-fit coupling 3/4 in', 'Copla de presión 3/4'), 'parts', 'w2', 2, 6, ea, 11, sup),
+    item(tx('Toilet fill valve', 'Válvula de llenado de inodoro'), 'fixtures', 'w2', 2, 2, ea, 12, sup),
+    item(tx('PEX crimp rings 1/2 in, bag of 100', 'Anillos PEX 1/2, bolsa de 100'), 'parts', 'w1', 1, 1, tx('bag', 'bolsa'), 24, sup),
+    item(tx('Quarter turn ball valve 3/4 in', 'Llave de bola de cuarto de vuelta 3/4'), 'parts', 'w1', 1, 3, ea, 16, sup),
+    item(tx('Faucet cartridge, single handle', 'Cartucho de llave, una manija'), 'fixtures', 'w3', 0, 2, ea, 21, sup),
+    item(tx('Jetter nozzle, root cutter', 'Boquilla de hidrolimpiadora, corta raíces'), 'parts', 'w7', 1, 1, ea, 135, sup),
+    item(tx('Drain machine cable 3/8 in, 50 ft', 'Cable de máquina destapadora 3/8, 50 pies'), 'consumables', 'w7', 0, 1, ea, 190, sup),
+  ];
+  const tools: Tool[] = [
+    { id: 'tl1', name: tx('Backflow test kit (differential gauge)', 'Kit de prueba de reflujo (manómetro diferencial)'), serial: 'SMP-BF-0204', holder: 'w3', calibrationDue: addDays(9), status: 'ok' },
+    { id: 'tl2', name: tx('Sewer inspection camera, 200 ft', 'Cámara de inspección de drenaje, 200 pies'), serial: 'SMP-SC-0011', holder: 'w7', serviceDue: addDays(25), status: 'ok' },
+    { id: 'tl3', name: tx('Hydro jetter, 4,000 psi', 'Hidrolimpiadora, 4,000 psi'), serial: 'SMP-HJ-0006', holder: 'w7', serviceDue: addDays(-3), status: 'service' },
+    { id: 'tl4', name: tx('Line locator and sonde', 'Localizador de líneas y sonda'), serial: 'SMP-LL-0037', holder: 'w7', calibrationDue: addDays(120), status: 'ok' },
+    { id: 'tl5', name: tx('Drain machine, sectional', 'Máquina destapadora seccional'), serial: 'SMP-DM-0120', holder: 'w2', serviceDue: addDays(70), status: 'ok' },
+    { id: 'tl6', name: tx('PEX crimp tool', 'Pinza para PEX'), serial: 'SMP-PX-0410', holder: 'w1', calibrationDue: addDays(-1), status: 'ok' },
+    { id: 'tl7', name: tx('Combustible gas leak detector', 'Detector de fugas de gas'), serial: 'SMP-GD-0088', holder: 'w1', calibrationDue: addDays(45), status: 'ok' },
+    { id: 'tl8', name: tx('Thermal imaging camera', 'Cámara térmica'), serial: 'SMP-TC-0015', holder: 'shop', status: 'ok' },
+    { id: 'tl9', name: tx('Moisture meter', 'Medidor de humedad'), serial: 'SMP-MM-0063', holder: 'w2', status: 'ok' },
+  ];
+  return { stock, tools };
 }
 
 export function sampleFor(pack: IndustryId, lang: Lang, d: DemoState): TradeState {
@@ -62,7 +146,7 @@ export function sampleFor(pack: IndustryId, lang: Lang, d: DemoState): TradeStat
       { id: 'r4', date: addDays(-90), jobId: 'j2', clientId: 'c2', workerId: 'w7', gas: 'R-410A', added: 1, recovered: 0, cylinder: 'CYL-0388', leak: 'found_open', note: tx('Small leak suspected on unit 2 coil. Recheck at the fall visit.', 'Se sospecha una fuga chica en el serpentín de la unidad 2. Revisar en la visita de otoño.') },
       { id: 'r5', date: addDays(0), jobId: 'j1', clientId: 'c1', workerId: 'w1', gas: 'R-454B', added: 3.25, recovered: 0, cylinder: 'CYL-0420', leak: 'none', note: tx('New install, charge for the line set length.', 'Instalación nueva, carga según el largo de la línea.') },
     ];
-    return { equipment, permits, refrigerant, devices: [], inspections: [], dispatch: board(d, tx, windows), onCall: { workerId: 'w2' }, done: {} };
+    return { equipment, permits, refrigerant, devices: [], inspections: [], dispatch: board(d, tx, windows), onCall: { workerId: 'w2' }, done: {}, ...inventory(pack, tx) };
   }
   // plumbing
   const equipment: Equipment[] = [
@@ -102,5 +186,5 @@ export function sampleFor(pack: IndustryId, lang: Lang, d: DemoState): TradeStat
     { id: 'p4', jobId: 'j10', kind: tx('Plumbing and gas', 'Plomería y gas'), town: 'Mays Landing', number: 'SAMPLE-PG-0477', applied: addDays(-16), status: 'passed', inspection: addDays(-10) },
     { id: 'p5', jobId: 'j7', kind: tx('Gas and plumbing', 'Gas y plomería'), town: 'Galloway', number: tx('Not filed yet', 'Sin tramitar'), applied: addDays(0), status: 'applied', note: tx('File when the tankless quote is signed.', 'Tramitar cuando se firme la cotización del sin tanque.') },
   ];
-  return { equipment, permits, refrigerant: [], devices, inspections, dispatch: board(d, tx, windows), onCall: { workerId: 'w2' }, done: {} };
+  return { equipment, permits, refrigerant: [], devices, inspections, dispatch: board(d, tx, windows), onCall: { workerId: 'w2' }, done: {}, ...inventory(pack, tx) };
 }

@@ -122,7 +122,7 @@ test('the trade sections: listed by each trade edition only, and their sample re
   const { TRADE_SECTIONS, sampleFor } = await load(`export { TRADE_SECTIONS, sampleFor } from '@/features/trade/store';`);
   for (const pack of Object.values(PACKS)) {
     const own = TRADE_SECTIONS[pack.id] ?? [];
-    for (const id of ['dispatch', 'equipment', 'agreements', 'permits', 'refrigerant', 'backflow', 'camera']) assert.equal(pack.modules.includes(id), own.includes(id), `${pack.id} ${id}`);
+    for (const id of ['dispatch', 'agreements', 'equipment', 'supplies', 'permits']) assert.equal(pack.modules.includes(id), own.includes(id), `${pack.id} ${id}`);
   }
   for (const id of ['hvac', 'plumbing']) {
     await loadSeed(id);
@@ -138,6 +138,10 @@ test('the trade sections: listed by each trade edition only, and their sample re
       assert.ok(s.dispatch.length >= 4 && s.dispatch.some((x) => x.urgent), `${id} board has work and an emergency`);
       for (const x of s.dispatch) if (x.workerId) assert.ok(worker(x.workerId), `${id} dispatch ${x.id}`);
       assert.ok(!/[—–]/.test(JSON.stringify(s)), 'no long dashes');
+      assert.ok(s.stock.length > 10 && s.tools.length > 5, `${id} inventory`);
+      for (const x of s.stock) assert.ok(x.where === 'shop' || worker(x.where), `${id} stock ${x.id}`);
+      for (const t of s.tools) assert.ok(t.holder === 'shop' || worker(t.holder), `${id} tool ${t.id}`);
+      for (const p of ['social', 'opportunities', 'compliance']) assert.ok(!PACKS[id].modules.includes(p), `${id} has no ${p}`);
     }
     assert.ok(id === 'hvac' ? sampleFor(id, 'en', { ...blank(PACKS[id]), ...clone(seedOf(id)('en')) }).refrigerant.length > 0 : sampleFor(id, 'en', { ...blank(PACKS[id]), ...clone(seedOf(id)('en')) }).devices.length > 0);
   }

@@ -171,7 +171,7 @@ test('cards, as in the Command Center: the categories as tabs, the price in larg
   await shot(owner, 'catalog-cards-agency');
   await owner.page.click('[data-testid=catalog-cats] [data-cat=Websites]');
   assert.deepEqual(await cardNames(), ['Business Website', 'Online Store']);
-  assert.match(await owner.page.locator('[data-testid=catalog-card]', { hasText: 'Business Website' }).innerText(), /From \$4,000/);
+  assert.match(await owner.page.locator('[data-testid=catalog-card]', { hasText: 'Business Website' }).innerText(), /\$4,000\+/, 'a starting price reads "$4,000+", as in the Command Center');
   // a search shows every category that has a match, each with its heading
   await owner.page.fill('.catalog-filters input', 'website');
   await owner.page.waitForFunction(() => !document.querySelector('[data-testid=catalog-cats] [aria-pressed=true]'));

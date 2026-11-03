@@ -216,3 +216,7 @@
 .cc-more:hover svg{transform:translateX(3px)}
 @media (max-width:560px){.cc-card{padding:22px 16px 16px}.cc-big{font-size:34px}}
 @media (prefers-reduced-motion:reduce){.cc-card,.cc-more svg,.cc-not summary::before{transition:none}}
+
+.cc-catnote{margin:-6px 0 6px;color:var(--text-2);font-size:14px;max-width:80ch}
+.cc-h.no{color:var(--text-3)}
+.cc-not .cc-list{color:var(--text-2)}

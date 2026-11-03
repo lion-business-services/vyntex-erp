@@ -62,8 +62,8 @@ export const daysTo = (iso?: string): number | undefined => {
 export const ageYears = (iso?: string): number => { const n = daysTo(iso); return n === undefined ? 0 : Math.max(0, Math.floor(-n / 365)); };
 
 /** The header of a trade section: the name, a small demo badge, one line on what it is for, and the one-click action. */
-export function Head({ title, sub, auto, autoLabel, autoCount, more }: { title: string; sub: string; auto?: () => void; autoLabel?: string; autoCount?: number; more?: ReactNode }) {
+export function Head({ title, sub, auto, autoLabel, autoCount, more, tabs }: { title: string; sub: string; auto?: () => void; autoLabel?: string; autoCount?: number; more?: ReactNode; tabs?: ReactNode }) {
   const { tx, can } = useTrade();
-  return <PageHeader title={<span className="row tight">{title}<Badge tone="violet" title={tx('Works on the sample business. Tasks, leads and jobs it creates are real records of the demo workspace.', 'Funciona con el negocio de ejemplo. Las tareas, prospectos y trabajos que crea son registros reales del espacio de demostración.')}>{tx('Demo', 'Demo')}</Badge></span>} sub={sub}
-    actions={<>{more}{auto && can('write') && <Button variant="primary" icon={<LuSparkles aria-hidden="true" />} onClick={auto} disabled={autoCount === 0} data-testid="trade-auto">{autoLabel}{autoCount ? ` (${autoCount})` : ''}</Button>}</>} />;
+  return <><PageHeader title={<span className="row tight">{title}<Badge tone="violet" title={tx('Works on the sample business. Tasks, leads and jobs it creates are real records of the demo workspace.', 'Funciona con el negocio de ejemplo. Las tareas, prospectos y trabajos que crea son registros reales del espacio de demostración.')}>{tx('Demo', 'Demo')}</Badge></span>} sub={sub}
+    actions={<>{more}{auto && can('write') && <Button variant="primary" icon={<LuSparkles aria-hidden="true" />} onClick={auto} disabled={autoCount === 0} data-testid="trade-auto">{autoLabel}{autoCount ? ` (${autoCount})` : ''}</Button>}</>} />{tabs && <div className="td-tabs">{tabs}</div>}</>;
 }

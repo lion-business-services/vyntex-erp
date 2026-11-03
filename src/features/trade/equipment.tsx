@@ -1,5 +1,6 @@
 // Equipment & warranties: every unit at every client with its model, serial, age, warranty dates and service dates.
 // Old or failing units become replacement opportunities in Leads in one click; tune-ups and warranty work become tasks.
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { LuPlus, LuSearch } from 'react-icons/lu';
 import type { PageProps } from '@/app/modules';
@@ -12,7 +13,7 @@ import type { Equipment } from './store';
 
 type View = 'all' | 'replace' | 'warranty' | 'service';
 
-export default function EquipmentPage(_: PageProps) {
+export default function EquipmentPage({ tabs }: PageProps & { tabs?: ReactNode }) {
   const { s, set, tx, client, date, data, pack, lead, can, isDone, taskAll } = useTrade();
   const plumbing = pack.id === 'plumbing';
   const [view, setView] = useState<View>('all');
@@ -42,8 +43,8 @@ export default function EquipmentPage(_: PageProps) {
     : [[tx('Central AC', 'Aire acondicionado central'), tx('Central AC', 'Aire acondicionado central')], [tx('Gas furnace', 'Caldera de gas'), tx('Gas furnace', 'Caldera de gas')], [tx('Heat pump', 'Bomba de calor'), tx('Heat pump', 'Bomba de calor')], [tx('Ductless mini-split', 'Mini-split sin ductos'), tx('Ductless mini-split', 'Mini-split sin ductos')], [tx('Boiler', 'Boiler'), tx('Boiler', 'Boiler')], [tx('Rooftop unit', 'Unidad de techo'), tx('Rooftop unit', 'Unidad de techo')]];
   return (
     <div className="trade">
-      <Head title={plumbing ? tx('Water heaters & equipment', 'Calentadores y equipo') : tx('Equipment & warranties', 'Equipo y garantías')}
-        sub={tx('Every unit, its age and warranty. Old units become replacement quotes.', 'Cada equipo, su edad y su garantía. Los viejos se convierten en cotizaciones.')}
+      <Head tabs={tabs} title={tx('Client equipment', 'Equipo de clientes')}
+        sub={plumbing ? tx('Water heaters and fixtures at each client, their age and warranty. Old units become quotes.', 'Calentadores y accesorios de cada cliente, su edad y garantía. Los viejos se convierten en cotizaciones.') : tx('Every unit at each client, its age and warranty. Old units become replacement quotes.', 'Cada equipo de cada cliente, su edad y garantía. Los viejos se convierten en cotizaciones.')}
         auto={quoteAll} autoLabel={tx('Quote all replacements', 'Cotizar todos los reemplazos')} autoCount={opps.length}
         more={can('write') ? <Button icon={<LuPlus aria-hidden="true" />} onClick={() => setAdding(true)} data-testid="equip-add">{tx('Add equipment', 'Agregar equipo')}</Button> : undefined} />
       <div className="kpis">

@@ -29,3 +29,7 @@
 .td-mark.bad { background: var(--bad, #e5484d); }
 .td-findings { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 6px; }
 @media (max-width: 720px) { .td-lanes { grid-auto-flow: row; grid-auto-columns: auto; } }
+.td-tabs { margin-bottom: 6px; }
+.td-bar { display: inline-block; width: 70px; height: 6px; border-radius: 3px; background: var(--line, rgba(255,255,255,.12)); overflow: hidden; }
+.td-bar i { display: block; height: 100%; background: var(--ok, #30a46c); }
+.td-bar.bad i { background: var(--bad, #e5484d); }

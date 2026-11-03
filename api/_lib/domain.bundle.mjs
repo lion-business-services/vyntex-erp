@@ -18018,20 +18018,16 @@ var dict45 = {
   en: {
     "nav.dispatch": "Dispatch board",
     "nav.agreements": "Maintenance plans",
-    "nav.equipment": "Equipment",
-    "nav.permits": "Permits & inspections",
-    "nav.refrigerant": "Refrigerant log",
-    "nav.backflow": "Backflow devices",
-    "nav.camera": "Camera inspections"
+    "nav.equipment": "Client equipment",
+    "nav.supplies": "Equipment & supplies",
+    "nav.permits": "Permits & compliance"
   },
   es: {
     "nav.dispatch": "Tablero de despacho",
     "nav.agreements": "Planes de mantenimiento",
-    "nav.equipment": "Equipo",
-    "nav.permits": "Permisos e inspecciones",
-    "nav.refrigerant": "Registro de refrigerante",
-    "nav.backflow": "Dispositivos de reflujo",
-    "nav.camera": "Inspecciones con c\xE1mara"
+    "nav.equipment": "Equipo de clientes",
+    "nav.supplies": "Equipo y materiales",
+    "nav.permits": "Permisos y cumplimiento"
   }
 };
 

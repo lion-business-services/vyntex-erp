@@ -1,5 +1,6 @@
 // Permits & inspections: every permit of every job from filing to the final inspection, so no job is closed (or paid)
 // before it passes. Booking an inspection puts a task on the list.
+import type { ReactNode } from 'react';
 import type { PageProps } from '@/app/modules';
 import { A } from '@/app/router';
 import { addDays } from '@/lib/dates';
@@ -11,7 +12,7 @@ import type { Permit, PermitStatus } from './store';
 const ORDER: PermitStatus[] = ['applied', 'approved', 'rough', 'final_booked', 'passed'];
 const TONE: Record<PermitStatus, Tone> = { applied: 'neutral', approved: 'info', rough: 'violet', final_booked: 'warn', passed: 'ok', failed: 'bad' };
 
-export default function PermitsPage(_: PageProps) {
+export default function PermitsPage({ tabs, section }: PageProps & { tabs?: ReactNode; section?: string }) {
   const { s, set, tx, job, client, date, task, taskAll, isDone } = useTrade();
   const label: Record<PermitStatus, string> = { applied: tx('Filed, waiting on the town', 'Entregado, esperando al municipio'), approved: tx('Approved, posted on site', 'Aprobado, puesto en el sitio'), rough: tx('Rough inspection passed', 'Inspección preliminar aprobada'), final_booked: tx('Final inspection booked', 'Inspección final agendada'), passed: tx('Final passed, closed', 'Final aprobada, cerrado'), failed: tx('Failed, fix and rebook', 'Rechazada, corregir y reagendar') };
   const open = s.permits.filter((p) => p.status !== 'passed');
@@ -37,7 +38,7 @@ export default function PermitsPage(_: PageProps) {
   const nextLabel = (p: Permit) => (p.status === 'applied' ? tx('Mark approved', 'Marcar aprobado') : p.status === 'approved' ? tx('Rough passed', 'Preliminar aprobada') : p.status === 'rough' ? tx('Book final', 'Agendar final') : p.status === 'final_booked' ? tx('Final passed', 'Final aprobada') : p.status === 'failed' ? tx('Rebook final', 'Reagendar final') : '');
   return (
     <div className="trade">
-      <Head title={tx('Permits & inspections', 'Permisos e inspecciones')} sub={tx('Every permit from filing to final. No job closes before its final passes.', 'Cada permiso hasta la final. Ningún trabajo se cierra antes de pasar la final.')}
+      <Head tabs={tabs} title={section ?? tx('Permits & inspections', 'Permisos e inspecciones')} sub={tx('Every permit from filing to final. No job closes before its final passes.', 'Cada permiso hasta la final. Ningún trabajo se cierra antes de pasar la final.')}
         auto={followAll} autoLabel={tx('Follow up all', 'Dar seguimiento a todo')} autoCount={pending} />
       <div className="kpis">
         <Stat label={tx('Open permits', 'Permisos abiertos')} value={String(open.length)} hint={tx(`${s.permits.length} on file`, `${s.permits.length} en total`)} />

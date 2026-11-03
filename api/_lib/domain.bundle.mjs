@@ -19439,7 +19439,9 @@ var vyntex_build_pricing_default = {
       "VYNTEX HAUL",
       "VYNTEX SNOW",
       "VYNTEX TURNOVER",
-      "VYNTEX EVENTS"
+      "VYNTEX EVENTS",
+      "VYNTEX HVAC",
+      "VYNTEX PLUMBING"
     ],
     notes: "Reusable plan names for every industry except VYNTEX BUILD (Foundation/Builder/Master Builder). Same prices, features, add-ons and rules as VYNTEX BUILD.",
     plans: [

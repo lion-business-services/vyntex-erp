@@ -62,7 +62,7 @@ export function sampleFor(pack: IndustryId, lang: Lang, d: DemoState): TradeStat
       { id: 'r4', date: addDays(-90), jobId: 'j2', clientId: 'c2', workerId: 'w7', gas: 'R-410A', added: 1, recovered: 0, cylinder: 'CYL-0388', leak: 'found_open', note: tx('Small leak suspected on unit 2 coil. Recheck at the fall visit.', 'Se sospecha una fuga chica en el serpentín de la unidad 2. Revisar en la visita de otoño.') },
       { id: 'r5', date: addDays(0), jobId: 'j1', clientId: 'c1', workerId: 'w1', gas: 'R-454B', added: 3.25, recovered: 0, cylinder: 'CYL-0420', leak: 'none', note: tx('New install, charge for the line set length.', 'Instalación nueva, carga según el largo de la línea.') },
     ];
-    return { equipment, permits, refrigerant, devices: [], inspections: [], dispatch: board(d, tx, windows), onCall: { workerId: 'w2' } };
+    return { equipment, permits, refrigerant, devices: [], inspections: [], dispatch: board(d, tx, windows), onCall: { workerId: 'w2' }, done: {} };
   }
   // plumbing
   const equipment: Equipment[] = [
@@ -102,5 +102,5 @@ export function sampleFor(pack: IndustryId, lang: Lang, d: DemoState): TradeStat
     { id: 'p4', jobId: 'j10', kind: tx('Plumbing and gas', 'Plomería y gas'), town: 'Mays Landing', number: 'SAMPLE-PG-0477', applied: addDays(-16), status: 'passed', inspection: addDays(-10) },
     { id: 'p5', jobId: 'j7', kind: tx('Gas and plumbing', 'Gas y plomería'), town: 'Galloway', number: tx('Not filed yet', 'Sin tramitar'), applied: addDays(0), status: 'applied', note: tx('File when the tankless quote is signed.', 'Tramitar cuando se firme la cotización del sin tanque.') },
   ];
-  return { equipment, permits, refrigerant: [], devices, inspections, dispatch: board(d, tx, windows), onCall: { workerId: 'w2' } };
+  return { equipment, permits, refrigerant: [], devices, inspections, dispatch: board(d, tx, windows), onCall: { workerId: 'w2' }, done: {} };
 }

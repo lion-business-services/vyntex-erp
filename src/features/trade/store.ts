@@ -33,6 +33,8 @@ export interface OnCall { workerId: string }
 export interface TradeState {
   equipment: Equipment[]; permits: Permit[]; refrigerant: RefrigerantEntry[]; devices: Device[]; inspections: Inspection[];
   dispatch: Dispatch[]; onCall: OnCall;
+  /** What was already booked, sent or quoted from these screens (`visit:j12`, `test:b5`...), so nothing is done twice. */
+  done: Record<string, true>;
 }
 
 const states = new Map<string, TradeState>();

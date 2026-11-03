@@ -3,9 +3,9 @@
 import { LuCircleAlert, LuMapPin, LuPhone, LuTruck } from 'react-icons/lu';
 import type { PageProps } from '@/app/modules';
 import { A } from '@/app/router';
-import { Badge, Button, Card, PageHeader, Stat, cx, toast } from '@/ui';
+import { Badge, Button, Card, Stat, cx, toast } from '@/ui';
 import type { Tone } from '@/ui';
-import { DemoNote, useTrade } from './common';
+import { Head, useTrade } from './common';
 import type { Dispatch, DispatchState } from './store';
 
 const NEXT: Record<DispatchState, DispatchState | null> = { waiting: 'en_route', en_route: 'on_site', on_site: 'done', done: null };
@@ -31,6 +31,17 @@ export default function DispatchPage(_: PageProps) {
     patch(x.id, { state: n });
     if (n === 'done') task(tx(`Close out ${x.title}: invoice, photos and notes`, `Cerrar ${x.title}: factura, fotos y notas`), { ...(x.ref.type === 'job' ? { jobId: x.ref.id } : {}), type: 'todo' });
   };
+  /** Emergencies to whoever is on call, every other waiting call to the technician with the fewest open calls. */
+  const autoDispatch = () => {
+    const load = new Map(techs.map((w) => [w.id, s.dispatch.filter((x) => x.workerId === w.id && x.state !== 'done').length]));
+    const picks = new Map<string, string>();
+    for (const x of [...queue].sort((a, b) => Number(!!b.urgent) - Number(!!a.urgent))) {
+      const w = x.urgent && load.has(s.onCall.workerId) ? s.onCall.workerId : [...load.entries()].sort((a, b) => a[1] - b[1])[0]?.[0];
+      if (!w) continue; picks.set(x.id, w); load.set(w, (load.get(w) ?? 0) + 1);
+    }
+    set((st) => ({ ...st, dispatch: st.dispatch.map((x) => (picks.has(x.id) ? { ...x, workerId: picks.get(x.id) } : x)) }));
+    toast(tx(`${picks.size} calls assigned. Emergencies went to ${data.workers.find((w) => w.id === s.onCall.workerId)?.name ?? ''} (on call).`, `${picks.size} llamadas asignadas. Las emergencias fueron para ${data.workers.find((w) => w.id === s.onCall.workerId)?.name ?? ''} (de guardia).`));
+  };
   const card = (x: Dispatch) => (
     <article key={x.id} className={cx('td-card', x.urgent && 'urgent', x.state === 'done' && 'done')} data-testid="dispatch-card">
       <header className="row between">
@@ -51,12 +62,12 @@ export default function DispatchPage(_: PageProps) {
   );
   return (
     <div className="trade">
-      <PageHeader title={tx('Dispatch board', 'Tablero de despacho')} sub={tx(`Today's calls by ${pack.id === 'plumbing' ? 'plumber' : 'technician'}. Emergencies first, then every call from scheduled to done.`, `Las llamadas de hoy por ${pack.id === 'plumbing' ? 'plomero' : 'técnico'}. Primero las emergencias, luego cada llamada de agendada a terminada.`)}
-        actions={<label className="row tight small td-oncall"><LuPhone aria-hidden="true" />{tx('On call', 'De guardia')}
+      <Head title={tx('Dispatch board', 'Tablero de despacho')} sub={tx('Today\'s calls. Emergencies go to whoever is on call.', 'Las llamadas de hoy. Las emergencias van a quien está de guardia.')}
+        auto={autoDispatch} autoLabel={tx('Auto-dispatch', 'Despachar todo')} autoCount={queue.length}
+        more={<label className="row tight small td-oncall"><LuPhone aria-hidden="true" />{tx('On call', 'De guardia')}
           <select value={s.onCall.workerId} onChange={(e) => { set((st) => ({ ...st, onCall: { workerId: e.target.value } })); toast(tx('On-call technician changed', 'Técnico de guardia cambiado')); }}>
             {techs.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select></label>} />
-      <DemoNote />
       <div className="kpis">
         <Stat label={tx('Calls on the board', 'Llamadas en el tablero')} value={String(s.dispatch.length)} hint={tx(`${queue.length} not assigned`, `${queue.length} sin asignar`)} />
         <Stat label={tx('Emergencies waiting', 'Emergencias esperando')} value={String(urgent.length)} hint={tx('Callback within 15 minutes', 'Devolver la llamada en 15 minutos')} attention={urgent.length > 0} />

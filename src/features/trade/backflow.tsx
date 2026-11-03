@@ -5,12 +5,12 @@ import type { PageProps } from '@/app/modules';
 import { A } from '@/app/router';
 import { addDays } from '@/lib/dates';
 import { money } from '@/lib/money';
-import { Badge, Button, Card, FormModal, PageHeader, Stat, cx, toast } from '@/ui';
-import { DemoNote, daysTo, useTrade } from './common';
+import { Badge, Button, Card, FormModal, Stat, cx, toast } from '@/ui';
+import { Head, daysTo, useTrade } from './common';
 import type { Device } from './store';
 
 export default function BackflowPage(_: PageProps) {
-  const { s, set, tx, client, date, task, data } = useTrade();
+  const { s, set, tx, client, date, task, data, taskAll, isDone, markDone } = useTrade();
   const [testing, setTesting] = useState<Device | null>(null);
   const due30 = s.devices.filter((d) => { const n = daysTo(d.due); return n !== undefined && n >= 0 && n <= 30; });
   const overdue = s.devices.filter((d) => (daysTo(d.due) ?? 0) < 0);
@@ -18,11 +18,18 @@ export default function BackflowPage(_: PageProps) {
   const unfiled = s.devices.filter((d) => !d.filed && d.lastTest);
   const price = data.catalog.find((x) => x.category === 'backflow')?.tiers[0]?.price ?? 0;
   const patch = (id: string, p: Partial<Device>) => set((st) => ({ ...st, devices: st.devices.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
+  const toBook = s.devices.filter((d) => ((daysTo(d.due) ?? 99) <= 30 || d.result === 'fail') && !isDone('test:' + d.id + ':' + d.due));
+  /** Books every test that is due, late or failed, and files every passed report still missing, in one go. */
+  const handleAll = () => {
+    if (unfiled.some((d) => d.result === 'pass')) set((st) => ({ ...st, devices: st.devices.map((x) => (!x.filed && x.result === 'pass' ? { ...x, filed: true } : x)) }));
+    taskAll(toBook, (d) => 'test:' + d.id + ':' + d.due, (d) => [tx(`${d.result === 'fail' ? 'Repair and retest' : 'Backflow test'}: ${client(d.clientId)?.name ?? ''}, ${d.kind} ${d.size} (${d.location})`, `${d.result === 'fail' ? 'Reparar y volver a probar' : 'Prueba de reflujo'}: ${client(d.clientId)?.name ?? ''}, ${d.kind} ${d.size} (${d.location})`), { clientId: d.clientId, type: 'backflow', due: (daysTo(d.due) ?? 0) < 0 || d.result === 'fail' ? 0 : 3, pri: (daysTo(d.due) ?? 0) < 0 || d.result === 'fail' ? 'high' : 'medium' }],
+      (n) => (n === 1 ? tx('1 backflow test booked on the task list', '1 prueba de reflujo agendada en la lista') : tx(`${n} backflow tests booked on the task list`, `${n} pruebas de reflujo agendadas en la lista`)));
+  };
   const dueCell = (d: Device) => { const n = daysTo(d.due) ?? 0; return <span className={cx(n < 0 && 'neg', n >= 0 && n <= 30 && 'warn-t')}>{date(d.due)}{n < 0 ? ' · ' + tx(`${-n} days late`, `${-n} días tarde`) : n <= 30 ? ' · ' + tx(`in ${n} days`, `en ${n} días`) : ''}</span>; };
   return (
     <div className="trade">
-      <PageHeader title={tx('Backflow devices', 'Dispositivos de reflujo')} sub={tx('Every device with its yearly test date, last result and the report to the water utility. Nothing is missed and every account renews.', 'Cada dispositivo con su fecha de prueba anual, el último resultado y el reporte a la compañía de agua. No se pasa ninguno y cada cuenta se renueva.')} />
-      <DemoNote />
+      <Head title={tx('Backflow devices', 'Dispositivos de reflujo')} sub={tx('Yearly tests, results and utility reports. Nothing is missed.', 'Pruebas anuales, resultados y reportes a la compañía de agua. No se pasa nada.')}
+        auto={handleAll} autoLabel={tx('Book all due tests', 'Agendar pruebas pendientes')} autoCount={toBook.length} />
       <div className="kpis">
         <Stat label={tx('Devices tracked', 'Dispositivos registrados')} value={String(s.devices.length)} hint={price ? tx(`${new Set(s.devices.map((d) => d.clientId)).size} accounts · about ${money(s.devices.length * price)} a year`, `${new Set(s.devices.map((d) => d.clientId)).size} cuentas · unos ${money(s.devices.length * price)} al año`) : undefined} />
         <Stat label={tx('Tests due in 30 days', 'Pruebas en 30 días')} value={String(due30.length)} hint={tx('Book them now', 'Agendarlas ya')} attention={due30.length > 0} />
@@ -31,20 +38,17 @@ export default function BackflowPage(_: PageProps) {
       </div>
       <Card flush>
         <div className="table-wrap"><table className="tbl stackable" data-testid="backflow-table">
-          <thead><tr><th>{tx('Account', 'Cuenta')}</th><th>{tx('Device', 'Dispositivo')}</th><th>{tx('Serial', 'Serie')}</th><th>{tx('Last test', 'Última prueba')}</th><th>{tx('Next test due', 'Próxima prueba')}</th><th>{tx('Utility report', 'Reporte a la compañía')}</th><th aria-label={tx('Actions', 'Acciones')} /></tr></thead>
+          <thead><tr><th>{tx('Account', 'Cuenta')}</th><th>{tx('Device', 'Dispositivo')}</th><th>{tx('Last test', 'Última prueba')}</th><th>{tx('Next test due', 'Próxima prueba')}</th><th>{tx('Utility report', 'Reporte a la compañía')}</th><th aria-label={tx('Actions', 'Acciones')} /></tr></thead>
           <tbody>{[...s.devices].sort((a, b) => a.due.localeCompare(b.due)).map((d) => (
             <tr key={d.id} data-device={d.id}>
               <td className="t1"><A to={'/clients/' + d.clientId}>{client(d.clientId)?.name}</A><div className="xs dim">{d.location}</div></td>
-              <td data-label={tx('Device', 'Dispositivo')}><b>{d.kind}</b> {d.size}<div className="xs dim">{d.kind === 'RPZ' ? tx('Reduced pressure zone', 'Zona de presión reducida') : d.kind === 'DCVA' ? tx('Double check valve', 'Doble retención') : tx('Pressure vacuum breaker', 'Rompedor de vacío')}</div></td>
-              <td data-label={tx('Serial', 'Serie')} className="mono xs">{d.serial}</td>
+              <td data-label={tx('Device', 'Dispositivo')}><b>{d.kind}</b> {d.size}<div className="xs dim">{d.kind === 'RPZ' ? tx('Reduced pressure zone', 'Zona de presión reducida') : d.kind === 'DCVA' ? tx('Double check valve', 'Doble retención') : tx('Pressure vacuum breaker', 'Rompedor de vacío')} · <span className="mono">{d.serial}</span></div></td>
               <td data-label={tx('Last test', 'Última prueba')}>{d.lastTest ? <>{date(d.lastTest)} <Badge tone={d.result === 'pass' ? 'ok' : 'bad'}>{d.result === 'pass' ? tx('Passed', 'Aprobada') : tx('Failed', 'Rechazada')}</Badge></> : ''}{d.readings && <div className="xs dim">{d.readings}</div>}</td>
               <td data-label={tx('Next test due', 'Próxima prueba')}>{dueCell(d)}</td>
               <td data-label={tx('Utility report', 'Reporte a la compañía')}>{d.filed ? <Badge tone="ok">{tx('Filed', 'Entregado')}</Badge> : d.lastTest ? <Badge tone="warn">{tx('Not filed', 'Sin entregar')}</Badge> : ''}</td>
-              <td className="num"><span className="row tight nowrap">
-                <Button size="sm" variant={(daysTo(d.due) ?? 99) <= 30 || d.result === 'fail' ? 'primary' : 'default'} onClick={() => setTesting(d)} data-testid="backflow-test">{tx('Record test', 'Registrar prueba')}</Button>
-                {!d.filed && d.lastTest && d.result === 'pass' && <Button size="sm" onClick={() => { patch(d.id, { filed: true }); toast(tx('Marked as filed with the water utility', 'Marcado como entregado a la compañía de agua')); }}>{tx('Mark filed', 'Marcar entregado')}</Button>}
-                {(daysTo(d.due) ?? 99) <= 30 && <Button size="sm" variant="ghost" onClick={() => task(tx(`Book the backflow test at ${client(d.clientId)?.name ?? ''} (${d.kind}, ${d.location})`, `Agendar la prueba de reflujo en ${client(d.clientId)?.name ?? ''} (${d.kind}, ${d.location})`), { clientId: d.clientId, type: 'backflow', due: 1 })}>{tx('Book test', 'Agendar prueba')}</Button>}
-              </span></td>
+              <td className="num">{!d.filed && d.lastTest && d.result === 'pass' ? <Button size="sm" onClick={() => { patch(d.id, { filed: true }); toast(tx('Marked as filed with the water utility', 'Marcado como entregado a la compañía de agua')); }}>{tx('Mark filed', 'Marcar entregado')}</Button>
+                : ((daysTo(d.due) ?? 99) <= 30 || d.result === 'fail') && !isDone('test:' + d.id + ':' + d.due) ? <Button size="sm" variant="primary" onClick={() => taskAll([d], (x) => 'test:' + x.id + ':' + x.due, (x) => [tx(`${x.result === 'fail' ? 'Repair and retest' : 'Backflow test'}: ${client(x.clientId)?.name ?? ''}, ${x.kind} ${x.size} (${x.location})`, `${x.result === 'fail' ? 'Reparar y volver a probar' : 'Prueba de reflujo'}: ${client(x.clientId)?.name ?? ''}, ${x.kind} ${x.size} (${x.location})`), { clientId: x.clientId, type: 'backflow', due: 1, pri: 'high' }], () => tx('Test added to Tasks', 'Prueba agregada a Tareas'))}>{tx('Book test', 'Agendar prueba')}</Button>
+                : <span className="row tight nowrap">{isDone('test:' + d.id + ':' + d.due) && <Badge tone="info">{tx('Booked', 'Agendada')}</Badge>}<Button size="sm" onClick={() => setTesting(d)} data-testid="backflow-test">{tx('Record result', 'Registrar resultado')}</Button></span>}</td>
             </tr>
           ))}</tbody>
         </table></div>

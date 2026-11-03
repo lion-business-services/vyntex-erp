@@ -5,13 +5,13 @@ import { LuPlus } from 'react-icons/lu';
 import type { PageProps } from '@/app/modules';
 import { A } from '@/app/router';
 import { addDays } from '@/lib/dates';
-import { Badge, Button, Card, FormModal, PageHeader, Stat, toast } from '@/ui';
-import { DemoNote, daysTo, useTrade } from './common';
+import { Badge, Button, Card, FormModal, Stat, toast } from '@/ui';
+import { Head, daysTo, useTrade } from './common';
 
 const lb = (n: number) => (Math.round(n * 100) / 100).toString();
 
 export default function RefrigerantPage(_: PageProps) {
-  const { s, set, tx, data, job, client, worker, date, task, can } = useTrade();
+  const { s, set, tx, data, job, client, worker, date, can, taskAll, isDone } = useTrade();
   const [adding, setAdding] = useState(false);
   const recent = s.refrigerant.filter((r) => (daysTo(r.date) ?? -999) >= -90);
   const added = recent.reduce((n, r) => n + r.added, 0);
@@ -19,11 +19,15 @@ export default function RefrigerantPage(_: PageProps) {
   const leaks = s.refrigerant.filter((r) => r.leak === 'found_open');
   const gases = [...new Set(s.refrigerant.map((r) => r.gas))];
   const techs = data.workers.filter((w) => w.payType === 'hourly');
+  const repairAll = (list = leaks) => {
+    taskAll(list, (r) => 'leak:' + r.id, (r) => [tx(`Leak recheck and repair at ${client(r.clientId)?.name ?? ''}, then log the refrigerant`, `Revisar y reparar la fuga en ${client(r.clientId)?.name ?? ''} y registrar el refrigerante`), { clientId: r.clientId, jobId: r.jobId, type: 'refrigerant', due: 2, pri: 'high' }],
+      (n) => (n === 1 ? tx('1 leak repair booked', '1 reparación de fuga agendada') : tx(`${n} leak repairs booked`, `${n} reparaciones de fugas agendadas`)));
+  };
   return (
     <div className="trade">
-      <PageHeader title={tx('Refrigerant log', 'Registro de refrigerante')} sub={tx('EPA Section 608 records: every pound added or recovered, by job, technician, refrigerant and cylinder.', 'Registros de la Sección 608 de la EPA: cada libra agregada o recuperada, por trabajo, técnico, refrigerante y cilindro.')}
-        actions={can('write') ? <Button variant="primary" icon={<LuPlus aria-hidden="true" />} onClick={() => setAdding(true)} data-testid="ref-add">{tx('Log refrigerant', 'Registrar refrigerante')}</Button> : undefined} />
-      <DemoNote />
+      <Head title={tx('Refrigerant log', 'Registro de refrigerante')} sub={tx('EPA 608 records: every pound added or recovered, and every open leak.', 'Registros EPA 608: cada libra agregada o recuperada y cada fuga abierta.')}
+        auto={() => repairAll()} autoLabel={tx('Book all leak repairs', 'Agendar reparaciones de fugas')} autoCount={leaks.filter((r) => !isDone('leak:' + r.id)).length}
+        more={can('write') ? <Button icon={<LuPlus aria-hidden="true" />} onClick={() => setAdding(true)} data-testid="ref-add">{tx('Log refrigerant', 'Registrar refrigerante')}</Button> : undefined} />
       <div className="kpis">
         <Stat label={tx('Added, last 90 days', 'Agregado, últimos 90 días')} value={`${lb(added)} lb`} hint={gases.map((g) => `${g}: ${lb(recent.filter((r) => r.gas === g).reduce((n, r) => n + r.added, 0))} lb`).join(' · ')} />
         <Stat label={tx('Recovered, last 90 days', 'Recuperado, últimos 90 días')} value={`${lb(recovered)} lb`} hint={tx('Sent for reclaim with the cylinders', 'Se envía a recuperación con los cilindros')} />
@@ -43,7 +47,7 @@ export default function RefrigerantPage(_: PageProps) {
               <td className="num" data-label={tx('Recovered', 'Recuperado')}>{lb(r.recovered)} lb</td>
               <td data-label={tx('Cylinder', 'Cilindro')} className="mono xs">{r.cylinder || '·'}</td>
               <td data-label={tx('Leak check', 'Revisión de fugas')}><Badge tone={r.leak === 'none' ? 'ok' : r.leak === 'found_repaired' ? 'info' : 'bad'}>{r.leak === 'none' ? tx('No leak', 'Sin fuga') : r.leak === 'found_repaired' ? tx('Found, repaired', 'Encontrada, reparada') : tx('Found, open', 'Encontrada, abierta')}</Badge></td>
-              <td className="num">{r.leak === 'found_open' && <Button size="sm" onClick={() => { set((st) => ({ ...st, refrigerant: st.refrigerant.map((x) => (x.id === r.id ? { ...x, leak: 'found_repaired' } : x)) })); task(tx(`Leak recheck and repair at ${client(r.clientId)?.name ?? ''}, record it in the refrigerant log`, `Revisar y reparar la fuga en ${client(r.clientId)?.name ?? ''}, anotarlo en el registro`), { clientId: r.clientId, jobId: r.jobId, type: 'refrigerant', due: 2, pri: 'high' }); }}>{tx('Book leak repair', 'Agendar reparación')}</Button>}</td>
+              <td className="num">{r.leak === 'found_open' && (isDone('leak:' + r.id) ? <Badge tone="warn">{tx('Repair booked', 'Reparación agendada')}</Badge> : <Button size="sm" variant="primary" onClick={() => repairAll([r])}>{tx('Book repair', 'Agendar reparación')}</Button>)}</td>
             </tr>
           ))}</tbody>
         </table></div>

@@ -4,16 +4,16 @@ import { useState } from 'react';
 import { LuPlus, LuSearch } from 'react-icons/lu';
 import type { PageProps } from '@/app/modules';
 import { A } from '@/app/router';
-import { Badge, Button, Card, FormModal, PageHeader, SearchBox, Seg, Stat, cx, toast } from '@/ui';
+import { Badge, Button, Card, FormModal, SearchBox, Seg, Stat, cx, toast } from '@/ui';
 import { addDays } from '@/lib/dates';
 import { money } from '@/lib/money';
-import { DemoNote, ageYears, daysTo, useTrade } from './common';
+import { Head, ageYears, daysTo, useTrade } from './common';
 import type { Equipment } from './store';
 
 type View = 'all' | 'replace' | 'warranty' | 'service';
 
 export default function EquipmentPage(_: PageProps) {
-  const { s, set, tx, client, date, data, pack, task, lead, can } = useTrade();
+  const { s, set, tx, client, date, data, pack, lead, can, isDone, taskAll } = useTrade();
   const plumbing = pack.id === 'plumbing';
   const [view, setView] = useState<View>('all');
   const [q, setQ] = useState('');
@@ -28,10 +28,12 @@ export default function EquipmentPage(_: PageProps) {
     && (!text || [client(e.clientId)?.name ?? '', e.kind, e.model, e.serial, e.location].some((v) => v.toLowerCase().includes(text))));
   const opps = s.equipment.filter((e) => isOld(e) && !e.quoted);
   const patch = (id: string, p: Partial<Equipment>) => set((st) => ({ ...st, equipment: st.equipment.map((x) => (x.id === id ? { ...x, ...p } : x)) }));
-  const quote = (e: Equipment) => {
-    if (lead(e.clientId, replaceType, replacePrice, tx(`Replacement opportunity from Equipment: ${e.kind}, ${ageYears(e.installed)} years old (serial ${e.serial}). ${e.note ?? ''}`, `Oportunidad de reemplazo desde Equipo: ${e.kind}, ${ageYears(e.installed)} años (serie ${e.serial}). ${e.note ?? ''}`))) patch(e.id, { quoted: true });
+  const quote = (e: Equipment, quiet = false) => {
+    if (lead(e.clientId, replaceType, replacePrice, tx(`Replacement opportunity from Equipment: ${e.kind}, ${ageYears(e.installed)} years old (serial ${e.serial}). ${e.note ?? ''}`, `Oportunidad de reemplazo desde Equipo: ${e.kind}, ${ageYears(e.installed)} años (serie ${e.serial}). ${e.note ?? ''}`), quiet)) { patch(e.id, { quoted: true }); return true; }
+    return false;
   };
-  const book = (e: Equipment) => { task(tx(`Book the service visit for the ${e.kind.toLowerCase()} at ${client(e.clientId)?.name ?? ''}`, `Agendar la visita de servicio del equipo ${e.kind.toLowerCase()} de ${client(e.clientId)?.name ?? ''}`), { clientId: e.clientId, type: 'call', due: 1 }); };
+  const quoteAll = () => { const n = opps.filter((e) => quote(e, true)).length; toast(tx(`${n} replacement quote${n === 1 ? '' : 's'} added to Leads${replacePrice ? `, about ${money(n * replacePrice)}+` : ''}`, `${n} ${n === 1 ? 'cotización de reemplazo agregada' : 'cotizaciones de reemplazo agregadas'} a Prospectos${replacePrice ? `, unos ${money(n * replacePrice)}+` : ''}`)); };
+  const book = (e: Equipment) => taskAll([e], (x) => 'svc:' + x.id, (x) => [tx(`Book the service visit for the ${x.kind.toLowerCase()} at ${client(x.clientId)?.name ?? ''}`, `Agendar la visita de servicio del equipo ${x.kind.toLowerCase()} de ${client(x.clientId)?.name ?? ''}`), { clientId: x.clientId, type: 'call', due: 1 }], () => tx('Service visit added to Tasks', 'Visita de servicio agregada a Tareas'));
   const register = (e: Equipment) => { patch(e.id, { partsWarranty: addDays(plumbing ? 6 * 365 : 10 * 365), laborWarranty: addDays(plumbing ? 365 : 2 * 365), note: tx('Warranty registered.', 'Garantía registrada.') }); toast(tx('Warranty registered on the unit', 'Garantía registrada en el equipo')); };
   const age = (e: Equipment) => { const y = ageYears(e.installed); return y === 0 ? tx('New', 'Nuevo') : tx(`${y} yr`, `${y} años`); };
   const warranty = (iso?: string) => { const n = daysTo(iso); if (n === undefined) return <span className="dim">{tx('None on file', 'Sin registro')}</span>; return <span className={cx(n < 0 && 'neg', n >= 0 && n <= 365 && 'warn-t')}>{n < 0 ? tx('Ended', 'Vencida') : date(iso)}</span>; };
@@ -40,10 +42,10 @@ export default function EquipmentPage(_: PageProps) {
     : [[tx('Central AC', 'Aire acondicionado central'), tx('Central AC', 'Aire acondicionado central')], [tx('Gas furnace', 'Caldera de gas'), tx('Gas furnace', 'Caldera de gas')], [tx('Heat pump', 'Bomba de calor'), tx('Heat pump', 'Bomba de calor')], [tx('Ductless mini-split', 'Mini-split sin ductos'), tx('Ductless mini-split', 'Mini-split sin ductos')], [tx('Boiler', 'Boiler'), tx('Boiler', 'Boiler')], [tx('Rooftop unit', 'Unidad de techo'), tx('Rooftop unit', 'Unidad de techo')]];
   return (
     <div className="trade">
-      <PageHeader title={plumbing ? tx('Water heaters & equipment', 'Calentadores y equipo') : tx('Equipment & warranties', 'Equipo y garantías')}
-        sub={tx('Every unit at every client: model, serial, age, warranty and service dates. Old units turn into replacement quotes.', 'Cada equipo de cada cliente: modelo, serie, edad, garantía y fechas de servicio. Los equipos viejos se convierten en cotizaciones de reemplazo.')}
-        actions={can('write') ? <Button variant="primary" icon={<LuPlus aria-hidden="true" />} onClick={() => setAdding(true)} data-testid="equip-add">{tx('Add equipment', 'Agregar equipo')}</Button> : undefined} />
-      <DemoNote />
+      <Head title={plumbing ? tx('Water heaters & equipment', 'Calentadores y equipo') : tx('Equipment & warranties', 'Equipo y garantías')}
+        sub={tx('Every unit, its age and warranty. Old units become replacement quotes.', 'Cada equipo, su edad y su garantía. Los viejos se convierten en cotizaciones.')}
+        auto={quoteAll} autoLabel={tx('Quote all replacements', 'Cotizar todos los reemplazos')} autoCount={opps.length}
+        more={can('write') ? <Button icon={<LuPlus aria-hidden="true" />} onClick={() => setAdding(true)} data-testid="equip-add">{tx('Add equipment', 'Agregar equipo')}</Button> : undefined} />
       <div className="kpis">
         <Stat label={tx('Units tracked', 'Equipos registrados')} value={String(s.equipment.length)} hint={tx(`At ${new Set(s.equipment.map((e) => e.clientId)).size} clients`, `En ${new Set(s.equipment.map((e) => e.clientId)).size} clientes`)} onClick={() => setView('all')} />
         <Stat label={tx('Replacement opportunities', 'Oportunidades de reemplazo')} value={String(opps.length)} hint={replacePrice ? tx(`About ${money(opps.length * replacePrice)}+ at the starting price`, `Unos ${money(opps.length * replacePrice)}+ al precio inicial`) : undefined} attention={opps.length > 0} onClick={() => setView('replace')} testId="equip-kpi-replace" />
@@ -59,22 +61,21 @@ export default function EquipmentPage(_: PageProps) {
       <Card flush>
         {!list.length ? <p className="pad dim"><LuSearch aria-hidden="true" /> {tx('Nothing here.', 'Nada por aquí.')}</p> : (
           <div className="table-wrap"><table className="tbl stackable" data-testid="equip-table">
-            <thead><tr><th>{tx('Client', 'Cliente')}</th><th>{tx('Unit', 'Equipo')}</th><th>{tx('Model / serial', 'Modelo / serie')}</th><th>{tx('Age', 'Edad')}</th><th>{tx('Parts warranty', 'Garantía de piezas')}</th><th>{tx('Next service', 'Próximo servicio')}</th><th>{tx('Condition', 'Estado')}</th><th aria-label={tx('Actions', 'Acciones')} /></tr></thead>
+            <thead><tr><th>{tx('Client', 'Cliente')}</th><th>{tx('Unit', 'Equipo')}</th><th>{tx('Age', 'Edad')}</th><th>{tx('Parts warranty', 'Garantía de piezas')}</th><th>{tx('Next service', 'Próximo servicio')}</th><th>{tx('Condition', 'Estado')}</th><th aria-label={tx('Actions', 'Acciones')} /></tr></thead>
             <tbody>{list.map((e) => (
               <tr key={e.id} data-equipment={e.id}>
                 <td className="t1"><A to={'/clients/' + e.clientId}>{client(e.clientId)?.name}</A><div className="xs dim">{e.location}</div></td>
-                <td data-label={tx('Unit', 'Equipo')}><b>{e.kind}</b><div className="xs dim">{e.detail}{e.refrigerant ? ' · ' + e.refrigerant : ''}{e.filter ? ' · ' + tx('filter', 'filtro') + ' ' + e.filter : ''}</div>{e.note && <div className="xs">{e.note}</div>}</td>
-                <td data-label={tx('Model / serial', 'Modelo / serie')} className="mono xs">{e.model}<br />{e.serial}</td>
+                <td data-label={tx('Unit', 'Equipo')}><b>{e.kind}</b><div className="xs dim">{e.detail}{e.refrigerant ? ' · ' + e.refrigerant : ''}{e.filter ? ' · ' + tx('filter', 'filtro') + ' ' + e.filter : ''}</div><div className="xs dim mono">{e.model} · {e.serial}</div>{e.note && <div className="xs">{e.note}</div>}</td>
                 <td data-label={tx('Age', 'Edad')}>{age(e)}</td>
                 <td data-label={tx('Parts warranty', 'Garantía de piezas')}>{warranty(e.partsWarranty)}</td>
                 <td data-label={tx('Next service', 'Próximo servicio')}>{e.nextService ? <span className={cx((daysTo(e.nextService) ?? 99) <= 30 && 'warn-t')}>{date(e.nextService)}</span> : <span className="dim">{tx('Not set', 'Sin fecha')}</span>}</td>
                 <td data-label={tx('Condition', 'Estado')}><Badge tone={e.status === 'good' ? 'ok' : e.status === 'watch' ? 'warn' : 'bad'}>{e.status === 'good' ? tx('Good', 'Bien') : e.status === 'watch' ? tx('Watch', 'Vigilar') : tx('Replace', 'Reemplazar')}</Badge></td>
-                <td className="num"><span className="row tight nowrap td-rowact">
-                  {isOld(e) && !e.quoted && <Button size="sm" variant="primary" onClick={() => quote(e)} data-testid="equip-quote">{tx('Quote replacement', 'Cotizar reemplazo')}</Button>}
-                  {e.quoted && <Badge tone="info">{tx('Quote in Leads', 'Cotización en Prospectos')}</Badge>}
-                  {!e.partsWarranty && ageYears(e.installed) < 1 && <Button size="sm" onClick={() => register(e)}>{tx('Register warranty', 'Registrar garantía')}</Button>}
-                  <Button size="sm" variant="ghost" onClick={() => book(e)}>{tx('Book service', 'Agendar servicio')}</Button>
-                </span></td>
+                <td className="num">{e.quoted ? <Badge tone="info">{tx('Quote in Leads', 'Cotización en Prospectos')}</Badge>
+                  : isOld(e) ? <Button size="sm" variant="primary" onClick={() => quote(e)} data-testid="equip-quote">{tx('Quote replacement', 'Cotizar reemplazo')}</Button>
+                  : !e.partsWarranty && ageYears(e.installed) < 1 ? <Button size="sm" onClick={() => register(e)}>{tx('Register warranty', 'Registrar garantía')}</Button>
+                  : isDone('svc:' + e.id) ? <Badge tone="ok">{tx('Service booked', 'Servicio agendado')}</Badge>
+                  : serviceSoon(e) ? <Button size="sm" onClick={() => book(e)}>{tx('Book service', 'Agendar servicio')}</Button>
+                  : <span className="xs dim">{tx('All set', 'Al día')}</span>}</td>
               </tr>
             ))}</tbody>
           </table></div>

@@ -8,13 +8,14 @@ import { act } from '@/store/store';
 import { createJob } from '@/domain/actions/jobs';
 import { addDays, addDaysFrom } from '@/lib/dates';
 import { money } from '@/lib/money';
-import { Badge, Button, Card, Empty, PageHeader, Stat, toast } from '@/ui';
-import { DemoNote, daysTo, useTrade } from './common';
+import { Badge, Button, Card, Empty, Stat, toast } from '@/ui';
+import { Head, daysTo, useTrade } from './common';
 
 export default function AgreementsPage(_: PageProps) {
-  const { tx, data, pack, client, date, task, can } = useTrade();
+  const { tx, data, pack, client, date, can, isDone, markDone, taskAll } = useTrade();
   const plumbing = pack.id === 'plumbing';
   const planType = plumbing ? 'plan' : 'maintenance';
+  const visitWord = plumbing ? tx('inspection', 'inspección') : tx('tune-up', 'mantenimiento');
   const plan = data.catalog.find((x) => x.category === planType && x.tiers.some((t) => t.unit === 'year'));
   const yearly = plan?.tiers.find((t) => t.unit === 'year')?.price ?? 0;
   const monthly = plan?.tiers.find((t) => t.unit === 'month')?.price ?? 0;
@@ -25,6 +26,8 @@ export default function AgreementsPage(_: PageProps) {
   const visitsPerYear = (r?: string) => (r === 'quarterly' ? 4 : r === 'monthly' && plumbing ? 1 : 2);
   const nextVisit = (start?: string, r?: string) => {
     if (!start) return undefined; const step = Math.round(365 / visitsPerYear(r));
+    // a new member's first visit comes three weeks after joining
+    const since = daysTo(start) ?? 0; if (since <= 0 && since > -60) return addDaysFrom(start, 21);
     let d = start; for (let i = 0; i < 12 && (daysTo(d) ?? 0) < 0; i++) d = addDaysFrom(d, step);
     return d;
   };
@@ -38,15 +41,21 @@ export default function AgreementsPage(_: PageProps) {
     try {
       act(createJob, { name: tx(`${plan.name}, ${c.name}`, `${plan.name}, ${c.name}`), clientId, type: planType, status: 'progress', price: yearly, repeat: 'yearly', start: addDays(0), end: addDays(365),
         scope: plan.highlights?.join('. ') ?? '', payTerms: tx(`${money(yearly)} a year, renews automatically.`, `${money(yearly)} al año, se renueva automáticamente.`) });
-      task(tx(`Book the first ${plumbing ? 'inspection' : 'tune-up'} for ${c.name}`, `Agendar ${plumbing ? 'la primera inspección' : 'el primer mantenimiento'} de ${c.name}`), { clientId, type: 'call', due: 2 });
+      taskAll([c], (x) => 'first:' + x.id, (x) => [tx(`Book the first ${visitWord} for ${x.name}`, `Agendar ${visitWord} inicial de ${x.name}`), { clientId: x.id, type: 'call', due: 2 }], () => '');
+      markDone('offer:' + clientId);
       toast(tx(`${c.name} is now a plan member`, `${c.name} ya es miembro del plan`));
     } catch { toast(tx('You cannot add jobs with this role', 'Con este rol no puede agregar trabajos'), true); }
   };
+  const bookAll = () => taskAll(due, (j) => 'visit:' + j.id, (j) => [tx(`Book the ${visitWord} for ${client(j.clientId)?.name ?? ''} (plan member, priority)`, `Agendar ${visitWord} de ${client(j.clientId)?.name ?? ''} (miembro del plan, prioridad)`), { clientId: j.clientId, jobId: j.id, type: 'call', due: 1 }],
+    (n) => (n === 1 ? tx('1 visit to book is on the task list', '1 visita por agendar en la lista de tareas') : tx(`${n} visits to book are on the task list`, `${n} visitas por agendar en la lista de tareas`)));
+  const offerAll = () => taskAll(prospects, (c) => 'offer:' + c.id, (c) => [tx(`Offer the ${plan?.name ?? 'plan'} to ${c.name} (${money(monthly)}/mo or ${money(yearly)}/yr)`, `Ofrecer ${plan?.name ?? 'el plan'} a ${c.name} (${money(monthly)}/mes o ${money(yearly)}/año)`), { clientId: c.id, type: 'call', due: 2 }],
+    (n) => (n === 1 ? tx('1 plan offer is on the task list', '1 oferta del plan en la lista de tareas') : tx(`${n} plan offers are on the task list`, `${n} ofertas del plan en la lista de tareas`)));
   const title = plumbing ? tx('Inspection plans', 'Planes de inspección') : tx('Maintenance plans', 'Planes de mantenimiento');
   return (
     <div className="trade">
-      <PageHeader title={title} sub={tx('The recurring revenue: members, the visits they are owed, renewals, and who to offer a plan next.', 'Los ingresos recurrentes: miembros, las visitas que se les deben, renovaciones y a quién ofrecer un plan.')} />
-      <DemoNote />
+      <Head title={title} sub={tx('Members, visits due, renewals and who to offer the plan to.', 'Miembros, visitas pendientes, renovaciones y a quién ofrecer el plan.')}
+        auto={bookAll} autoLabel={tx('Book all due visits', 'Agendar visitas pendientes')} autoCount={due.filter((j) => !isDone('visit:' + j.id)).length}
+        more={prospects.length > 0 && can('write') ? <Button onClick={offerAll}>{tx(`Offer plan to all (${prospects.filter((c) => !isDone('offer:' + c.id)).length})`, `Ofrecer a todos (${prospects.filter((c) => !isDone('offer:' + c.id)).length})`)}</Button> : undefined} />
       <div className="kpis">
         <Stat label={tx('Active members', 'Miembros activos')} value={String(members.length)} hint={plan ? tx(`${plan.name}: ${money(monthly)}/mo or ${money(yearly)}/yr`, `${plan.name}: ${money(monthly)}/mes o ${money(yearly)}/año`) : undefined} />
         <Stat label={tx('Recurring revenue a year', 'Ingresos recurrentes al año')} value={money(perYear)} hint={tx(`About ${money(Math.round(perYear / 12))} a month`, `Unos ${money(Math.round(perYear / 12))} al mes`)} />
@@ -66,10 +75,10 @@ export default function AgreementsPage(_: PageProps) {
                 <td className="num" data-label={tx('A year', 'Al año')}>{money(j.price)}</td>
                 <td data-label={tx('Next visit', 'Próxima visita')}>{nv ? <>{date(nv)} {soon && <Badge tone="warn">{tx('Book now', 'Agendar ya')}</Badge>}</> : ''}</td>
                 <td data-label={tx('Renews', 'Se renueva')}>{j.end ? date(j.end) : ''}</td>
-                <td className="num"><span className="row tight nowrap">
-                  <Button size="sm" onClick={() => task(tx(`Book the ${plumbing ? 'inspection' : 'tune-up'} for ${client(j.clientId)?.name ?? ''}`, `Agendar ${plumbing ? 'la inspección' : 'el mantenimiento'} de ${client(j.clientId)?.name ?? ''}`), { clientId: j.clientId, jobId: j.id, type: 'call', due: 1 })}>{tx('Book visit', 'Agendar visita')}</Button>
-                  <Button size="sm" variant="ghost" icon={<LuRefreshCw aria-hidden="true" />} onClick={() => task(tx(`Renewal reminder: ${j.name}`, `Recordatorio de renovación: ${j.name}`), { clientId: j.clientId, jobId: j.id, type: 'call', due: 0 })}>{tx('Renewal reminder', 'Recordar renovación')}</Button>
-                </span></td>
+                <td className="num">{isDone('visit:' + j.id) ? <Badge tone="ok">{tx('Visit booked', 'Visita agendada')}</Badge>
+                  : soon ? <Button size="sm" variant="primary" onClick={() => taskAll([j], (x) => 'visit:' + x.id, (x) => [tx(`Book the ${visitWord} for ${client(x.clientId)?.name ?? ''} (plan member, priority)`, `Agendar ${visitWord} de ${client(x.clientId)?.name ?? ''} (miembro del plan, prioridad)`), { clientId: x.clientId, jobId: x.id, type: 'call', due: 1 }], () => tx('Visit added to Tasks', 'Visita agregada a Tareas'))}>{tx('Book visit', 'Agendar visita')}</Button>
+                  : (daysTo(j.end) ?? 999) <= 60 && !isDone('renew:' + j.id) ? <Button size="sm" icon={<LuRefreshCw aria-hidden="true" />} onClick={() => taskAll([j], (x) => 'renew:' + x.id, (x) => [tx(`Renewal reminder: ${x.name}`, `Recordatorio de renovación: ${x.name}`), { clientId: x.clientId, jobId: x.id, type: 'call' }], () => tx('Reminder added to Tasks', 'Recordatorio agregado a Tareas'))}>{tx('Remind', 'Recordar')}</Button>
+                  : <span className="xs dim">{tx('All set', 'Al día')}</span>}</td>
               </tr>
             ); })}</tbody>
           </table></div>

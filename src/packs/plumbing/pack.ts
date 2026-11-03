@@ -1,7 +1,7 @@
 // VYNTEX PLUMBING: industry pack for residential and commercial plumbing contractors.
 // Everything industry-specific lives here and in its rules and sample business. The app core never checks the industry id.
 import type { IndustryPack } from '../types';
-import { FIELD_RULES, fieldPack } from '../blueprint';
+import { FIELD_MODULES, FIELD_RULES, fieldPack } from '../blueprint';
 import { plumbingRules } from './rules';
 
 export const plumbingPack: IndustryPack = /* @__PURE__ */ fieldPack({
@@ -22,8 +22,9 @@ export const plumbingPack: IndustryPack = /* @__PURE__ */ fieldPack({
     { id: "backflow", en: "Backflow testing", es: "Prueba de reflujo" },
     { id: "gas", en: "Gas line", es: "Línea de gas" },
     { id: "remodel", en: "Remodel rough-in & finish", es: "Instalación para remodelación" },
+    { id: "plan", en: "Yearly inspection plan", es: "Plan anual de inspección" },
     { id: "emergency", en: "Emergency: burst pipe, flooding, no water", es: "Emergencia: tubo roto, inundación, sin agua" },
-    { id: "other", en: "Other", es: "Otro" },
+    { id: "other", en: "Small jobs & other", es: "Trabajos pequeños y otros" },
   ],
   terms: {
     en: {
@@ -85,7 +86,13 @@ export const plumbingPack: IndustryPack = /* @__PURE__ */ fieldPack({
       "convert": "Make it a job",
       "converted": "Job created",
       "search": "Search client, address, fixture or job",
-      "confirmReset": "Throw away your edits and rebuild this document from the job details?"
+      "confirmReset": "Throw away your edits and rebuild this document from the job details?",
+      "dash.kpi.recurringClients": "Plan & backflow accounts",
+      "dash.hint.recurring": "Yearly inspections, backflow tests and drain plans",
+      "dash.kpi.pipelineValue": "Open quotes",
+      "dash.hint.pipeline": "Quotes out: {n}",
+      "dash.kpi.visitsThisWeek": "Calls & jobs, next 7 days",
+      "dash.hint.visits": "Service calls, camera inspections and job starts"
     },
     es: {
       "workersPlural": "Plomeros",
@@ -146,11 +153,73 @@ export const plumbingPack: IndustryPack = /* @__PURE__ */ fieldPack({
       "convert": "Convertir en trabajo",
       "converted": "Trabajo creado",
       "search": "Buscar cliente, dirección, accesorio o trabajo",
-      "confirmReset": "¿Descartar sus cambios y volver a crear este documento con los datos del trabajo?"
+      "confirmReset": "¿Descartar sus cambios y volver a crear este documento con los datos del trabajo?",
+      "dash.kpi.recurringClients": "Cuentas de plan y reflujo",
+      "dash.hint.recurring": "Inspecciones anuales, pruebas de reflujo y planes de drenaje",
+      "dash.kpi.pipelineValue": "Cotizaciones abiertas",
+      "dash.hint.pipeline": "Cotizaciones enviadas: {n}",
+      "dash.kpi.visitsThisWeek": "Llamadas y trabajos, próximos 7 días",
+      "dash.hint.visits": "Llamadas de servicio, inspecciones con cámara e inicios de trabajo"
     },
   },
+  // the field sections an HVAC or plumbing shop uses every day; no Opportunities or 1099 & compliance pages (owner decision, Nov 4, 2026)
+  modules: FIELD_MODULES.filter((m) => m !== 'opportunities' && m !== 'compliance'),
+  leadStages: [
+    { id: 'new', label: { en: 'New call', es: 'Llamada nueva' }, kind: 'open', role: 'new' },
+    { id: 'contacted', label: { en: 'Contacted', es: 'Contactado' }, kind: 'open', role: 'contacted' },
+    { id: 'scheduled', label: { en: 'Visit / camera inspection booked', es: 'Visita / inspección con cámara agendada' }, kind: 'open', role: 'visit', hot: true },
+    { id: 'sent', label: { en: 'Quote sent', es: 'Cotización enviada' }, kind: 'open', role: 'proposal', hot: true },
+    { id: 'approval', label: { en: 'Waiting on approval (owner, landlord or insurer)', es: 'Esperando aprobación (dueño, arrendador o aseguradora)' }, kind: 'open', role: 'negotiation', hot: true },
+    { id: 'won', label: { en: 'Approved', es: 'Aprobado' }, kind: 'won' },
+    { id: 'lost', label: { en: 'Lost', es: 'Perdido' }, kind: 'lost' },
+  ],
+  leadSources: [
+    { id: 'phone', label: { en: 'Phone call', es: 'Llamada' } },
+    { id: 'website', label: { en: 'Website', es: 'Sitio web' } },
+    { id: 'google', label: { en: 'Google search & Maps', es: 'Google búsqueda y Maps' } },
+    { id: 'google_lsa', label: { en: 'Google Local Services Ads', es: 'Anuncios de Servicios Locales de Google' } },
+    { id: 'existing_client', label: { en: 'Past customer', es: 'Cliente anterior' } },
+    { id: 'referral', label: { en: 'Referral', es: 'Referido' } },
+    { id: 'property_manager', label: { en: 'Property manager', es: 'Administrador de propiedades' } },
+    { id: 'insurance', label: { en: 'Insurance claim / restoration company', es: 'Reclamo de seguro / compañía de restauración' } },
+    { id: 'home_warranty', label: { en: 'Home warranty company', es: 'Compañía de garantía del hogar' } },
+    { id: 'realtor', label: { en: 'Realtor / home inspector', es: 'Agente inmobiliario / inspector de casas' } },
+    { id: 'water_utility', label: { en: 'Water utility notice (backflow)', es: 'Aviso de la compañía de agua (reflujo)' } },
+    { id: 'nextdoor', label: { en: 'Nextdoor', es: 'Nextdoor' } },
+    { id: 'facebook', label: { en: 'Facebook', es: 'Facebook' } },
+    { id: 'other', label: { en: 'Other', es: 'Otro' } },
+  ],
+  lostReasons: [
+    { id: 'price', label: { en: 'Price', es: 'Precio' } },
+    { id: 'competitor', label: { en: 'Chose another plumber', es: 'Eligió a otro plomero' } },
+    { id: 'speed', label: { en: 'We could not come fast enough', es: 'No pudimos llegar a tiempo' } },
+    { id: 'insurance', label: { en: 'Insurance did not cover it', es: 'El seguro no lo cubrió' } },
+    { id: 'diy', label: { en: 'Fixed it themselves', es: 'Lo arregló el mismo cliente' } },
+    { id: 'no_response', label: { en: 'No response', es: 'Sin respuesta' } },
+    { id: 'other', label: { en: 'Other', es: 'Otro' } },
+  ],
+  taskTypes: [
+    { id: 'todo', label: { en: 'To do', es: 'Por hacer' } },
+    { id: 'call', label: { en: 'Call back', es: 'Devolver llamada' } },
+    { id: 'dispatch', label: { en: 'Dispatch', es: 'Despacho' } },
+    { id: 'permit', label: { en: 'Permit & inspection', es: 'Permiso e inspección' } },
+    { id: 'markout', label: { en: '811 markout', es: 'Marcado del 811' } },
+    { id: 'parts', label: { en: 'Parts & fixture order', es: 'Pedido de piezas y accesorios' } },
+    { id: 'warranty', label: { en: 'Warranty registration', es: 'Registro de garantía' } },
+    { id: 'backflow', label: { en: 'Backflow report', es: 'Reporte de reflujo' } },
+    { id: 'safety', label: { en: 'Safety check (gas)', es: 'Revisión de seguridad (gas)' } },
+  ],
+  clientTypes: [
+    { id: 'residential', label: { en: 'Homeowner', es: 'Propietario de casa' } },
+    { id: 'plan', label: { en: 'Yearly inspection plan member', es: 'Miembro del plan anual de inspección' } },
+    { id: 'commercial', label: { en: 'Commercial / restaurant', es: 'Comercial / restaurante' } },
+    { id: 'property', label: { en: 'Property manager / landlord', es: 'Administrador de propiedades / arrendador' } },
+    { id: 'backflow', label: { en: 'Backflow testing account', es: 'Cuenta de pruebas de reflujo' } },
+    { id: 'contractor', label: { en: 'General contractor / remodeler', es: 'Contratista general / remodelador' } },
+  ],
   jobStatuses: ['estimate', 'contract', 'progress', 'hold', 'done'],
-  kpis: ["activeJobs","visitsThisWeek","collectedMonth","clientsOwe","oweWorkers","newLeads"],
+  // open jobs, the week's visits, quotes out, plan members (the recurring revenue), cash in, cash owed
+  kpis: ["visitsThisWeek","activeJobs","pipelineValue","recurringClients","collectedMonth","clientsOwe"],
   agreement: {
     en: {
       "title": "Plumbing Service Agreement",
@@ -205,6 +274,6 @@ export const plumbingPack: IndustryPack = /* @__PURE__ */ fieldPack({
     { en: "Offer the yearly plumbing inspection plan", es: "Ofrecer el plan anual de inspección de plomería", dueIn: 2, for: 'owner' },
     { en: "Ask the client for a review", es: "Pedir una reseña al cliente", dueIn: 2, for: 'owner', pri: 'low' },
   ],
-  compliance: true,
-  rules: [...plumbingRules, ...FIELD_RULES.map((r) => ({ ...r, when: { ...r.when } }))],
+  compliance: false,
+  rules: [...plumbingRules, ...FIELD_RULES.filter((r) => r.id !== 'compliance-watch').map((r) => ({ ...r, when: { ...r.when } }))],
 });

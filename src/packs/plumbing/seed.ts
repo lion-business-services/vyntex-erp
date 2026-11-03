@@ -1,5 +1,7 @@
 import type { Lang, SeedData } from '@/domain/types';
 import { seedKit } from '../seedkit';
+import { priceBook } from '../pricebook';
+import { PLUMBING_BOOK } from './pricebook';
 
 /** Sample business for the plumbing edition. Fictional data only. */
 export function seed(lang: Lang): SeedData {
@@ -188,19 +190,19 @@ export function seed(lang: Lang): SeedData {
   });
 
   /* ---------- leads ---------- */
-  k.lead({ id: 'l1', name: 'Natalie Brooks', phone: '609-555-0851', address: '30 Sample St, Ventnor, NJ', type: 'emergency', source: 'phone', status: 'new', pri: 'high', followUp: 0, created: 0,
+  k.lead({ id: 'l1', name: 'Natalie Brooks', phone: '609-555-0851', address: '30 Sample St, Ventnor, NJ', type: 'emergency', source: 'google_lsa', status: 'new', pri: 'high', followUp: 0, created: 0,
     notes: [[0, 'call', tx('Called at 6:50 am: water spraying under the kitchen sink, she found the shutoff under the sink and closed it. Needs a plumber this morning.', 'Llamó a las 6:50 am: sale agua a chorro debajo del fregadero, encontró la llave debajo y la cerró. Necesita plomero esta mañana.')]] });
   k.lead({ id: 'l2', name: 'Victor Hale', phone: '609-555-0852', email: 'victor@example.com', address: '19 Sample Ave, Linwood, NJ', type: 'repipe', source: 'google', status: 'sent', pri: 'high', value: 13200, appt: [-7, '10:00'], followUp: 1, created: -12,
     notes: [[-12, 'note', tx('Web form: pinhole leaks in the copper, second one this year.', 'Formulario web: fugas pequeñas en el cobre, la segunda este año.')], [-6, 'email', tx('Sent the PEX and copper repipe options with the payment plan.', 'Se mandaron las opciones de cambio a PEX y a cobre con el plan de pagos.')]] });
   k.lead({ id: 'l3', name: 'Rafael Soto', phone: '609-555-0853', email: 'rafael@example.com', address: '11 Sample Way, Pleasantville, NJ', type: 'drain', source: 'facebook', status: 'new', owner: 'u3', created: 0,
     notes: [[0, 'text', tx('Message from the page: bathtub and toilet backing up together. Prefers Spanish.', 'Mensaje por la página: la tina y el inodoro se regresan al mismo tiempo. Prefiere español.')]] });
-  k.lead({ id: 'l4', name: 'Sample Daycare Center', phone: '609-555-0854', email: 'daycare@example.com', address: '60 Sample Pike, Egg Harbor Twp, NJ', type: 'backflow', source: 'website', status: 'scheduled', value: 460, appt: [2, '07:00'], created: -4,
+  k.lead({ id: 'l4', name: 'Sample Daycare Center', phone: '609-555-0854', email: 'daycare@example.com', address: '60 Sample Pike, Egg Harbor Twp, NJ', type: 'backflow', source: 'water_utility', status: 'scheduled', value: 460, appt: [2, '07:00'], created: -4,
     notes: [[-4, 'note', tx('Water utility letter: 4 devices due for the yearly test this month.', 'Carta de la compañía de agua: 4 dispositivos deben hacerse la prueba anual este mes.')]] });
   k.lead({ id: 'l5', name: 'Helen Marsh', phone: '609-555-0855', email: 'helen@example.com', address: '7 Sample Ln, Somers Point, NJ', type: 'water_heater', source: 'referral', status: 'scheduled', owner: 'u2', value: 4200, appt: [0, '14:00'], created: -2,
     notes: [[-2, 'call', tx('Referred by Paul Sanders. No hot water, tank is 12 years old. Asking about tankless.', 'La recomendó Paul Sanders. Sin agua caliente, el tanque tiene 12 años. Pregunta por el sin tanque.')]] });
   k.lead({ id: 'l6', name: 'Bruno Costa', phone: '609-555-0856', address: '5 Sample Ct, Margate, NJ', type: 'sewer', source: 'phone', status: 'scheduled', value: 650, appt: [1, '09:00'], created: -3,
     notes: [[-3, 'call', tx('Basement floor drain backs up when the washer runs. Wants a camera inspection.', 'El drenaje del sótano se regresa cuando corre la lavadora. Quiere inspección con cámara.')]] });
-  k.lead({ id: 'l7', name: 'Carmen Ruiz', phone: '609-555-0857', email: 'carmen@example.com', address: '23 Sample Rd, Absecon, NJ', type: 'fixtures', source: 'instagram', status: 'contacted', followUp: 2, created: -5,
+  k.lead({ id: 'l7', name: 'Carmen Ruiz', phone: '609-555-0857', email: 'carmen@example.com', address: '23 Sample Rd, Absecon, NJ', type: 'fixtures', source: 'nextdoor', status: 'contacted', followUp: 2, created: -5,
     notes: [[-5, 'text', tx('Bathroom refresh: new vanity faucet, shower valve and a comfort height toilet.', 'Renovación del baño: llave del lavabo, válvula de regadera y un inodoro de altura cómoda.')]] });
   k.lead({ id: 'l8', name: 'Jerry Fox', phone: '609-555-0858', email: 'jerry@example.com', address: '70 Sample Dr, Galloway, NJ', type: 'gas', source: 'website', status: 'contacted', owner: 'u2', value: 1450, followUp: -1, created: -6,
     notes: [[-6, 'note', tx('New outdoor kitchen, needs a gas line to the grill and the fire pit.', 'Cocina exterior nueva, necesita línea de gas para el asador y el fogón.')], [-3, 'call', tx('No gas smell. Waiting on the patio contractor\'s schedule.', 'No huele a gas. Esperando la agenda del contratista del patio.')]] });
@@ -213,8 +215,13 @@ export function seed(lang: Lang): SeedData {
   k.lead({ id: 'l12', name: 'Doris King', phone: '609-555-0859', address: '15 Sample Ter, Mays Landing, NJ', type: 'water_heater', source: 'google', status: 'lost', value: 2100, created: -28,
     notes: [[-28, 'call', tx('Wanted a same day water heater swap on a Sunday.', 'Quería el cambio de calentador el mismo día, en domingo.')]],
     lostReason: tx('We could not do it until Monday, she went with a company that had one on the truck.', 'No podíamos hasta el lunes, se fue con una compañía que traía uno en el camión.') });
-  k.lead({ id: 'l13', name: 'Leo Grant', phone: '609-555-0860', email: 'leo@example.com', address: '2 Sample St, Hammonton, NJ', type: 'leak', source: 'other', status: 'new', followUp: 0, created: -1,
+  k.lead({ id: 'l13', name: 'Leo Grant', phone: '609-555-0860', email: 'leo@example.com', address: '2 Sample St, Hammonton, NJ', type: 'leak', source: 'home_warranty', status: 'new', followUp: 0, created: -1,
     notes: [[-1, 'note', tx('Water bill doubled, meter spins with everything off. Possible slab or yard line leak.', 'El recibo del agua subió al doble, el medidor gira con todo cerrado. Posible fuga bajo el piso o en la línea del jardín.')]] });
+
+  k.lead({ id: 'l14', name: 'Sandra Kim', company: 'Sample Realty Rentals', phone: '609-555-0807', email: 'rentals@example.com', address: '12 Sample Ave, Ventnor, NJ', type: 'repipe', source: 'property_manager', status: 'approval', pri: 'high', value: 8900, appt: [-6, '10:30'], followUp: 2, created: -11, clientId: 'c7',
+    notes: [[-11, 'email', tx('Third leak this year in unit 12. Asked for a repipe price for the building owner.', 'Tercera fuga este año en la unidad 12. Pidió precio de cambio de tubería para el dueño del edificio.')], [-5, 'email', tx('Quote sent. Over $500, so the owner has to approve it by email.', 'Cotización enviada. Pasa de $500, así que el dueño tiene que aprobarla por correo.')]] });
+  k.lead({ id: 'l15', name: 'Martin Shaw', phone: '609-555-0861', email: 'martin@example.com', address: '33 Sample Dr, Egg Harbor Twp, NJ', type: 'leak', source: 'insurance', status: 'approval', value: 2400, followUp: 3, created: -9,
+    notes: [[-9, 'call', tx('Sent by the restoration company after a washer hose burst. Needs the supply line rerouted before the drywall goes back.', 'Lo mandó la compañía de restauración después de que se reventó la manguera de la lavadora. Hay que cambiar la ruta de la línea antes de cerrar la pared.')], [-4, 'email', tx('Estimate sent to the insurance adjuster with photos. Waiting on approval.', 'Estimado enviado al ajustador del seguro con fotos. Esperando aprobación.')]] });
 
   /* ---------- office tasks ---------- */
   k.task({ title: tx('Backflow season: call every client with devices due this month', 'Temporada de reflujo: llamar a cada cliente con dispositivos que vencen este mes'), who: 'u3', due: 1, status: 'doing', pri: 'high' });
@@ -227,5 +234,23 @@ export function seed(lang: Lang): SeedData {
   k.task({ title: tx('Recertify the backflow test gauge', 'Recertificar el manómetro de pruebas de reflujo'), who: 'w3', due: -1, status: 'done' });
   k.task({ title: tx('Team meeting: gas safety and confined spaces', 'Junta del equipo: seguridad con gas y espacios confinados'), who: 'u1', due: 8, pri: 'low' });
 
-  return k.finish();
+  /* ---------- plan accounts: the recurring revenue ---------- */
+  k.job({
+    id: 'j11', name: tx('Yearly inspection plan, Sanders', 'Plan anual de inspección, Sanders'), clientId: 'c10', type: 'plan', status: 'progress', price: 159, start: -14, end: 351, repeat: 'yearly',
+    scope: tx('Joined after the water heater replacement: yearly inspection, water heater flush, pressure test, priority scheduling and 15% off repairs.', 'Se unió después del cambio de calentador: inspección anual, limpieza del calentador, prueba de presión, prioridad en la agenda y 15% de descuento en reparaciones.'),
+    payTerms: tx('$159 a year, renews automatically.', '$159 al año, se renueva automáticamente.'),
+    received: [{ date: -14, method: 'card', ref: tx('Plan, year 1', 'Plan, año 1'), amount: 159 }],
+  });
+  k.job({
+    id: 'j12', name: tx('Yearly inspection plan, Lowe', 'Plan anual de inspección, Lowe'), clientId: 'c3', type: 'plan', status: 'progress', price: 180, start: -10, end: 355, repeat: 'monthly',
+    scope: tx('Joined after the burst pipe. Yearly inspection, the outside wall pipes checked before winter.', 'Se unió después del tubo roto. Inspección anual, revisión de la tubería de la pared exterior antes del invierno.'),
+    payTerms: tx('$15 a month on card.', '$15 al mes con tarjeta.'),
+    received: [{ date: -10, method: 'card', ref: tx('Month 1', 'Mes 1'), amount: 15 }],
+    tasks: [{ title: tx('Winter check: insulate the outside wall line', 'Revisión de invierno: aislar la línea de la pared exterior'), who: 'w2', due: 6 }],
+  });
+
+  const out = k.finish();
+  const kind: Record<string, string> = { c1: 'residential', c2: 'commercial', c3: 'plan', c4: 'backflow', c5: 'residential', c6: 'residential', c7: 'property', c8: 'residential', c9: 'residential', c10: 'plan' };
+  for (const c of out.clients) if (kind[c.id]) c.clientType = kind[c.id];
+  return { ...out, catalog: priceBook(lang, PLUMBING_BOOK) };
 }

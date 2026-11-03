@@ -1,5 +1,7 @@
 import type { Lang, SeedData } from '@/domain/types';
 import { seedKit } from '../seedkit';
+import { priceBook } from '../pricebook';
+import { HVAC_BOOK } from './pricebook';
 
 /** Sample business for the HVAC edition. Fictional data only. */
 export function seed(lang: Lang): SeedData {
@@ -106,12 +108,11 @@ export function seed(lang: Lang): SeedData {
   });
 
   k.job({
-    id: 'j4', name: tx('Spring tune-up, Briggs (plan member)', 'Mantenimiento de primavera, Briggs (miembro del plan)'), clientId: 'c4', type: 'maintenance', status: 'done', price: 189, start: -21, end: -21,
+    id: 'j4', name: tx('Spring tune-up, Briggs (plan member)', 'Mantenimiento de primavera, Briggs (miembro del plan)'), clientId: 'c4', type: 'maintenance', status: 'done', price: 0, start: -21, end: -21,
     scope: tx('Maintenance plan visit: cooling tune-up, refrigerant pressures, capacitor test, drain line flush, filter replaced.', 'Visita del plan de mantenimiento: revisión de aire acondicionado, presiones de refrigerante, prueba del capacitor, limpieza de la línea de drenaje, cambio de filtro.'),
-    payTerms: tx('Covered by the plan, $189 per year paid at renewal.', 'Cubierto por el plan, $189 al año pagado en la renovación.'),
+    payTerms: tx('Covered by the Comfort maintenance plan.', 'Cubierto por el plan de mantenimiento Confort.'),
     assign: [{ workerId: 'w3', scope: tx('Tune-up', 'Mantenimiento'), price: 48, payType: 'hourly', rate: 32, qty: 1.5, status: 'done' }],
     expenses: [{ date: -21, vendor: supply, desc: tx('Filter 16x25x1, drain tablets', 'Filtro 16x25x1, pastillas para drenaje'), amount: 18 }],
-    received: [{ date: -60, method: 'card', ref: tx('Plan renewal', 'Renovación del plan'), amount: 189 }],
     workerPays: [{ date: -14, workerId: 'w3', method: 'transfer', amount: 48, payType: 'hourly', from: -21, to: -21 }],
     tasks: [{ title: tx('Run capacitor is weak (32 of 45 µF): quote the replacement', 'El capacitor está débil (32 de 45 µF): cotizar el cambio'), who: 'u2', due: -18, status: 'done' }],
     log: [{ date: -21, workerId: 'w3', text: tx('System cooling well, 19 degree split. Capacitor reading low, quoted it at the member price. Drain line was slow, flushed it.', 'El equipo enfría bien, 19 grados de diferencia. El capacitor salió bajo, se cotizó con precio de miembro. La línea de drenaje estaba lenta, se limpió.') }],
@@ -202,7 +203,7 @@ export function seed(lang: Lang): SeedData {
   });
 
   /* ---------- leads ---------- */
-  k.lead({ id: 'l1', name: 'Samuel Ortiz', phone: '609-555-0751', address: '40 Sample St, Ventnor, NJ', type: 'emergency', source: 'phone', status: 'new', pri: 'high', followUp: 0, created: 0,
+  k.lead({ id: 'l1', name: 'Samuel Ortiz', phone: '609-555-0751', address: '40 Sample St, Ventnor, NJ', type: 'emergency', source: 'google_lsa', status: 'new', pri: 'high', followUp: 0, created: 0,
     notes: [[0, 'call', tx('Called at 7:10 am: furnace blowing cold air, two kids at home. Needs someone this morning.', 'Llamó a las 7:10 am: la caldera echa aire frío, dos niños en casa. Necesita a alguien esta mañana.')]] });
   k.lead({ id: 'l2', name: 'Linda Carver', phone: '609-555-0752', email: 'linda@example.com', address: '12 Sample Ave, Linwood, NJ', type: 'install', source: 'google', status: 'sent', pri: 'high', value: 12400, appt: [-6, '10:00'], followUp: 1, created: -10,
     notes: [[-10, 'note', tx('Web form: 22 year old AC and furnace, high electric bills. Wants to compare a heat pump.', 'Formulario web: aire y caldera de 22 años, recibos de luz altos. Quiere comparar con bomba de calor.')], [-5, 'email', tx('Sent 3 options: standard, high efficiency and heat pump, with the rebates and the monthly payment.', 'Se mandaron 3 opciones: estándar, alta eficiencia y bomba de calor, con los reembolsos y el pago mensual.')]] });
@@ -212,9 +213,9 @@ export function seed(lang: Lang): SeedData {
     notes: [[-4, 'note', tx('Two old rooftop units, one down. Classes start at 6 am. Wants a replacement price and a maintenance contract.', 'Dos unidades de techo viejas, una sin funcionar. Las clases empiezan a las 6 am. Quiere precio de reemplazo y contrato de mantenimiento.')]] });
   k.lead({ id: 'l5', name: 'Janet Price', phone: '609-555-0755', email: 'janet@example.com', address: '55 Sample Ln, Somers Point, NJ', type: 'heat_pump', source: 'referral', status: 'scheduled', owner: 'u2', value: 5900, appt: [0, '15:00'], created: -3,
     notes: [[-3, 'call', tx('Referred by Patricia Nolan. Sunroom addition with no heat or AC, asking about a mini-split.', 'La recomendó Patricia Nolan. Cuarto de sol nuevo sin calefacción ni aire, pregunta por un mini-split.')]] });
-  k.lead({ id: 'l6', name: 'Frank DiMaio', phone: '609-555-0756', address: '3 Sample Ct, Margate, NJ', type: 'maintenance', source: 'phone', status: 'contacted', followUp: -1, created: -6,
+  k.lead({ id: 'l6', name: 'Frank DiMaio', phone: '609-555-0756', address: '3 Sample Ct, Margate, NJ', type: 'maintenance', source: 'existing_client', status: 'contacted', followUp: -1, created: -6,
     notes: [[-6, 'call', tx('Wants a fall tune-up and asked about the maintenance plan price.', 'Quiere mantenimiento de otoño y preguntó el precio del plan.')], [-3, 'call', tx('Left a voicemail with two open times.', 'Se le dejó mensaje de voz con dos horarios disponibles.')]] });
-  k.lead({ id: 'l7', name: 'Alicia Grant', phone: '609-555-0757', email: 'alicia@example.com', address: '19 Sample Rd, Absecon, NJ', type: 'iaq', source: 'instagram', status: 'contacted', followUp: 2, created: -5,
+  k.lead({ id: 'l7', name: 'Alicia Grant', phone: '609-555-0757', email: 'alicia@example.com', address: '19 Sample Rd, Absecon, NJ', type: 'iaq', source: 'nextdoor', status: 'contacted', followUp: 2, created: -5,
     notes: [[-5, 'text', tx('New baby, wants cleaner air and asked about humidifiers for the winter.', 'Bebé recién nacido, quiere aire más limpio y preguntó por humidificadores para el invierno.')]] });
   k.lead({ id: 'l8', name: 'Robert Chen', phone: '609-555-0758', email: 'robert@example.com', address: '80 Sample Dr, Galloway, NJ', type: 'ductwork', source: 'website', status: 'sent', owner: 'u2', value: 4300, appt: [-9, '11:00'], followUp: 3, created: -14,
     notes: [[-14, 'note', tx('Finished basement, no heat down there. Wants supply and return runs added.', 'Sótano terminado, sin calefacción. Quiere salidas y retornos nuevos.')]] });
@@ -227,8 +228,10 @@ export function seed(lang: Lang): SeedData {
   k.lead({ id: 'l12', name: 'Gloria Watts', phone: '609-555-0759', address: '22 Sample Ter, Mays Landing, NJ', type: 'install', source: 'google', status: 'lost', value: 9800, created: -30,
     notes: [[-30, 'call', tx('Wanted the lowest price for a new AC only.', 'Quería el precio más bajo solo por un aire nuevo.')]],
     lostReason: tx('Went with a lower bid that did not include the permit or a load calculation.', 'Se fue con una cotización más baja que no incluía permiso ni cálculo de carga.') });
-  k.lead({ id: 'l13', name: 'Mike Lawson', phone: '609-555-0760', email: 'mike@example.com', address: '9 Sample St, Hammonton, NJ', type: 'ac_repair', source: 'other', status: 'new', followUp: 0, created: -1,
-    notes: [[-1, 'note', tx('Outdoor unit humming but the fan does not spin. Probably the capacitor or the fan motor.', 'La unidad de afuera zumba pero el ventilador no gira. Probablemente el capacitor o el motor del ventilador.')]] });
+  k.lead({ id: 'l13', name: 'Mike Lawson', phone: '609-555-0760', email: 'mike@example.com', address: '9 Sample St, Hammonton, NJ', type: 'ac_repair', source: 'home_warranty', status: 'new', followUp: 0, created: -1,
+    notes: [[-1, 'note', tx('Outdoor unit humming but the fan does not spin. Probably the capacitor or the fan motor. Home warranty claim, the warranty company pays the diagnostic.', 'La unidad de afuera zumba pero el ventilador no gira. Probablemente el capacitor o el motor del ventilador. Reclamo de garantía del hogar, la compañía de garantía paga el diagnóstico.')]] });
+  k.lead({ id: 'l14', name: 'Tom Becker', phone: '609-555-0761', email: 'tom@example.com', address: '44 Sample Ave, Northfield, NJ', type: 'install', source: 'utility_rebate', status: 'financing', pri: 'high', owner: 'u2', value: 13900, appt: [-8, '17:30'], followUp: 1, created: -15,
+    notes: [[-15, 'note', tx('Found us on the utility rebate contractor list. 20 year old oil furnace, wants to go electric.', 'Nos encontró en la lista de contratistas del programa de reembolsos. Caldera de aceite de 20 años, quiere pasarse a eléctrico.')], [-7, 'visit', tx('Presented 3 options. He picked the variable speed heat pump. Financing application sent, waiting on approval.', 'Se presentaron 3 opciones. Escogió la bomba de calor de velocidad variable. Solicitud de financiamiento enviada, esperando aprobación.')]] });
 
   /* ---------- office tasks ---------- */
   k.task({ title: tx('Fall tune-up campaign: call every plan member to book', 'Campaña de mantenimiento de otoño: llamar a cada miembro del plan para agendar'), who: 'u3', due: 1, status: 'doing', pri: 'high' });
@@ -241,5 +244,23 @@ export function seed(lang: Lang): SeedData {
   k.task({ title: tx('Team meeting: carbon monoxide safety and the new combustion analyzer', 'Junta del equipo: seguridad de monóxido de carbono y el analizador de combustión nuevo'), who: 'u1', due: 8, pri: 'low' });
   k.task({ title: tx('Calibrate the combustion analyzer', 'Calibrar el analizador de combustión'), who: 'w2', due: -1, status: 'done' });
 
-  return k.finish();
+  /* ---------- maintenance plan members: the recurring revenue ---------- */
+  k.job({
+    id: 'j12', name: tx('Comfort maintenance plan, Briggs', 'Plan de mantenimiento Confort, Briggs'), clientId: 'c4', type: 'maintenance', status: 'progress', price: 189, start: -60, end: 305, repeat: 'yearly',
+    scope: tx('Comfort maintenance plan: spring cooling and fall heating tune-ups, priority scheduling, 15% off repairs, no after hours fee.', 'Plan de mantenimiento Confort: mantenimiento de aire en primavera y de calefacción en otoño, prioridad en la agenda, 15% de descuento en reparaciones, sin cargo fuera de horario.'),
+    payTerms: tx('$189 a year, renews automatically.', '$189 al año, se renueva automáticamente.'),
+    received: [{ date: -60, method: 'card', ref: tx('Plan renewal', 'Renovación del plan'), amount: 189 }],
+    tasks: [{ title: tx('Fall heating tune-up, call to book', 'Mantenimiento de calefacción de otoño, llamar para agendar'), who: 'u3', due: 2 }],
+  });
+  k.job({
+    id: 'j13', name: tx('Comfort maintenance plan, Kim', 'Plan de mantenimiento Confort, Kim'), clientId: 'c3', type: 'maintenance', status: 'progress', price: 216, start: -15, end: 350, repeat: 'monthly',
+    scope: tx('Joined the plan after the AC repair. Two tune-ups a year, member pricing.', 'Se unió al plan después de la reparación del aire. Dos mantenimientos al año, precio de miembro.'),
+    payTerms: tx('$18 a month on card.', '$18 al mes con tarjeta.'),
+    received: [{ date: -15, method: 'card', ref: tx('Month 1', 'Mes 1'), amount: 18 }],
+  });
+
+  const out = k.finish();
+  const kind: Record<string, string> = { c1: 'residential', c2: 'commercial', c3: 'plan', c4: 'plan', c5: 'residential', c6: 'property', c7: 'residential', c8: 'commercial', c9: 'residential', c10: 'institution' };
+  for (const c of out.clients) if (kind[c.id]) c.clientType = kind[c.id];
+  return { ...out, catalog: priceBook(lang, HVAC_BOOK) };
 }

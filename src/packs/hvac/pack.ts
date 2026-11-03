@@ -1,7 +1,7 @@
 // VYNTEX HVAC: industry pack for heating, cooling and indoor air quality contractors.
 // Everything industry-specific lives here and in its rules and sample business. The app core never checks the industry id.
 import type { IndustryPack } from '../types';
-import { FIELD_RULES, fieldPack } from '../blueprint';
+import { FIELD_MODULES, FIELD_RULES, fieldPack } from '../blueprint';
 import { hvacRules } from './rules';
 
 export const hvacPack: IndustryPack = /* @__PURE__ */ fieldPack({
@@ -22,7 +22,7 @@ export const hvacPack: IndustryPack = /* @__PURE__ */ fieldPack({
     { id: "ductwork", en: "Ductwork & airflow", es: "Ductos y flujo de aire" },
     { id: "commercial", en: "Commercial rooftop (RTU)", es: "Comercial, unidad de techo (RTU)" },
     { id: "emergency", en: "Emergency no heat / no cool", es: "Emergencia sin calefacción o sin aire" },
-    { id: "other", en: "Other", es: "Otro" },
+    { id: "other", en: "Thermostats, controls & other", es: "Termostatos, controles y otros" },
   ],
   terms: {
     en: {
@@ -84,7 +84,13 @@ export const hvacPack: IndustryPack = /* @__PURE__ */ fieldPack({
       "convert": "Make it a job",
       "converted": "Job created",
       "search": "Search client, address, equipment or job",
-      "confirmReset": "Throw away your edits and rebuild this document from the job details?"
+      "confirmReset": "Throw away your edits and rebuild this document from the job details?",
+      "dash.kpi.recurringClients": "Maintenance plan members",
+      "dash.hint.recurring": "Plans with tune-ups on the calendar",
+      "dash.kpi.pipelineValue": "Open quotes",
+      "dash.hint.pipeline": "Quotes and options out: {n}",
+      "dash.kpi.visitsThisWeek": "Calls & installs, next 7 days",
+      "dash.hint.visits": "Service calls, tune-ups and installs"
     },
     es: {
       "workersPlural": "Técnicos",
@@ -145,11 +151,71 @@ export const hvacPack: IndustryPack = /* @__PURE__ */ fieldPack({
       "convert": "Convertir en trabajo",
       "converted": "Trabajo creado",
       "search": "Buscar cliente, dirección, equipo o trabajo",
-      "confirmReset": "¿Descartar sus cambios y volver a crear este documento con los datos del trabajo?"
+      "confirmReset": "¿Descartar sus cambios y volver a crear este documento con los datos del trabajo?",
+      "dash.kpi.recurringClients": "Miembros del plan de mantenimiento",
+      "dash.hint.recurring": "Planes con mantenimientos en la agenda",
+      "dash.kpi.pipelineValue": "Cotizaciones abiertas",
+      "dash.hint.pipeline": "Cotizaciones y opciones enviadas: {n}",
+      "dash.kpi.visitsThisWeek": "Llamadas e instalaciones, próximos 7 días",
+      "dash.hint.visits": "Llamadas de servicio, mantenimientos e instalaciones"
     },
   },
+  // the field sections an HVAC or plumbing shop uses every day; no Opportunities or 1099 & compliance pages (owner decision, Nov 4, 2026)
+  modules: FIELD_MODULES.filter((m) => m !== 'opportunities' && m !== 'compliance'),
+  leadStages: [
+    { id: 'new', label: { en: 'New call', es: 'Llamada nueva' }, kind: 'open', role: 'new' },
+    { id: 'contacted', label: { en: 'Contacted', es: 'Contactado' }, kind: 'open', role: 'contacted' },
+    { id: 'scheduled', label: { en: 'Diagnostic / estimate booked', es: 'Diagnóstico / visita agendada' }, kind: 'open', role: 'visit', hot: true },
+    { id: 'sent', label: { en: 'Options presented', es: 'Opciones presentadas' }, kind: 'open', role: 'proposal', hot: true },
+    { id: 'financing', label: { en: 'Financing / decision', es: 'Financiamiento / decisión' }, kind: 'open', role: 'negotiation', hot: true },
+    { id: 'won', label: { en: 'Sold', es: 'Vendido' }, kind: 'won' },
+    { id: 'lost', label: { en: 'Lost', es: 'Perdido' }, kind: 'lost' },
+  ],
+  leadSources: [
+    { id: 'phone', label: { en: 'Phone call', es: 'Llamada' } },
+    { id: 'website', label: { en: 'Website', es: 'Sitio web' } },
+    { id: 'google', label: { en: 'Google search & Maps', es: 'Google búsqueda y Maps' } },
+    { id: 'google_lsa', label: { en: 'Google Local Services Ads', es: 'Anuncios de Servicios Locales de Google' } },
+    { id: 'existing_client', label: { en: 'Past or plan customer', es: 'Cliente anterior o del plan' } },
+    { id: 'referral', label: { en: 'Referral', es: 'Referido' } },
+    { id: 'home_warranty', label: { en: 'Home warranty company', es: 'Compañía de garantía del hogar' } },
+    { id: 'manufacturer', label: { en: 'Manufacturer dealer locator', es: 'Localizador de distribuidores del fabricante' } },
+    { id: 'utility_rebate', label: { en: 'Utility rebate program', es: 'Programa de reembolsos de la compañía de luz o gas' } },
+    { id: 'nextdoor', label: { en: 'Nextdoor', es: 'Nextdoor' } },
+    { id: 'facebook', label: { en: 'Facebook', es: 'Facebook' } },
+    { id: 'instagram', label: { en: 'Instagram', es: 'Instagram' } },
+    { id: 'other', label: { en: 'Other', es: 'Otro' } },
+  ],
+  lostReasons: [
+    { id: 'price', label: { en: 'Price', es: 'Precio' } },
+    { id: 'financing', label: { en: 'Financing not approved', es: 'No le aprobaron el financiamiento' } },
+    { id: 'repair', label: { en: 'Repaired instead of replacing', es: 'Reparó en lugar de reemplazar' } },
+    { id: 'competitor', label: { en: 'Chose another contractor', es: 'Eligió a otro contratista' } },
+    { id: 'timing', label: { en: 'Not urgent, waiting', es: 'No es urgente, va a esperar' } },
+    { id: 'no_response', label: { en: 'No response', es: 'Sin respuesta' } },
+    { id: 'other', label: { en: 'Other', es: 'Otro' } },
+  ],
+  taskTypes: [
+    { id: 'todo', label: { en: 'To do', es: 'Por hacer' } },
+    { id: 'call', label: { en: 'Call back', es: 'Devolver llamada' } },
+    { id: 'dispatch', label: { en: 'Dispatch', es: 'Despacho' } },
+    { id: 'permit', label: { en: 'Permit & inspection', es: 'Permiso e inspección' } },
+    { id: 'parts', label: { en: 'Parts & equipment order', es: 'Pedido de piezas y equipo' } },
+    { id: 'warranty', label: { en: 'Warranty registration', es: 'Registro de garantía' } },
+    { id: 'refrigerant', label: { en: 'Refrigerant log (EPA 608)', es: 'Registro de refrigerante (EPA 608)' } },
+    { id: 'safety', label: { en: 'Safety check', es: 'Revisión de seguridad' } },
+  ],
+  clientTypes: [
+    { id: 'residential', label: { en: 'Homeowner', es: 'Propietario de casa' } },
+    { id: 'plan', label: { en: 'Maintenance plan member', es: 'Miembro del plan de mantenimiento' } },
+    { id: 'commercial', label: { en: 'Commercial', es: 'Comercial' } },
+    { id: 'property', label: { en: 'Property manager / landlord', es: 'Administrador de propiedades / arrendador' } },
+    { id: 'home_warranty', label: { en: 'Home warranty company', es: 'Compañía de garantía del hogar' } },
+    { id: 'institution', label: { en: 'School / public building', es: 'Escuela / edificio público' } },
+  ],
   jobStatuses: ['estimate', 'contract', 'progress', 'hold', 'done'],
-  kpis: ["activeJobs","visitsThisWeek","collectedMonth","clientsOwe","oweWorkers","newLeads"],
+  // open jobs, the week's visits, quotes out, plan members (the recurring revenue), cash in, cash owed
+  kpis: ["visitsThisWeek","activeJobs","pipelineValue","recurringClients","collectedMonth","clientsOwe"],
   agreement: {
     en: {
       "title": "HVAC Service and Installation Agreement",
@@ -204,6 +270,6 @@ export const hvacPack: IndustryPack = /* @__PURE__ */ fieldPack({
     { en: "Offer the maintenance plan", es: "Ofrecer el plan de mantenimiento", dueIn: 2, for: 'owner' },
     { en: "Ask the client for a review", es: "Pedir una reseña al cliente", dueIn: 2, for: 'owner', pri: 'low' },
   ],
-  compliance: true,
-  rules: [...hvacRules, ...FIELD_RULES.map((r) => ({ ...r, when: { ...r.when } }))],
+  compliance: false,
+  rules: [...hvacRules, ...FIELD_RULES.filter((r) => r.id !== 'compliance-watch').map((r) => ({ ...r, when: { ...r.when } }))],
 });

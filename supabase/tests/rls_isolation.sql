@@ -772,7 +772,7 @@ select test.is(test.as('c_owner', 'select 1 from public.my_workspaces()'), 'rows
 select test.is(test.as('a_disabled', 'select 1 from public.clients'), 'rows:0', 'a disabled member reads nothing') \g /dev/null
 select test.is(test.as('a_disabled', 'select 1 from public.my_workspaces()'), 'rows:0', 'a disabled member has no workspace') \g /dev/null
 select test.is(test.as('nobody', 'select 1 from public.clients'), 'rows:0', 'a signed-in person without a company reads nothing') \g /dev/null
-select test.is(test.as('nobody', 'select 1 from public.industries'), 'rows:10', 'reference data (the ten editions) is readable when signed in') \g /dev/null
+select test.is(test.as('nobody', 'select 1 from public.industries'), 'rows:12', 'reference data (the twelve editions) is readable when signed in') \g /dev/null
 select test.is(test.as('a_owner', $q$update public.industries set product_name = 'X'$q$), 'error:42501', 'reference data cannot be changed from the app') \g /dev/null
 
 -- ---- a closed company locks everyone out
@@ -1030,7 +1030,7 @@ select test.is(test.as('service', $q$insert into public.tenants (slug, name, ind
 select test.is(test.as('service', $q$insert into public.tenants (slug, name, industry_id, plan_id) values ('Acme', 'X', 'build', 'builder')$q$), 'error:23514', 'capital letters cannot be in a company address') \g /dev/null
 select test.is(test.as('service', $q$insert into public.tenants (slug, name, industry_id, plan_id) values ('a--b', 'X', 'build', 'builder')$q$), 'error:23514', 'double hyphens cannot be in a company address') \g /dev/null
 select test.is(test.as('service', $q$insert into public.tenants (slug, name, industry_id, plan_id) values ('acme-builders', 'X', 'build', 'builder')$q$), 'error:23505', 'a company address is unique') \g /dev/null
-select test.is(test.as('service', $q$insert into public.tenants (slug, name, industry_id, plan_id) values ('new-company', 'X', 'plumbing', 'builder')$q$), 'error:23503', 'the industry must be one of the reference rows') \g /dev/null
+select test.is(test.as('service', $q$insert into public.tenants (slug, name, industry_id, plan_id) values ('new-company', 'X', 'no-such-edition', 'builder')$q$), 'error:23503', 'the industry must be one of the reference rows') \g /dev/null
 select test.is(test.as('service', format($q$insert into public.client_payments (tenant_id, job_id, method, amount) values (%L, %L, 'cash', -1)$q$, test.id('a'), test.id('a.j1'))), 'error:23514', 'a negative amount is refused') \g /dev/null
 select test.is(test.as('service', format($q$insert into public.client_payments (tenant_id, job_id, method, amount) values (%L, %L, 'bitcoin', 1)$q$, test.id('a'), test.id('a.j1'))), 'error:23514', 'an unknown payment method is refused') \g /dev/null
 select test.is(test.as('service', format($q$update public.jobs set status = 'archived' where id = %L$q$, test.id('a.j1'))), 'error:23514', 'an unknown job status is refused') \g /dev/null

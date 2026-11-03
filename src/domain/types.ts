@@ -597,7 +597,7 @@ export interface CatalogTier {
   kind?: CatalogTierKind;
 }
 /** Text of a service in one language. The lists are "What's included" and "Not included", one item per entry. */
-export interface CatalogServiceText { name?: string; description?: string; highlights?: string[]; excludes?: string[]; bestFor?: string; /** "7 to 10 business days". */ leadTime?: string }
+export interface CatalogServiceText { name?: string; description?: string; highlights?: string[]; excludes?: string[]; bestFor?: string; /** "7 to 10 business days". */ leadTime?: string; categoryNote?: string }
 export interface CatalogService {
   id: string;
   name: string;
@@ -626,6 +626,12 @@ export interface CatalogService {
   installments?: number;
   /** Paying the year up front costs this many monthly fees. */
   prepayMonths?: number;
+  /** The monthly fee is an optional care plan (a website): no yearly prepay and no minimum term are shown for it. */
+  carePlan?: boolean;
+  /** What the carriers usually charge a month, at cost, as [low, high] in dollars. */
+  usageRange?: [number, number];
+  /** One sentence about the service's category, shown under the category tabs. Kept in `extra` (Spanish in i18n.es). */
+  categoryNote?: string;
   /** Software plans: people included ('unlimited' or a number), and the welcome credit in dollars (0: none). */
   users?: number | 'unlimited';
   welcomeCredit?: number;

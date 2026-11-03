@@ -12,7 +12,7 @@ import { type Period, cardPrice, isPlan } from './cardModel';
 import { categoryLabel } from './parts';
 
 /** Items of "What you get" shown before "Show all". */
-const SHOWN = 10;
+const SHOWN = 40;
 
 export interface CardGroup { id: string; list: Service[] }
 
@@ -32,12 +32,14 @@ export function CategoryTabs({ groups, active, onPick }: { groups: CardGroup[]; 
 }
 
 export function ServiceCards({ groups, headings }: { groups: CardGroup[]; headings: boolean }) {
-  const { t, pack } = useApp();
+  const { t, pack, lang } = useApp();
   const [period, setPeriod] = useState<Period>('month');
   return (
     <div className="stack cc-sections" data-testid="catalog-cards">
       {groups.map((g) => {
         const plans = g.list.filter(isPlan);
+        // the sentence about the category, from the first service that has one
+        const note = g.list.map((s) => s.i18n?.[lang]?.categoryNote || s.categoryNote).find((x) => x && x.trim());
         const best = plans.length ? Math.max(...plans.map((s) => { const m = s.tiers.find((x) => x.unit === 'month')!.price; const y = s.tiers.find((x) => x.unit === 'year')!.price; return m * 12 - y; })) : 0;
         return (
           <section key={g.id || '-'} className="cc-section" aria-label={categoryLabel(t, pack, g.id)} data-testid="catalog-section">
@@ -55,6 +57,7 @@ export function ServiceCards({ groups, headings }: { groups: CardGroup[]; headin
                 )}
               </div>
             )}
+            {note && <p className="cc-catnote" data-testid="catalog-catnote">{note}</p>}
             <div className="cc-grid">{g.list.map((s) => <ServiceCard key={s.id} s={s} period={period} />)}</div>
           </section>
         );
@@ -100,10 +103,10 @@ function ServiceCard({ s, period }: { s: Service; period: Period }) {
         </div>
       )}
       {not.length > 0 && (
-        <details className="cc-block cc-not">
-          <summary>{t('catalog.inc.excluded')} <span className="count">{not.length}</span></summary>
+        <div className="cc-block cc-not">
+          <h4 className="cc-h no">{t('catalog.card.notIncluded')}</h4>
           <ul className="cc-list">{not.map((x, i) => <li key={i}><LuX aria-hidden="true" className="no" /><span>{x}</span></li>)}</ul>
-        </details>
+        </div>
       )}
       {best && <p className="cc-best"><b>{t('catalog.inc.bestFor')}</b> {best}</p>}
       <footer className="cc-foot"><A to={`/catalog/${s.id}`} className="cc-more">{t('catalog.card.details')}<LuArrowRight aria-hidden="true" /></A></footer>

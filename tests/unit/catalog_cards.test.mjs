@@ -52,3 +52,21 @@ test('a single price, an hourly rate and a quote', () => {
   assert.equal(qs.big, 'Quote'); assert.equal(lines(qs)['Deposit to start'], undefined);
   assert.equal(depositOf({ note: 'Deposit to start: $1,249' }), 1249); assert.equal(depositOf({ note: 'Bring photos' }), undefined);
 });
+
+test('as in the Command Center: a one-time build with its deposit and payments, a care plan, carrier costs and a starting price', () => {
+  const logo = { id: 'l', name: 'Logo', category: 'Brand', active: true, installments: 3, leadTime: '3 to 5 business days',
+    tiers: [{ id: 's', name: 'Setup', price: 125, unit: 'flat', kind: 'setup', note: 'Deposit to start: $63' }] };
+  const p = cardPrice(t, logo, 'en');
+  assert.deepEqual([p.big, p.suffix], ['$125', 'to build']);
+  assert.deepEqual(lines(p), { 'Deposit to start': '$63', 'Balance at launch': '$62', 'or 3 payments of': '$42', 'Ready in': '3 to 5 business days' });
+  const site = { ...pkg, carePlan: true, usageRange: undefined, tiers: pkg.tiers };
+  const w = cardPrice(t, site, 'en');
+  assert.equal(w.secondSuffix, '/mo · care plan');
+  assert.equal(lines(w)['Pay the year'], undefined, 'a care plan has no yearly prepay'); assert.equal(lines(w)['Minimum term'], undefined);
+  const crm = cardPrice(t, { ...pkg, usageRange: [20, 35] }, 'en');
+  assert.deepEqual(Object.keys(lines(crm)), ['Deposit to start', 'Balance at launch', 'or 3 payments of', 'Pay the year', 'Minimum term', 'Carrier costs, at cost', 'Ready in']);
+  assert.equal(lines(crm)['Carrier costs, at cost'], '$20–$35/mo');
+  const custom = cardPrice(t, { ...logo, leadTime: 'Quoted per project', tiers: [{ id: 'c', name: 'Setup', price: 2000, unit: 'flat', kind: 'setup', quote: true, from: true }] }, 'en');
+  assert.deepEqual([custom.big, custom.suffix], ['$2,000+', 'to build']);
+  assert.deepEqual(lines(custom), { 'Ready in': 'Quoted per project' }, 'a quoted build shows no deposit or payments');
+});

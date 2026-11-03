@@ -78,21 +78,35 @@ export function cardPrice(t: TFn, s: CatalogService, lang: Lang, period: Period 
     return out;
   }
 
+  /** The terms under the price, in the order the Command Center shows them: deposit, balance, payments, the year, term, carrier costs. */
+  const terms = (fee: CatalogTier | undefined, monthly: CatalogTier | undefined) => {
+    // a quoted fee (even with a starting price) has no deposit or payments: they are agreed with the quote
+    if (fee && priced(fee) && !fee.quote) {
+      const deposit = depositOf(fee);
+      if (deposit && deposit < fee.price) lines.push({ label: t('catalog.card.deposit'), value: amount(deposit) }, { label: t('catalog.card.balance'), value: amount(Math.round((fee.price - deposit) * 100) / 100) });
+      if (s.installments && s.installments > 1) {
+        const part = fee.price / s.installments;
+        lines.push({ label: t('catalog.card.payments', { n: s.installments }), value: amount(Number.isInteger(fee.price) ? Math.round(part) : Math.round(part * 100) / 100) });
+      }
+    }
+    if (monthly && priced(monthly) && !s.carePlan && s.prepayMonths && s.prepayMonths > 0) lines.push({ label: t('catalog.card.payYear'), value: amount(monthly.price * s.prepayMonths) });
+    if (s.minTermMonths && !s.carePlan) lines.push({ label: t('catalog.card.term'), value: t('catalog.card.months', { n: s.minTermMonths }) });
+    const u = s.usageRange;
+    if (Array.isArray(u) && u.length === 2 && u.every((n) => typeof n === 'number')) lines.push({ label: t('catalog.card.usage'), value: `${amount(u[0])}–${amount(u[1])}${t('catalog.card.mo')}` });
+  };
+  /** "$2,000+" for a starting price, else the amount. */
+  const figure = (x: CatalogTier) => (x.from ? amount(x.price) + '+' : amount(x.price));
+
   if (setup && month) {
     used.add(setup.id); used.add(month.id);
     const quoted = !priced(setup);
+    const monthSuffix = t('catalog.card.mo') + (s.carePlan ? ' · ' + t('catalog.card.carePlan') : month.per?.trim() ? ' ' + month.per.trim() : '');
     const out: CardPrice = {
-      shape: 'build', big: quoted ? t('catalog.tier.quote') : setup.from ? t('catalog.tier.fromPrice', { price: amount(setup.price) }) : amount(setup.price), suffix: quoted ? undefined : t('catalog.card.toBuild'),
-      ...(priced(month) ? { second: amount(month.price), secondSuffix: t('catalog.card.mo') + (month.per?.trim() ? ' ' + month.per.trim() : '') } : { sub: t('catalog.card.monthQuoted') }),
+      shape: 'build', big: quoted ? t('catalog.tier.quote') : figure(setup), suffix: quoted ? undefined : t('catalog.card.toBuild'),
+      ...(priced(month) && !month.quote ? { second: amount(month.price), secondSuffix: monthSuffix } : { sub: t('catalog.card.monthQuoted') }),
       lines,
     };
-    const deposit = depositOf(setup);
-    if (!quoted && deposit && deposit < setup.price) {
-      lines.push({ label: t('catalog.card.deposit'), value: amount(deposit) }, { label: t('catalog.card.balance'), value: amount(Math.round((setup.price - deposit) * 100) / 100) });
-    }
-    if (!quoted && s.installments && s.installments > 1) lines.push({ label: t('catalog.card.payments', { n: s.installments }), value: amount(Math.round((setup.price / s.installments) * 100) / 100) });
-    if (priced(month) && s.prepayMonths && s.prepayMonths > 0) lines.push({ label: t('catalog.card.payYear'), value: amount(month.price * s.prepayMonths) });
-    if (s.minTermMonths) lines.push({ label: t('catalog.card.term'), value: t('catalog.card.months', { n: s.minTermMonths }) });
+    terms(setup, month);
     rest(); leadLine();
     return out;
   }
@@ -100,16 +114,16 @@ export function cardPrice(t: TFn, s: CatalogService, lang: Lang, period: Period 
   const main = s.tiers[0];
   if (!main) return { shape: 'single', big: t('catalog.tier.quote'), lines };
   used.add(main.id);
-  const quoted = main.quote && !(main.from && main.price > 0);
+  const shownPrice = priced(main);
   const out: CardPrice = {
     shape: 'single',
-    big: quoted ? t('catalog.tier.quote') : !main.price ? t('catalog.tier.quote') : (main.from ? t('catalog.tier.fromPrice', { price: amount(main.price) }) : amount(main.price)),
-    suffix: quoted || !main.price ? undefined : suffixOf(t, main),
-    sub: quoted || !main.price ? t('catalog.card.quoteSub') : undefined,
+    big: shownPrice ? figure(main) : t('catalog.tier.quote'),
+    // a one-time fee with a deposit is a build, as in the Command Center: "$350 to build"
+    suffix: !shownPrice ? undefined : (isSetup(main) || depositOf(main)) && main.unit === 'flat' && !main.per?.trim() ? t('catalog.card.toBuild') : suffixOf(t, main),
+    sub: shownPrice ? undefined : t('catalog.card.quoteSub'),
     lines,
   };
-  const deposit = depositOf(main);
-  if (!quoted && deposit && deposit < main.price) lines.push({ label: t('catalog.card.deposit'), value: amount(deposit) }, { label: t('catalog.card.balance'), value: amount(Math.round((main.price - deposit) * 100) / 100) });
+  terms(main.unit === 'flat' ? main : undefined, main.unit === 'month' ? main : undefined);
   rest(); leadLine();
   return out;
 }

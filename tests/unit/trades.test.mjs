@@ -93,3 +93,27 @@ test('the non-urgent drafts are emails, so they work in a new field workspace be
     for (const r of PACKS[id].rules) for (const s of r.then) if (s.do === 'message') assert.equal(s.params.channel, urgent.has(r.id) ? 'text' : 'email', r.id);
   }
 });
+
+test('each trade edition has its own sections, pipeline, sources, task and client types, dashboard and price book', async () => {
+  const want = { hvac: { stage: 'financing', source: 'home_warranty', task: 'refrigerant', client: 'plan' }, plumbing: { stage: 'approval', source: 'water_utility', task: 'backflow', client: 'backflow' } };
+  for (const [id, w] of Object.entries(want)) {
+    const pack = PACKS[id];
+    assert.ok(!pack.modules.includes('opportunities') && !pack.modules.includes('compliance'), id + ': no Opportunities or 1099 & compliance');
+    assert.equal(pack.compliance, false);
+    assert.ok(!pack.rules.some((r) => r.id === 'compliance-watch'), id + ': no compliance rule without the compliance page');
+    assert.ok(pack.leadStages.some((s) => s.id === w.stage && s.role === 'negotiation'), id + ' stage');
+    assert.ok(pack.leadSources.some((s) => s.id === w.source), id + ' source');
+    assert.ok(pack.taskTypes.some((s) => s.id === w.task), id + ' task type');
+    assert.ok(pack.clientTypes.some((s) => s.id === w.client), id + ' client type');
+    assert.ok(pack.kpis.includes('recurringClients'));
+    // every task type a rule gives is one of the edition's task types
+    for (const r of pack.rules) for (const s of r.then) if (s.do === 'task' && s.params.type) assert.ok(pack.taskTypes.some((x) => x.id === s.params.type), r.id + ' ' + s.params.type);
+    // the price book: one card per service type, in the edition's order (the field extras match work to its service by position)
+    await loadSeed(id);
+    for (const lang of ['en', 'es']) {
+      const book = seedOf(id)(lang).catalog;
+      assert.deepEqual(book.slice(0, pack.serviceTypes.length).map((s) => s.category), pack.serviceTypes.map((s) => s.id), id + ' ' + lang + ' book order');
+      assert.ok(book.every((s) => s.tiers.length && s.tiers.every((t) => t.price > 0 || t.quote || t.note)), id + ' every line has a price, a quote or a note');
+    }
+  }
+});

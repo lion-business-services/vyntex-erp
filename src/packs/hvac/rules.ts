@@ -9,8 +9,14 @@ import type { L10n, MessageChannel, Priority, RuleCond, RuleDef, RuleEvent, Rule
 
 const l = (en: string, es: string): L10n => ({ en, es });
 type Who = 'owner' | 'manager' | 'record_owner';
-const task = (title: string, titleEs: string, who: Who, dueIn = 0, pri: Priority = 'medium'): RuleStep =>
-  ({ do: 'task', params: { title, titleEs, for: who, dueIn, pri } });
+/** The task type the title names, so the task list can be filtered by the trade's own kinds of work (pack taskTypes). */
+const kindOf = (title: string): string | undefined =>
+  /^EMERGENCY/.test(title) ? 'dispatch' : /^(Call|Check the age)/.test(title) ? 'call' : /refrigerant log/i.test(title) ? 'refrigerant'
+    : /permit|inspection/i.test(title) ? 'permit' : /^Order/.test(title) ? 'parts' : /warranty/i.test(title) ? 'warranty' : /^Safety check/.test(title) ? 'safety' : undefined;
+const task = (title: string, titleEs: string, who: Who, dueIn = 0, pri: Priority = 'medium'): RuleStep => {
+  const type = kindOf(title);
+  return { do: 'task', params: { title, titleEs, for: who, dueIn, pri, ...(type ? { type } : {}) } };
+};
 /** A message to the client, prepared for a person to review. Never `send`. */
 const draft = (subject: string, subjectEs: string, body: string, bodyEs: string, channel: MessageChannel = 'text'): RuleStep =>
   ({ do: 'message', params: { channel, mode: 'draft', subject, subjectEs, body, bodyEs } });

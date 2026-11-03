@@ -9,8 +9,14 @@ import type { L10n, MessageChannel, Priority, RuleCond, RuleDef, RuleEvent, Rule
 
 const l = (en: string, es: string): L10n => ({ en, es });
 type Who = 'owner' | 'manager' | 'record_owner';
-const task = (title: string, titleEs: string, who: Who, dueIn = 0, pri: Priority = 'medium'): RuleStep =>
-  ({ do: 'task', params: { title, titleEs, for: who, dueIn, pri } });
+/** The task type the title names, so the task list can be filtered by the trade's own kinds of work (pack taskTypes). */
+const kindOf = (title: string): string | undefined =>
+  /^EMERGENCY/.test(title) ? 'dispatch' : /^Call 811/.test(title) ? 'markout' : /^(Call|Check the)/.test(title) ? 'call' : /backflow test report/i.test(title) ? 'backflow'
+    : /^Gas pressure/.test(title) ? 'safety' : /permit|inspection/i.test(title) ? 'permit' : /^Order/.test(title) ? 'parts' : /warranty/i.test(title) ? 'warranty' : undefined;
+const task = (title: string, titleEs: string, who: Who, dueIn = 0, pri: Priority = 'medium'): RuleStep => {
+  const type = kindOf(title);
+  return { do: 'task', params: { title, titleEs, for: who, dueIn, pri, ...(type ? { type } : {}) } };
+};
 /** A message to the client, prepared for a person to review. Never `send`. */
 const draft = (subject: string, subjectEs: string, body: string, bodyEs: string, channel: MessageChannel = 'text'): RuleStep =>
   ({ do: 'message', params: { channel, mode: 'draft', subject, subjectEs, body, bodyEs } });
@@ -126,6 +132,15 @@ export const plumbingRules: RuleDef[] = [
         'Hi {{first_name}}, thanks again for choosing {{company}}. Our yearly plumbing inspection covers a water heater flush, a check of every fixture and shutoff, a water pressure test and priority scheduling with a member discount on repairs. Want us to add you? Reply here.' + SIGN,
         'Hola, {{first_name}}. Gracias otra vez por elegir a {{company}}. Nuestra inspección anual de plomería incluye la limpieza del calentador, revisión de cada accesorio y llave de paso, prueba de presión del agua y prioridad en la agenda con descuento de miembro en reparaciones. ¿Lo agregamos? Responda aquí.' + SIGN, 'email'),
     ], { if: [jobIs(...REPAIRS)] }),
+  rule('pl-plan-visit', l('Plan member: book the yearly inspection', 'Miembro del plan: agendar la inspección anual'),
+    l('When a client joins the yearly inspection plan, prepares the welcome email and creates the task to book the first inspection.',
+      'Cuando un cliente se une al plan anual de inspección, prepara el correo de bienvenida y crea la tarea de agendar la primera inspección.'),
+    'job.created', [
+      draft('Welcome to the yearly inspection plan', 'Bienvenido al plan anual de inspección',
+        'Hi {{first_name}}, welcome to the {{company}} yearly inspection plan. We will call you to book your inspection: water heater flush, every fixture and shutoff, and a water pressure test. As a member you get priority scheduling, 15% off repairs and no after hours fee.' + SIGN,
+        'Hola, {{first_name}}. Bienvenido al plan anual de inspección de {{company}}. Le llamaremos para agendar su inspección: limpieza del calentador, revisión de cada accesorio y llave de paso, y prueba de presión del agua. Como miembro tiene prioridad en la agenda, 15% de descuento en reparaciones y sin cargo fuera de horario.' + SIGN, 'email'),
+      task('Call {{client.name}} to book the yearly plumbing inspection', 'Llamar a {{client.name}} para agendar la inspección anual de plomería', 'manager', 2),
+    ], { if: [jobIs('plan')] }),
   rule('pl-drain-repeat', l('Repeat drain clog: recommend a camera inspection', 'Drenaje tapado otra vez: recomendar inspección con cámara'),
     l('When a drain cleaning is completed, creates a task to check for earlier drain calls at the address and offer a camera inspection.',
       'Cuando se termina un destape, crea una tarea para revisar si hubo destapes antes en la dirección y ofrecer una inspección con cámara.'),

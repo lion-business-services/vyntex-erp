@@ -18013,8 +18013,30 @@ var dict44 = {
   }
 };
 
-// src/features/commissions/i18n.ts
+// src/features/trade/i18n.ts
 var dict45 = {
+  en: {
+    "nav.dispatch": "Dispatch board",
+    "nav.agreements": "Maintenance plans",
+    "nav.equipment": "Equipment",
+    "nav.permits": "Permits & inspections",
+    "nav.refrigerant": "Refrigerant log",
+    "nav.backflow": "Backflow devices",
+    "nav.camera": "Camera inspections"
+  },
+  es: {
+    "nav.dispatch": "Tablero de despacho",
+    "nav.agreements": "Planes de mantenimiento",
+    "nav.equipment": "Equipo",
+    "nav.permits": "Permisos e inspecciones",
+    "nav.refrigerant": "Registro de refrigerante",
+    "nav.backflow": "Dispositivos de reflujo",
+    "nav.camera": "Inspecciones con c\xE1mara"
+  }
+};
+
+// src/features/commissions/i18n.ts
+var dict46 = {
   en: {
     "pay.sub": "Each barber's week, worked out from the visits: their share of each service, every tip, and the chair rent for a barber who rents. A week is paid once it is over.",
     "pay.prev": "Previous week",
@@ -18170,7 +18192,7 @@ var dict45 = {
 };
 
 // src/features/billing/i18n.ts
-var dict46 = {
+var dict47 = {
   en: {
     "bill.title": "Billing and subscription",
     "bill.intro": "Your plan, your payments and your invoices. Payments are processed securely by Stripe; VYNTEX never sees your card or bank details.",
@@ -18282,7 +18304,7 @@ var dict46 = {
 };
 
 // src/i18n/features.ts
-var sales = false ? [] : [dict16, dict17, dict20, dict21, dict22, dict23, dict41, dict46, dict42];
+var sales = false ? [] : [dict16, dict17, dict20, dict21, dict22, dict23, dict41, dict47, dict42];
 var lbsOnly = false ? [settingsLbs] : [];
 var featureDicts = [
   dict,
@@ -18319,6 +18341,7 @@ var featureDicts = [
   dict39,
   dict43,
   dict44,
+  dict46,
   dict45,
   ...sales,
   ...lbsOnly

@@ -1,6 +1,7 @@
 // VYNTEX PLUMBING: industry pack for residential and commercial plumbing contractors.
 // Everything industry-specific lives here and in its rules and sample business. The app core never checks the industry id.
 import type { IndustryPack } from '../types';
+import type { ModuleId } from '@/domain/types';
 import { FIELD_MODULES, FIELD_RULES, fieldPack } from '../blueprint';
 import { plumbingRules } from './rules';
 
@@ -88,6 +89,8 @@ export const plumbingPack: IndustryPack = /* @__PURE__ */ fieldPack({
       "search": "Search client, address, fixture or job",
       "confirmReset": "Throw away your edits and rebuild this document from the job details?",
       "dash.kpi.recurringClients": "Plan & backflow accounts",
+      "nav.agreements": "Inspection plans",
+      "nav.equipment": "Water heaters & equipment",
       "dash.hint.recurring": "Yearly inspections, backflow tests and drain plans",
       "dash.kpi.pipelineValue": "Open quotes",
       "dash.hint.pipeline": "Quotes out: {n}",
@@ -155,6 +158,8 @@ export const plumbingPack: IndustryPack = /* @__PURE__ */ fieldPack({
       "search": "Buscar cliente, dirección, accesorio o trabajo",
       "confirmReset": "¿Descartar sus cambios y volver a crear este documento con los datos del trabajo?",
       "dash.kpi.recurringClients": "Cuentas de plan y reflujo",
+      "nav.agreements": "Planes de inspección",
+      "nav.equipment": "Calentadores y equipo",
       "dash.hint.recurring": "Inspecciones anuales, pruebas de reflujo y planes de drenaje",
       "dash.kpi.pipelineValue": "Cotizaciones abiertas",
       "dash.hint.pipeline": "Cotizaciones enviadas: {n}",
@@ -163,7 +168,8 @@ export const plumbingPack: IndustryPack = /* @__PURE__ */ fieldPack({
     },
   },
   // the field sections an HVAC or plumbing shop uses every day; no Opportunities or 1099 & compliance pages (owner decision, Nov 4, 2026)
-  modules: FIELD_MODULES.filter((m) => m !== 'opportunities' && m !== 'compliance'),
+  // plus the trade sections right after Jobs (demo level: shown in the public demo only, src/features/trade)
+  modules: ((m) => [...m.slice(0, m.indexOf('jobs') + 1), 'dispatch', 'agreements', 'equipment', 'backflow', 'camera', 'permits', ...m.slice(m.indexOf('jobs') + 1)])(FIELD_MODULES.filter((m) => m !== 'opportunities' && m !== 'compliance')) as ModuleId[],
   leadStages: [
     { id: 'new', label: { en: 'New call', es: 'Llamada nueva' }, kind: 'open', role: 'new' },
     { id: 'contacted', label: { en: 'Contacted', es: 'Contactado' }, kind: 'open', role: 'contacted' },

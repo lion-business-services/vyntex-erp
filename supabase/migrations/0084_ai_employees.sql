@@ -8,7 +8,7 @@
 --     level). The decision is carried out by that person, with their own rights and their own checks
 --   * no bot ever sees a tax ID, a bank or card detail or the secure vault: no tool reads those columns or tables
 --   * every call a bot makes is kept (app.bot_activity); a bot can be paused, and its key replaced or revoked, at once
--- The bots call /api/bot (api/bot.js, server key only): the server checks the key's hash with bot_auth(), then runs the
+-- The bots call /api/bot/* (api/_lib/public/bot.js, through api/public.js): the server checks the key's hash with bot_auth(), then runs the
 -- tool with bot_call(). Neither function can be called by a person, a visitor or a signed-in user.
 -- ---------------------------------------------------------------------------------------------------------------------
 

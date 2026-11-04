@@ -327,6 +327,8 @@ export async function handleEvent(deps, eventId) {
     case 'checkout.session.completed':
     case 'checkout.session.async_payment_succeeded': {
       if (obj.mode === 'setup' && (obj.metadata || {}).trial === 'card') return trialCardSaved(deps, obj);
+      // a client paying an invoice from its pay link (0086, api/_lib/invoices.js), never a subscription
+      if (obj.mode === 'payment' && (obj.metadata || {}).vx === 'erp-invoice') return (await import('../invoices.js')).invoiceSessionPaid(deps, obj);
       if (obj.mode !== 'subscription' || !obj.subscription) return { ignored: true };
       const done = await deps.rpc('billing_checkout_done', { p_session: obj.id, p_status: 'complete' });
       const { tenant, sub } = await syncSubscription(deps, idOf(obj.subscription), await tenantOf(deps, obj));

@@ -1,0 +1,27 @@
+/* Invoices. Tokens only. */
+.invoices .kpis{margin-bottom:14px}
+.inv-bar{margin-bottom:10px}
+.inv-row{align-items:center;gap:12px}
+.inv-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none}
+.inv-amt{text-align:right;min-width:110px}
+.inv-amt .t{font-weight:700;font-variant-numeric:tabular-nums}
+.inv-acts{flex-wrap:wrap;justify-content:flex-end}
+.inv-auto{margin-top:12px}
+.inv-h{margin:16px 0 8px;font-size:14px}
+.inv-lines-head{align-items:center;margin-top:6px}
+.inv-cat{max-width:280px}
+.inv-lines{display:flex;flex-direction:column;gap:6px}
+.inv-line{display:grid;grid-template-columns:minmax(0,1fr) 70px 110px 110px 36px;gap:8px;align-items:center}
+.inv-line.head{padding:0 2px}
+.inv-num{text-align:right;font-variant-numeric:tabular-nums}
+.inv-fee{margin:12px 0 6px;font-size:13px;align-items:center}
+.inv-totals{margin:6px 0 14px auto;max-width:300px;display:flex;flex-direction:column;gap:4px;font-variant-numeric:tabular-nums}
+.inv-totals>div{display:flex;justify-content:space-between;gap:16px;font-size:14px}
+.inv-totals .total{border-top:1px solid var(--line);padding-top:6px;font-size:16px}
+@media (max-width:700px){
+  .inv-line{grid-template-columns:minmax(0,1fr) 60px 90px 36px}
+  .inv-line>.inv-num{display:none}
+  .inv-line.head>span:nth-child(4){display:none}
+  .inv-row{flex-wrap:wrap}
+  .inv-amt{text-align:left}
+}

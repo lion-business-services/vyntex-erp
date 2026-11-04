@@ -25,6 +25,7 @@ import { reviewGet, reviewPost } from './_lib/public/reviews.js';
 import { intake } from './_lib/public/intake.js';
 import { office } from './_lib/public/office.js';
 import { botRoute } from './_lib/public/bot.js';
+import { payRoute } from './_lib/invoices.js';
 
 const SIGN_BYTES = { view: 2048, opened: 2048, decline: 8 * 1024, submit: 512 * 1024 };
 
@@ -61,6 +62,8 @@ const routes = entry('public', async (request, path) => {
   if (area === 'intake' && rest) return m === 'POST' ? intake(request, rest) : methodNotAllowed('POST');
   if (area === 'office' && rest) return m === 'POST' ? office(request, rest) : methodNotAllowed('POST');
   if (area === 'bot' && rest) return botRoute(request, rest);
+  // an invoice's pay link (/api/pay/<token>), opened by the client from the invoice email: api/_lib/invoices.js
+  if (area === 'pay' && rest) return payRoute(request, rest, more);
   return fail(404, 'not_found');
 });
 

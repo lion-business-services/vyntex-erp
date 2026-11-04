@@ -48,10 +48,44 @@ async function authenticate(request) {
   return bot;
 }
 
+// chat_inbox with "wait" (0088): the call is held up to WAIT_MAX seconds and answers the moment a direct message or an
+// @mention for the bot arrives, the way NOVA CRM's chat/updates works. While it waits, the server asks the database once a
+// second (public.chat_bot_pending, a read that writes nothing). A bot that holds more than MAX_WAITERS calls open at once
+// in one server instance gets an immediate answer for the extra ones.
+export const WAIT_MAX = 25;
+const TICK_MS = 1000;
+const MAX_WAITERS = 2;
+const waiting = new Map();
+export const parseWait = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? Math.min(WAIT_MAX, Math.floor(n)) : 0; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function waitForChat(bot, seconds) {
+  const n = waiting.get(bot.bot) || 0;
+  if (n >= MAX_WAITERS) return;
+  waiting.set(bot.bot, n + 1);
+  try {
+    const until = Date.now() + seconds * 1000;
+    while (Date.now() < until) {
+      const p = await serviceRpc('chat_bot_pending', { p_bot: bot.bot });
+      if (!p.ok || p.data === true) return;
+      await sleep(Math.min(TICK_MS, Math.max(0, until - Date.now())));
+    }
+  } finally {
+    const left = (waiting.get(bot.bot) || 1) - 1;
+    if (left > 0) waiting.set(bot.bot, left); else waiting.delete(bot.bot);
+  }
+}
+
 /** One tool, run by the database for this bot. */
 async function run(bot, tool, args) {
   if (typeof tool !== 'string' || !Object.hasOwn(TOOLS, tool)) return { error: 'unknown_tool' };
   if (args !== undefined && !isPlainObject(args)) return { error: 'invalid_arguments' };
+  if (tool === 'chat_inbox' && args) {
+    const { wait, ...rest } = args;
+    args = rest;
+    const s = parseWait(wait);
+    if (s) await waitForChat(bot, s);
+  }
   const r = await serviceRpc('bot_call', { p_bot: bot.bot, p_tool: dbName(tool), p_args: args || {} });
   if (!r.ok) throw new HttpError(503, 'upstream_unavailable');
   // a bot's chat message that @mentions another AI employee reaches that one too
@@ -82,7 +116,11 @@ async function mcpOne(bot, msg) {
         serverInfo: { name: 'vyntex-erp', title: 'VYNTEX ERP', version: '1.0.0' },
         instructions: `You are ${bot.name}${bot.title ? ', ' + bot.title : ''}, working in the VYNTEX USA workspace of VYNTEX ERP. `
           + 'Access is not approval: sending anything to a client, payments, price changes, deletions and publishing are asked for with '
-          + 'approvals_request and decided by Daysi or Abdul. Never invent figures, testimonials or records.',
+          + 'approvals_request and decided by Daysi or Abdul. Never invent figures, testimonials or records. '
+          + 'Team Chat: you are a member of the team. Keep one chat_inbox call with wait 25 running at all times and call it again '
+          + 'as soon as it answers; answer every direct message and every @mention of you with chat_send (roomId, replyTo), in the '
+          + 'language the person wrote in (English, or Spanish with "usted"), short and to the point. When a task needs another AI '
+          + 'employee, @mention them in the room. Chat is internal: anything for a client goes through messages_draft and an approval.',
       });
     case 'notifications/initialized':
     case 'notifications/cancelled':

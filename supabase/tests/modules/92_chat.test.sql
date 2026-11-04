@@ -78,9 +78,19 @@ select test.ok((select (r ->> 'unread')::int from jsonb_array_elements(pg_temp.j
 
 -- ---- the AI employee: inbox, reply, only its rooms
 select test.ok(test.as('ch_owner', format('select public.bot_call(%L, %L, %L)', test.id('ch.parker'), 'chat.inbox', '{}')) = 'error:42501', 'a person cannot call the bot tools') \g /dev/null
-select public.bot_call(test.id('ch.parker'), 'chat.inbox', '{}') as inbox \gset
-select test.is(jsonb_array_length(:'inbox'::jsonb)::text, '2', 'Parker''s inbox: the mention in the group and the direct message') \g /dev/null
+-- 0088: a message shows up once it is one second old
+select pg_sleep(1.2) \g /dev/null
+select test.ok(public.chat_bot_pending(test.id('ch.parker')), 'pending: something for Parker') \g /dev/null
+select test.ok(test.as('ch_owner', format('select public.chat_bot_pending(%L)', test.id('ch.parker'))) = 'error:42501', 'only the server asks if something is pending') \g /dev/null
+select count(*) as acts0 from app.bot_activity where bot_id = test.id('ch.parker') \gset
+select public.bot_call(test.id('ch.parker'), 'chat.inbox', '{"limit": 1}') as inbox1 \gset
+select test.is(jsonb_array_length(:'inbox1'::jsonb)::text, '1', 'a page of one') \g /dev/null
+select public.bot_call(test.id('ch.parker'), 'chat.inbox', '{}') as inbox2 \gset
+select test.is(jsonb_array_length(:'inbox2'::jsonb)::text, '1', 'the rest on the next call: a room is read only up to what was handed out') \g /dev/null
+select test.ok((:'inbox1'::jsonb #>> '{0,message,id}') <> (:'inbox2'::jsonb #>> '{0,message,id}'), 'Parker''s inbox: the mention in the group and the direct message, each once') \g /dev/null
 select test.is(jsonb_array_length(public.bot_call(test.id('ch.parker'), 'chat.inbox', '{}'))::text, '0', 'read once') \g /dev/null
+select test.ok(public.chat_bot_pending(test.id('ch.parker')) is false, 'pending: nothing left') \g /dev/null
+select test.is((select count(*) from app.bot_activity where bot_id = test.id('ch.parker'))::text, (:acts0 + 2)::text, 'an empty inbox call leaves no activity row') \g /dev/null
 select public.bot_call(test.id('ch.parker'), 'chat.send', jsonb_build_object('roomId', :'botdm', 'body', 'Good morning. Three leads need a follow-up today.')) as reply \gset
 select test.ok((select author_bot = test.id('ch.parker') from public.chat_messages where id = (:'reply'::jsonb ->> 'id')::uuid), 'Parker answers in the direct chat') \g /dev/null
 select test.ok(public.bot_call(test.id('ch.parker'), 'chat.send', jsonb_build_object('roomId', :'dm', 'body', 'x')) ->> 'error' = 'not_a_member', 'never in a chat it is not in') \g /dev/null

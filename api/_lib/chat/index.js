@@ -18,6 +18,9 @@ import { log } from '../respond.js';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const URL_OK = /^https:\/\/[A-Za-z0-9.-]+(:[0-9]{2,5})?(\/[^\s]*)?$/;
 const AAD = 'vx-bot-webhook';
+const AUTH_AAD = 'vx-bot-webhook-auth';
+// an Authorization header value: printable, one line
+const AUTH_OK = /^[\x21-\x7e][\x20-\x7e]{0,1998}[\x21-\x7e]$/;
 
 export const sign = (secret, body, t = Math.floor(Date.now() / 1000)) => `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${body}`).digest('hex')}`;
 
@@ -61,12 +64,22 @@ export async function deliverToBot(job, { timeoutMs = 8000 } = {}) {
   if (!URL_OK.test(x.url)) throw new JobError('address_invalid', { permanent: true });
   const secret = x.sealed ? openToken(x.sealed, AAD + ':' + x.bot.id) : null;
   if (!secret) throw new JobError('secret_unreadable', { permanent: true });
-  const body = JSON.stringify({ type: 'chat.message', id: `${message}:${bot}`, at: new Date().toISOString(), bot: x.bot, room: x.room, message: x.message,
-    reply: { tool: 'chat_send', args: { roomId: x.room.id, replyTo: x.message.id } } });
+  // 0091: the Authorization header the bot's routine expects, kept sealed
+  const auth = x.auth ? openToken(x.auth, AUTH_AAD + ':' + x.bot.id) : null;
+  if (x.auth && !auth) throw new JobError('auth_unreadable', { permanent: true });
+  const m = x.message || {};
+  // the full message at the top (what a routine reads first), then the same in the nested form of 0087
+  const body = JSON.stringify({ type: 'chat.message', id: `${message}:${bot}`, at: new Date().toISOString(),
+    roomId: x.room.id, roomKind: x.room.kind, roomName: x.room.name, messageId: m.id, sentAt: m.at,
+    sender: m.author ? { type: m.author.type, id: m.author.id, name: m.author.name } : null, body: m.body || '',
+    mentions: m.mentions || [], replyToMessage: m.replyTo || null, files: m.files || [],
+    to: x.bot, bot: x.bot, room: x.room, message: m,
+    reply: { tool: 'chat_send', args: { roomId: x.room.id, replyTo: m.id } } });
+  const headers = { 'content-type': 'application/json', 'user-agent': 'VYNTEX-ERP-Chat/1', 'x-vx-signature': sign(secret, body), 'x-vx-event': 'chat.message' };
+  if (auth) headers.authorization = auth;
   let res;
   try {
-    res = await fetch(x.url, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
-      headers: { 'content-type': 'application/json', 'user-agent': 'VYNTEX-ERP-Chat/1', 'x-vx-signature': sign(secret, body), 'x-vx-event': 'chat.message' }, body });
+    res = await fetch(x.url, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeoutMs), headers, body });
   } catch { throw new JobError('unreachable'); }
   if (res.status >= 200 && res.status < 300) return { delivered: true };
   // a refusal that will not change (wrong address, not allowed) is not tried again
@@ -74,14 +87,29 @@ export async function deliverToBot(job, { timeoutMs = 8000 } = {}) {
   throw new JobError('status_' + res.status);
 }
 
-/** The office operation `bot_webhook_set` ({ p_bot, p_url }): an empty address turns delivery off. */
+/**
+ * The office operation `bot_webhook_set` ({ p_bot, p_url, p_auth? }): an empty address turns delivery off.
+ * p_auth (0091): the Authorization header for the bot's routine. Left out: the saved one stays. '': none. Sealed here.
+ */
 export async function botWebhookSet({ session, tenant, args }, upstreamError) {
   if (!UUID.test(String(args.p_bot || ''))) return { status: 400, error: 'invalid_args' };
+  const id = args.p_bot.toLowerCase();
   const url = String(args.p_url || '').trim();
   if (url && (!URL_OK.test(url) || url.length > 500)) return { status: 400, error: 'invalid_url' };
+  let mode = 'keep'; let authSealed = null; let authHint = null;
+  if (typeof args.p_auth === 'string') {
+    const a = args.p_auth.trim();
+    if (!a) mode = 'clear';
+    else {
+      if (!AUTH_OK.test(a)) return { status: 400, error: 'invalid_auth' };
+      mode = 'set'; authSealed = sealToken(a, AUTH_AAD + ':' + id);
+      authHint = a.replace(/[^A-Za-z0-9._~+/=-]/g, '').slice(-4) || null;
+    }
+  }
   const secret = url ? 'vxw_' + randomBytes(32).toString('hex') : null;
-  const r = await userRpc(session.at, 'bot_webhook_set', { p_tenant: tenant, p_bot: args.p_bot.toLowerCase(), p_url: url,
-    p_sealed: secret ? sealToken(secret, AAD + ':' + args.p_bot.toLowerCase()) : null, p_hint: secret ? 'vxw_' + secret.slice(-4) : null });
+  const r = await userRpc(session.at, 'bot_webhook_set', { p_tenant: tenant, p_bot: id, p_url: url,
+    p_sealed: secret ? sealToken(secret, AAD + ':' + id) : null, p_hint: secret ? 'vxw_' + secret.slice(-4) : null,
+    p_auth_mode: mode, p_auth_sealed: authSealed, p_auth_hint: authHint });
   if (!r.ok) throw upstreamError(r);
   if (r.data !== true) return { status: 404, error: 'not_found' };
   return { status: 200, result: { secret, hint: secret ? 'vxw_' + secret.slice(-4) : null } };

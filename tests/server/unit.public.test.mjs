@@ -201,7 +201,7 @@ test('website form: quiet refusals, the hidden field, the form key by hash, the 
 });
 
 test('the office operations need a signed-in member', async () => {
-  for (const name of ['envelope_send', 'envelope_remind', 'review_send', 'intake_key_rotate', 'intake_key_state']) {
+  for (const name of ['envelope_send', 'envelope_remind', 'envelope_link', 'review_send', 'intake_key_rotate', 'intake_key_state']) {
     const r = await call('POST', '/api/public/office/' + name, { body: { tenant: '11111111-1111-4111-8111-111111111111', args: {} }, headers: { origin: ORIGIN } });
     assert.ok([401, 403].includes(r.status), name); assert.ok(['bad_csrf', 'not_signed_in'].includes(r.json.error), name + ': ' + r.json.error);
   }

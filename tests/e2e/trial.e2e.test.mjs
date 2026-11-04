@@ -101,6 +101,12 @@ test('the link from the email: password, authenticator, recovery codes, the card
   assert.equal(await owner.page.getAttribute('[data-testid=trial-choose-plan]', 'href'), '/harbor-wash-co/settings/billing');
   const row = await st.vyntex.sql(`select '@@R@@' || jsonb_build_object('status', status, 'plan', plan_id)::text from public.tenants where slug = 'harbor-wash-co';`);
   assert.deepEqual(row, { status: 'active', plan: 'trial' });
+  // one-click cancellation is on the billing page whenever online payment is set up (STRIPE_SECRET_KEY)
+  if (process.env.STRIPE_SECRET_KEY) {
+    await owner.go('/harbor-wash-co/settings/billing');
+    await owner.page.waitForSelector('[data-testid=bill-trial-cancel]');
+    await shot(owner, 'trial-cancel-button');
+  }
   noErrors(owner, 'activation');
 });
 

@@ -14,7 +14,8 @@ const CONTACT_EN = 'Questions? Call or WhatsApp 609-780-3218, or write to info@v
 const CONTACT_ES = '¿Preguntas? Llame o escriba por WhatsApp al 609-780-3218, o escriba a info@vyntexusa.com.';
 
 /** kind: subscribed | renewed | payment_failed | paused | ended | cancel_scheduled | refunded | disputed | trial_3d | trial_1d | trial_ended
- *  | trial_started | trial_skipped | trial_card_reused | charge_3d | charge_1d (the card-on-file trial, 0082) */
+ *  | trial_started | trial_skipped | trial_card_reused | charge_3d | charge_1d (the card-on-file trial, 0082)
+ *  | trial_cancelled | trial_resumed (one-click cancellation, 0083) */
 export function billingEmail(kind, f) {
   const c = f.company || {};
   const name = c.name || 'your company';
@@ -34,6 +35,7 @@ export function billingEmail(kind, f) {
       refunded: `Refund issued: ${name}`, disputed: `Payment disputed: ${name}`, trial_ended: `Trial ended without a plan: ${name}`,
       trial_started: `Trial started with a card on file: ${name}`, trial_skipped: `Card already had a trial, plan started today: ${name}`,
       trial_card_reused: `Trial refused, card already used for a trial: ${name}`,
+      trial_cancelled: `Trial cancelled by the owner: ${name}`, trial_resumed: `Trial cancellation taken back: ${name}`,
     };
     if (!subjects[kind]) return null;
     return { subject: `[VYNTEX ERP billing] ${subjects[kind]}`, text: [...facts, '', 'Operator console: ' + (f.origin ? f.origin + '/admin' : '/admin'), ''].join('\n') };
@@ -66,8 +68,8 @@ export function billingEmail(kind, f) {
       es: [`Su tarjeta quedó registrada y la prueba gratuita de 7 días de ${name} está abierta. No se cobró nada.`, `La prueba termina${dayEs(f.at) ? ' el ' + dayEs(f.at) : ' en 7 días'}. VYNTEX le enviará su cotización antes; no se cobra nada sin su aprobación.`],
     } : {
       subject: `Your 7-day free trial has started / Su prueba gratuita de 7 días comenzó`,
-      en: [`Your 7-day free trial of ${f.planName || 'VYNTEX ERP'} for ${name} is open. Today's charge: $0.00.`, `Your trial ends${day(f.at) ? ' on ' + day(f.at) : ' in 7 days'}. Then your plan starts automatically${usd(f.amount) ? ` at ${usd(f.amount)} ${f.billing === 'yearly' ? 'a year' : 'a month'}` : ''}, charged to the card you added, unless you cancel before that date.`, 'You can cancel or change your plan at any time from the billing page. We will remind you 3 days and 1 day before the first charge.'],
-      es: [`Su prueba gratuita de 7 días de ${f.planName || 'VYNTEX ERP'} para ${name} está abierta. Cargo de hoy: $0.00.`, `Su prueba termina${dayEs(f.at) ? ' el ' + dayEs(f.at) : ' en 7 días'}. Después su plan comienza automáticamente${usd(f.amount) ? ` a ${usd(f.amount)} ${f.billing === 'yearly' ? 'al año' : 'al mes'}` : ''}, con cargo a la tarjeta que agregó, a menos que cancele antes de esa fecha.`, 'Puede cancelar o cambiar su plan cuando quiera desde la página de facturación. Le recordaremos 3 días y 1 día antes del primer cargo.'],
+      en: [`Your 7-day free trial of ${f.planName || 'VYNTEX ERP'} for ${name} is open. Today's charge: $0.00.`, `Your trial ends${day(f.at) ? ' on ' + day(f.at) : ' in 7 days'}. Then your plan starts automatically${usd(f.amount) ? ` at ${usd(f.amount)} ${f.billing === 'yearly' ? 'a year' : 'a month'}` : ''}, charged to the card you added, unless you cancel before that date.`, 'To cancel, press "Cancel free trial" on the billing page at any time: one click, and nothing is charged. We will remind you 3 days and 1 day before the first charge.'],
+      es: [`Su prueba gratuita de 7 días de ${f.planName || 'VYNTEX ERP'} para ${name} está abierta. Cargo de hoy: $0.00.`, `Su prueba termina${dayEs(f.at) ? ' el ' + dayEs(f.at) : ' en 7 días'}. Después su plan comienza automáticamente${usd(f.amount) ? ` a ${usd(f.amount)} ${f.billing === 'yearly' ? 'al año' : 'al mes'}` : ''}, con cargo a la tarjeta que agregó, a menos que cancele antes de esa fecha.`, 'Para cancelar, presione "Cancelar prueba gratuita" en la página de facturación cuando quiera: un clic y no se cobra nada. Le recordaremos 3 días y 1 día antes del primer cargo.'],
     },
     trial_skipped: {
       subject: `Your VYNTEX ERP plan has started / Su plan de VYNTEX ERP comenzó`,
@@ -79,15 +81,29 @@ export function billingEmail(kind, f) {
       en: [`This card was already used for a free trial of VYNTEX ERP, so the trial for ${name} could not start. Nothing was charged.`, 'Contact us and we will set up your workspace with you.'],
       es: [`Esta tarjeta ya se usó para una prueba gratuita de VYNTEX ERP, por lo que la prueba de ${name} no pudo comenzar. No se cobró nada.`, 'Contáctenos y configuramos su espacio con usted.'],
     },
+    trial_cancelled: f.quoted ? {
+      subject: `Your free trial is cancelled / Su prueba gratuita fue cancelada`,
+      en: [`The free trial of ${name} is cancelled and the card you added was removed. Nothing was charged and nothing will be.`, `Your workspace stays open until ${day(f.at) || 'the last day of the trial'}. After that it is paused and every record is kept.`],
+      es: [`La prueba gratuita de ${name} fue cancelada y la tarjeta que agregó fue eliminada. No se cobró nada y no se cobrará nada.`, `Su espacio sigue abierto hasta el ${dayEs(f.at) || 'último día de la prueba'}. Después queda en pausa y todos sus registros se conservan.`],
+    } : {
+      subject: `Your free trial is cancelled / Su prueba gratuita fue cancelada`,
+      en: [`The free trial of ${name} is cancelled. You will not be charged.`, `Your workspace stays open until ${day(f.at) || 'the last day of the trial'}. After that it is paused and every record is kept.`, `Changed your mind? Open the billing page and press "Keep my trial" before ${day(f.at) || 'the trial ends'}.`],
+      es: [`La prueba gratuita de ${name} fue cancelada. No se le cobrará nada.`, `Su espacio sigue abierto hasta el ${dayEs(f.at) || 'último día de la prueba'}. Después queda en pausa y todos sus registros se conservan.`, `¿Cambió de opinión? Abra la página de facturación y presione "Mantener mi prueba" antes del ${dayEs(f.at) || 'fin de la prueba'}.`],
+    },
+    trial_resumed: {
+      subject: `Your free trial continues / Su prueba gratuita continúa`,
+      en: [`The cancellation of the free trial of ${name} was taken back.`, `Your plan starts on ${day(f.at) || 'the last day of the trial'} and your card is charged then, unless you cancel before.`],
+      es: [`Se deshizo la cancelación de la prueba gratuita de ${name}.`, `Su plan comienza el ${dayEs(f.at) || 'último día de la prueba'} y ese día se hace el cargo a su tarjeta, a menos que cancele antes.`],
+    },
     charge_3d: {
       subject: `Your free trial ends ${day(f.at) ? 'on ' + day(f.at) : 'soon'} / Su prueba gratuita termina pronto`,
-      en: [`Your free trial of ${f.planName || 'VYNTEX ERP'} for ${name} ends${day(f.at) ? ' on ' + day(f.at) : ' in a few days'}.`, `On that date your plan starts and your card is charged${usd(f.amount) ? ` ${usd(f.amount)} ${f.billing === 'yearly' ? 'for the year' : 'for the month'}` : ''}. Nothing else to do to keep working.`, 'To cancel or change your plan before then, open the billing page.'],
-      es: [`Su prueba gratuita de ${f.planName || 'VYNTEX ERP'} para ${name} termina${dayEs(f.at) ? ' el ' + dayEs(f.at) : ' en unos días'}.`, `Ese día comienza su plan y se hace el cargo a su tarjeta${usd(f.amount) ? ` de ${usd(f.amount)} ${f.billing === 'yearly' ? 'por el año' : 'por el mes'}` : ''}. No necesita hacer nada más para seguir trabajando.`, 'Para cancelar o cambiar su plan antes, abra la página de facturación.'],
+      en: [`Your free trial of ${f.planName || 'VYNTEX ERP'} for ${name} ends${day(f.at) ? ' on ' + day(f.at) : ' in a few days'}.`, `On that date your plan starts and your card is charged${usd(f.amount) ? ` ${usd(f.amount)} ${f.billing === 'yearly' ? 'for the year' : 'for the month'}` : ''}. Nothing else to do to keep working.`, 'To cancel before then, press "Cancel free trial" on the billing page: one click, nothing is charged.'],
+      es: [`Su prueba gratuita de ${f.planName || 'VYNTEX ERP'} para ${name} termina${dayEs(f.at) ? ' el ' + dayEs(f.at) : ' en unos días'}.`, `Ese día comienza su plan y se hace el cargo a su tarjeta${usd(f.amount) ? ` de ${usd(f.amount)} ${f.billing === 'yearly' ? 'por el año' : 'por el mes'}` : ''}. No necesita hacer nada más para seguir trabajando.`, 'Para cancelar antes, presione "Cancelar prueba gratuita" en la página de facturación: un clic y no se cobra nada.'],
     },
     charge_1d: {
       subject: `Your plan starts tomorrow / Su plan comienza mañana`,
-      en: [`Your free trial for ${name} ends within 24 hours. Your card will then be charged${usd(f.amount) ? ` ${usd(f.amount)}` : ''} for ${f.planName || 'your plan'}.`, 'To cancel or change your plan, open the billing page today.'],
-      es: [`Su prueba gratuita de ${name} termina en menos de 24 horas. Después se hará el cargo a su tarjeta${usd(f.amount) ? ` de ${usd(f.amount)}` : ''} por ${f.planName || 'su plan'}.`, 'Para cancelar o cambiar su plan, abra hoy la página de facturación.'],
+      en: [`Your free trial for ${name} ends within 24 hours. Your card will then be charged${usd(f.amount) ? ` ${usd(f.amount)}` : ''} for ${f.planName || 'your plan'}.`, 'To cancel, press "Cancel free trial" on the billing page today: one click, nothing is charged.'],
+      es: [`Su prueba gratuita de ${name} termina en menos de 24 horas. Después se hará el cargo a su tarjeta${usd(f.amount) ? ` de ${usd(f.amount)}` : ''} por ${f.planName || 'su plan'}.`, 'Para cancelar, presione hoy "Cancelar prueba gratuita" en la página de facturación: un clic y no se cobra nada.'],
     },
     trial_3d: {
       subject: `Your free trial ends ${day(f.at) ? 'on ' + day(f.at) : 'soon'} / Su prueba gratuita termina pronto`,

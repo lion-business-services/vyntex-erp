@@ -5,6 +5,8 @@
 //                                  trial: true starts the 7-day trial with a card on file (only for a company waiting
 //                                  for its card: the server decides, 0082)
 //   POST  portal                   { tenant }  an owner: Stripe's billing portal (card, invoices, cancel)  -> { url }
+//   POST  trial/cancel             { tenant, resume? }  an owner: cancel the free trial in one click (nothing is
+//                                  ever charged for it), or take the cancellation back before the last day -> { cancelled, until }
 //   GET   operator                 an operator: billing state of every company                            -> { companies }
 //   POST  operator/link            { tenant, plan, billing } or { tenant, custom: { recurringCents, interval, setupCents, label } }
 //                                  an operator: a payment link for the owner, emailed to them               -> { url, delivery }
@@ -23,7 +25,7 @@ import { enqueue } from './_lib/jobs.js';
 import { payloadHash } from './_lib/integrations/webhook.js';
 import { StripeError, stripeConfigured, webhookConfigured, stripeMode, verifySignature } from './_lib/billing/stripe.js';
 import { billingDeps } from './_lib/billing/deps.js';
-import { createCheckout, createPortal, handleEvent, BillingError } from './_lib/billing/core.js';
+import { createCheckout, createPortal, handleEvent, cancelTrial, BillingError } from './_lib/billing/core.js';
 
 const uidKey = (uid) => keyHash('uid', uid);
 
@@ -55,6 +57,8 @@ function view(c) {
       cancelAtPeriodEnd: !!a.cancel_at_period_end, graceUntil: a.grace_until || null, lastPaymentAt: a.last_payment_at || null,
     } : null,
     hasCustomer: !!a.customer_id,
+    // a quoted edition's trial its owner cancelled (no subscription to carry the flag)
+    trialCancelled: !a.subscription_id && !!a.cancel_at_period_end,
     available: stripeConfigured(), mode: stripeConfigured() ? stripeMode() : null,
   };
 }
@@ -77,6 +81,20 @@ async function checkout(request) {
     if (!stripeConfigured()) return fail(503, 'billing_not_configured', {}, { cookies });
     const out = await createCheckout(billingDeps(request), { company: c, email: c.email, origin: appOrigin(request), by: session.uid, source: 'owner', kind: 'plan', planId: String(b.plan || ''), billing: String(b.billing || ''), lang: b.lang === 'es' ? 'es' : 'en', trial: b.trial === true });
     return ok({ url: out.url, expiresAt: out.expiresAt, trial: out.trial, amounts: out.amounts }, { cookies });
+  } catch (e) { if (e.response) return e.response; return asFail(e, cookies); }
+}
+
+async function trialCancel(request) {
+  const { session, cookies } = await guard(request);
+  await limit('billing.trialcancel', uidKey(session.uid), 10, 3600);
+  const b = await readJson(request, 1024);
+  try {
+    const c = await contextFor(session, b.tenant, cookies);
+    if (c.role !== 'owner') return fail(403, 'owner_only', {}, { cookies });
+    if (!stripeConfigured()) return fail(503, 'billing_not_configured', {}, { cookies });
+    const out = await cancelTrial(billingDeps(request), { company: c, resume: b.resume === true });
+    log('billing', b.resume === true ? 'trial_resumed' : 'trial_cancelled', { tenant: c.tenant_id });
+    return ok(out, { cookies });
   } catch (e) { if (e.response) return e.response; return asFail(e, cookies); }
 }
 
@@ -175,6 +193,7 @@ const handle = entry('billing', async (request, path) => {
   if (path === 'webhook') return m === 'POST' ? webhook(request) : methodNotAllowed('POST');
   if (path === 'checkout') return m === 'POST' ? checkout(request) : methodNotAllowed('POST');
   if (path === 'portal') return m === 'POST' ? portal(request) : methodNotAllowed('POST');
+  if (path === 'trial/cancel') return m === 'POST' ? trialCancel(request) : methodNotAllowed('POST');
   if (path === 'operator') return m === 'GET' ? operatorList(request) : methodNotAllowed('GET');
   if (path === 'operator/link') return m === 'POST' ? operatorLink(request) : methodNotAllowed('POST');
   const s = /^status\/([0-9a-fA-F-]{36})$/.exec(path);

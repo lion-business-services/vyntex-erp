@@ -186,8 +186,8 @@ ${steps()}${contact()}<p>${esc(t('mk.pr.version', { v: PRICING_VERSION }))}</p><
   const tops = ladders().groups.map((g) => `${g.packs.map((p) => p.product).join(', ')}: ${planName(g.plans[g.plans.length - 1], 'en')}`);
   const trial: PublicPage = {
     path: '/start-trial', file: 'start-trial.html',
-    title: `${name} | Start your 7-day free trial, no credit card`,
-    description: `Start a 7-day free trial of ${name} for your industry: your own workspace in a few minutes, the top plan of your edition during the trial, no credit card needed. Choose a plan and pay in Settings when you are ready.`,
+    title: `${name} | Start your 7-day free trial, $0 today`,
+    description: `Start a 7-day free trial of ${name} for your industry: your own workspace in a few minutes, the plan you choose free for 7 days. Add a card after confirming your email: $0 today, cancel anytime before day 7.`,
     body: `${nav()}<main><h1>${esc(t('mk.tr.h', { name }))}</h1><p>${esc(t('mk.tr.lede'))}</p>
 <section><h2>${esc(t('mk.tr.get.h'))}</h2>${ul([
       `<strong>${esc(t('mk.tr.g1.h'))}</strong>: ${esc(t('mk.tr.g1.p'))}`,
@@ -244,7 +244,7 @@ export function llmsTxt(): string {
     `- [Live demo](${ORIGIN}/demo): ${t('mk.p2.gs.s1.p')}`,
     `- [Plans and pricing](${ORIGIN}/pricing): monthly and yearly prices (no setup fee), add-ons (including extra training), rules.`,
     `- [Book a free guided demo](${ORIGIN}/request-demo): ${t('mk.p2.gs.s3.p')}`,
-    `- [Start a 7-day free trial](${ORIGIN}/start-trial): ${t('mk.tr.lede')} No credit card needed. Editions quoted on request have no self-serve trial.`,
+    `- [Start a 7-day free trial](${ORIGIN}/start-trial): ${t('mk.tr.lede')} A card on file is needed to open the workspace ($0 today).`,
     `- [VYNTEX USA, the company](${COMPANY_SITE}/) and its services: ${COMPANY_SITE}/llms.txt`,
     '',
     '## Editions (add ?industry=<id> to the demo or pricing link; add ?lang=es for Spanish)',

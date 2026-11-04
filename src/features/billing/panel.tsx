@@ -23,12 +23,17 @@ export interface BillingStatus {
 const DAY = 86_400_000;
 const LIVE_SUB = ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'];
 
-export function BillingPanel({ tenantId, compact = false }: { tenantId: string; compact?: boolean }) {
+/**
+ * `trial`: the company waits for its card (0082): the panel offers the 7-day trial with a card on file instead of a purchase,
+ * and calls `onReady` once Stripe has confirmed and the workspace is open.
+ */
+export function BillingPanel({ tenantId, compact = false, trial = false, onReady }: { tenantId: string; compact?: boolean; trial?: boolean; onReady?: () => void }) {
   const { t, lang } = useApp();
   const [st, setSt] = useState<BillingStatus | null>(null);
   const [failed, setFailed] = useState(false);
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
   const [busy, setBusy] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState('');
   const query = useMemo(() => new URLSearchParams(typeof location !== 'undefined' ? location.search : ''), []);
   const outcome = query.get('billing');
@@ -48,12 +53,13 @@ export function BillingPanel({ tenantId, compact = false }: { tenantId: string; 
       if (stop) return;
       const s = await load();
       n += 1;
-      if (s && s.subscription && ['active', 'trialing'].includes(s.subscription.status)) return;
+      if (s && trial && s.status !== 'awaiting_card') { onReady?.(); return; }
+      if (s && !trial && s.subscription && ['active', 'trialing'].includes(s.subscription.status)) return;
       if (n < 20) setTimeout(() => { void tick(); }, 3000);
     };
     void tick();
     return () => { stop = true; };
-  }, [outcome, load]);
+  }, [outcome, load, trial, onReady]);
 
   const industry = st && isIndustry(st.industry) ? st.industry : null;
   const plans = industry ? plansFor(industry) : [];
@@ -85,6 +91,59 @@ export function BillingPanel({ tenantId, compact = false }: { tenantId: string; 
 
   if (failed && !st) return <Card title={t('bill.title')}><Note tone="bad"><span role="alert">{t('bill.unavailable')}</span></Note><Button onClick={() => { void load(); }}>{t('bill.retry')}</Button></Card>;
   if (!st) return <Card title={t('bill.title')}><div className="page-loading" role="status" aria-live="polite"><span className="sr">{t('bill.loading')}</span></div></Card>;
+
+  // ---- the 7-day trial with a card on file: $0 today, the terms stated before Stripe opens
+  if (trial && st.status === 'awaiting_card') {
+    const ends = date(new Date(Date.now() + 7 * DAY).toISOString());
+    const per = (y: boolean) => t(y ? 'bill.trial.year' : 'bill.trial.month');
+    const start = (plan: string) => { if (!agreed) { setError(t('bill.trial.agreeFirst')); return; } void go('/api/billing/checkout', { plan, billing, trial: true }, plan || 'card'); };
+    return (
+      <Card title={compact ? undefined : t('bill.trial.title')} className={cx('vx-bill', 'vx-trial', compact && 'compact')}>
+        <p className="small">{plans.length ? t('bill.trial.lead') : t('bill.trial.quotedLead')}</p>
+        {outcome === 'success' && <Note><span role="status" data-testid="bill-trial-wait">{t('bill.trial.waiting')}</span></Note>}
+        {outcome === 'cancelled' && <Note tone="warn"><span role="status">{t('bill.cancelled')}</span></Note>}
+        {st.mode === 'test' && <p className="xs dim" data-testid="bill-test-mode">{t('bill.testMode')}</p>}
+        {!owner && <Note>{t('bill.trial.ownerOnly', { company: st.name })}</Note>}
+        {owner && !st.available && <Note>{t('bill.notReady')}</Note>}
+        {owner && st.available && <>
+          {plans.length > 0 && (
+            <div className="row between wrap">
+              <span />
+              <div className="vx-bill-switch" role="group" aria-label={t('bill.choose')}>
+                <button type="button" aria-pressed={billing === 'monthly'} onClick={() => setBilling('monthly')} data-testid="bill-monthly">{t('bill.monthly')}</button>
+                <button type="button" aria-pressed={billing === 'yearly'} onClick={() => setBilling('yearly')} data-testid="bill-yearly">{t('bill.yearly')}</button>
+              </div>
+            </div>
+          )}
+          <label className="check vx-trial-agree">
+            <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); setError(''); }} data-testid="bill-trial-agree" />
+            <span className="small">{plans.length ? t('bill.trial.agree', { date: ends, period: per(billing === 'yearly') }) : t('bill.trial.agreeQuoted')}</span>
+          </label>
+          {plans.length > 0 && (
+            <div className="vx-bill-plans">
+              {plans.map((p) => {
+                const recurring = billing === 'yearly' ? p.yearly : p.monthly;
+                return (
+                  <article key={p.id} className={cx('vx-bill-plan', p.mostPopular && 'popular')} data-testid={`bill-trial-plan-${p.id}`}>
+                    <header className="row between nowrap"><h4>{planName(p, lang)}</h4>{p.mostPopular && <Badge tone="accent">{t('bill.popular')}</Badge>}</header>
+                    <p className="vx-bill-price"><b>{t('bill.trial.today')}</b></p>
+                    <p className="xs muted">{t('bill.trial.then', { amount: money(recurring), period: t(billing === 'yearly' ? 'bill.perYear' : 'bill.perMonth'), date: ends })}</p>
+                    <Button variant={p.mostPopular ? 'primary' : undefined} icon={<LuCreditCard aria-hidden="true" />} disabled={busy !== null} onClick={() => start(p.id)} data-testid={`bill-trial-${p.id}`}>
+                      {busy === p.id ? t('bill.paying') : t('bill.trial.start')}
+                    </Button>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+          {plans.length === 0 && <Button variant="primary" icon={<LuCreditCard aria-hidden="true" />} disabled={busy !== null} onClick={() => start('')} data-testid="bill-trial-card">{busy === 'card' ? t('bill.paying') : t('bill.trial.addCard')}</Button>}
+          <p className="xs muted vx-trial-note"><LuShieldCheck aria-hidden="true" /><span>{t('bill.trial.methods')}</span></p>
+          {plans.length > 0 && <p className="xs muted">{t('bill.trial.reminders')}</p>}
+        </>}
+        {error && <Note tone="bad"><span role="alert" data-testid="bill-error">{error}</span></Note>}
+      </Card>
+    );
+  }
 
   const s = statusLine();
   return (

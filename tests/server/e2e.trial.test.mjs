@@ -107,7 +107,7 @@ test('a request makes the workspace in onboarding and emails the owner a one-tim
   first = { email, token: link[1], slug: 'sparkle-trial-cleaning' };
 });
 
-test('the owner opens the link, sets a password and the 7 days start; the session shows the trial', async () => {
+test('the owner opens the link and sets a password: the workspace waits for a card, no clock yet (0082)', async () => {
   const b = visitor();
   await b.open();
   const peek = await b.post('/api/auth/invite/check', { token: first.token });
@@ -117,14 +117,26 @@ test('the owner opens the link, sets a password and the 7 days start; the sessio
   assert.equal(acc.status, 200, acc.text);
   assert.equal(acc.json.slug, first.slug);
   const t = await tenantOf(first.slug);
-  assert.equal(t.status, 'active');
-  // exactly 168 hours, also across a daylight-saving change (0078)
-  assert.ok(Math.abs(Number(t.days) - 7) < 0.0001, `seven days from activation (${t.days})`);
+  assert.deepEqual([t.status, t.plan, t.started, t.expires], ['awaiting_card', 'trial', null, null], 'closed until the card is on file');
   if (acc.json.signedIn) {
     const s = await b.get('/api/auth/session');
     const m = s.json.memberships.find((x) => x.slug === first.slug);
-    assert.deepEqual([m.plan, m.role, typeof m.trialExpiresAt], ['trial', 'owner', 'string']);
+    assert.deepEqual([m.plan, m.role, m.status, m.trialExpiresAt], ['trial', 'owner', 'awaiting_card', null]);
   }
+  // the database refuses every workspace read while the card is missing
+  const open = await S.sql(String.raw`select '@@R@@' || app.tenant_open('awaiting_card', null)::text;`);
+  assert.equal(open, false);
+  // one free trial per card: the first company keeps it, another company with the same card is refused
+  const card = 'a'.repeat(64);
+  const other = await S.sql(String.raw`select '@@R@@' || coalesce((select to_jsonb(id) from public.tenants where slug <> (select v from _in where k = 's') and status <> 'closed' order by created_at limit 1), 'null'::jsonb)::text;`, { s: first.slug });
+  assert.equal(await S.sql(String.raw`select '@@R@@' || to_jsonb(public.billing_trial_card((select v from _in where k = 't')::uuid, (select v from _in where k = 'c')))::text;`, { t: t.id, c: card }), 'new');
+  if (other) assert.equal(await S.sql(String.raw`select '@@R@@' || to_jsonb(public.billing_trial_card((select v from _in where k = 't')::uuid, (select v from _in where k = 'c')))::text;`, { t: other, c: card }), 'reused');
+  // the card is saved (Stripe's event, read back from Stripe): the company opens and exactly 168 hours start now
+  assert.equal(await S.sql(String.raw`select '@@R@@' || to_jsonb(public.billing_trial_started((select v from _in where k = 't')::uuid, null, true))::text;`, { t: t.id }), true);
+  const after = await tenantOf(first.slug);
+  assert.equal(after.status, 'active');
+  assert.ok(Math.abs(Number(after.days) - 7) < 0.0001, `seven days from the card (${after.days})`);
+  assert.equal(await S.sql(String.raw`select '@@R@@' || to_jsonb(public.billing_trial_card((select v from _in where k = 't')::uuid, (select v from _in where k = 'c')))::text;`, { t: t.id, c: card }), 'same');
   // the link works once
   const again = visitor(); await again.open();
   assert.equal((await again.post('/api/auth/invite/check', { token: first.token })).json.error, 'invite_invalid');

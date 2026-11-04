@@ -1,7 +1,9 @@
 // /api/billing/*: subscriptions of client companies to VYNTEX ERP, paid through Stripe. VYNTEX ERP only.
 //
 //   GET   status/<tenant>          an owner or manager: the company's plan, trial and subscription        -> { billing }
-//   POST  checkout                 { tenant, plan, billing }  an owner: a Stripe Checkout link            -> { url }
+//   POST  checkout                 { tenant, plan, billing, trial? }  an owner: a Stripe Checkout link    -> { url }
+//                                  trial: true starts the 7-day trial with a card on file (only for a company waiting
+//                                  for its card: the server decides, 0082)
 //   POST  portal                   { tenant }  an owner: Stripe's billing portal (card, invoices, cancel)  -> { url }
 //   GET   operator                 an operator: billing state of every company                            -> { companies }
 //   POST  operator/link            { tenant, plan, billing } or { tenant, custom: { recurringCents, interval, setupCents, label } }
@@ -73,8 +75,8 @@ async function checkout(request) {
     const c = await contextFor(session, b.tenant, cookies);
     if (c.role !== 'owner') return fail(403, 'owner_only', {}, { cookies });
     if (!stripeConfigured()) return fail(503, 'billing_not_configured', {}, { cookies });
-    const out = await createCheckout(billingDeps(request), { company: c, email: c.email, origin: appOrigin(request), by: session.uid, source: 'owner', kind: 'plan', planId: String(b.plan || ''), billing: String(b.billing || ''), lang: b.lang === 'es' ? 'es' : 'en' });
-    return ok({ url: out.url, expiresAt: out.expiresAt, amounts: out.amounts }, { cookies });
+    const out = await createCheckout(billingDeps(request), { company: c, email: c.email, origin: appOrigin(request), by: session.uid, source: 'owner', kind: 'plan', planId: String(b.plan || ''), billing: String(b.billing || ''), lang: b.lang === 'es' ? 'es' : 'en', trial: b.trial === true });
+    return ok({ url: out.url, expiresAt: out.expiresAt, trial: out.trial, amounts: out.amounts }, { cookies });
   } catch (e) { if (e.response) return e.response; return asFail(e, cookies); }
 }
 

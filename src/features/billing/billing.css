@@ -18,3 +18,18 @@
 .vx-bill-lines dd{text-align:right}
 .vx-bill-plan .btn{margin-top:auto;justify-content:center}
 @media (max-width:900px){.vx-bill-plans{grid-template-columns:minmax(0,1fr)}}
+
+/* the 7-day trial with a card on file */
+.vx-trial .vx-trial-h { margin: 0 0 6px; }
+.vx-trial .vx-trial-agree { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 10px; }
+.vx-trial .vx-trial-agree input { margin-top: 3px; flex: none; }
+
+.vx-trial .vx-bill-plans { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
+.vx-trial .vx-bill-plan { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 14px; row-gap: 2px; padding: 12px 14px; }
+.vx-trial .vx-bill-plan > * { grid-column: 1; margin: 0; }
+.vx-trial .vx-bill-plan > button { grid-column: 2; grid-row: 1 / span 3; white-space: nowrap; }
+.vx-trial .vx-bill-plan header { justify-content: flex-start; gap: 8px; }
+.vx-trial .vx-bill-price b { font-size: 1rem; }
+.vx-trial .vx-trial-note { display: flex; gap: 6px; align-items: flex-start; margin-top: 12px; }
+.vx-trial .vx-trial-note svg { flex: none; margin-top: 2px; }
+@media (max-width: 480px) { .vx-trial .vx-bill-plan { grid-template-columns: 1fr; } .vx-trial .vx-bill-plan > button { grid-column: 1; grid-row: auto; margin-top: 8px; } }

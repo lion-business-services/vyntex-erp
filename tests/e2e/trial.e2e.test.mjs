@@ -66,7 +66,7 @@ test('a visitor starts a trial from /start-trial and is told to check their emai
   noErrors(p, 'start trial');
 });
 
-test('the link from the email: password, authenticator, recovery codes, and the workspace opens with 7 days left', async () => {
+test('the link from the email: password, authenticator, recovery codes, the card step, and the workspace opens with 7 days left', async () => {
   const mail = st.vyntex.mails().filter((m) => (Array.isArray(m.to) ? m.to : [m.to]).includes(EMAIL));
   assert.equal(mail.length, 1, 'one email to the owner');
   assert.equal(mail[0].subject, 'Activate your VYNTEX ERP 7-day trial');
@@ -86,6 +86,14 @@ test('the link from the email: password, authenticator, recovery codes, and the 
   await owner.page.waitForSelector('[data-testid=auth-codes]');
   await owner.page.check('[data-testid=auth-codes-kept]');
   await owner.page.click('[data-testid=auth-codes-continue]');
+  // 0082: the workspace waits for a card; the owner sees the trial step, not the workspace
+  await owner.page.waitForSelector('.vx-trial');
+  await shot(owner, 'trial-card-step');
+  const waiting = await st.vyntex.sql(`select '@@R@@' || jsonb_build_object('status', status, 'started', trial_started_at)::text from public.tenants where slug = 'harbor-wash-co';`);
+  assert.deepEqual(waiting, { status: 'awaiting_card', started: null }, 'no clock and no workspace before the card');
+  // the card is on file (what Stripe's confirmed event does on the server): the 7 days start and the workspace opens
+  await st.vyntex.sql(`select '@@R@@' || to_jsonb(public.billing_trial_started((select id from public.tenants where slug = 'harbor-wash-co'), null, true))::text;`);
+  await owner.page.reload();
   await owner.workspace();
   assert.equal(new URL(owner.page.url()).pathname.split('/')[1], 'harbor-wash-co');
   const banner = await owner.page.innerText('.vx-trial-banner');

@@ -80,8 +80,10 @@ select test.is(public.trial_request_create('pt-undone', 'Undone LLC', 'landscape
 insert into public.tenant_members (tenant_id, user_id, role, name, email)
   select id, test.new_user('pt_owner'), 'owner', 'Pat Public', 'pat@example.com' from public.tenants where slug = 'pt-sparkle' \g /dev/null
 update app.invitations set used_at = now() where token_hash = repeat('2', 64) \g /dev/null
+select test.ok((select status = 'awaiting_card' and trial_expires_at is null from public.tenants where slug = 'pt-sparkle'), 'accepting leaves the company waiting for its card (0082)') \g /dev/null
+select test.ok(public.billing_trial_started((select id from public.tenants where slug = 'pt-sparkle'), null, true), 'the card is on file') \g /dev/null
 select test.ok((select status = 'active' and trial_expires_at between now() + interval '168 hours' - interval '1 minute' and now() + interval '168 hours' + interval '1 minute'
-                from public.tenants where slug = 'pt-sparkle'), 'accepting the invitation opens the company for seven days') \g /dev/null
+                from public.tenants where slug = 'pt-sparkle'), 'the card opens the company for seven days') \g /dev/null
 select test.ok((select started_at is not null from app.trial_registrations r join public.tenants t on t.id = r.tenant_id where t.slug = 'pt-sparkle'), 'the registration records the start') \g /dev/null
 select test.is(public.trial_request_cancel(repeat('2', 64))::text, 'false', 'an activated trial can never be undone') \g /dev/null
 select test.ok(exists (select 1 from public.tenants where slug = 'pt-sparkle'), 'it is still there') \g /dev/null

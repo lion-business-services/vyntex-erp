@@ -7,7 +7,7 @@ import {
   LuAlarmClock, LuArmchair, LuBadgeCheck, LuCrown, LuPercent, LuBanknote, LuBookOpen, LuBriefcase, LuCalculator, LuCalendarClock, LuCalendarDays, LuChartColumn, LuFileText, LuHandCoins,
   LuHardHat, LuLayoutDashboard, LuLightbulb, LuListChecks, LuLock, LuMail, LuPlug, LuScrollText, LuSettings, LuShare2, LuShieldCheck, LuSignature, LuSparkles,
   LuStar, LuUserPlus, LuUsers, LuUsersRound, LuWallet, LuZap,
-  LuTruck, LuWrench, LuCalendarCheck, LuClipboardCheck, LuPackageOpen,
+  LuTruck, LuWrench, LuCalendarCheck, LuClipboardCheck, LuPackageOpen, LuBot,
 } from 'react-icons/lu';
 import type { ModuleId } from '@/domain/types';
 import type { Permission } from '@/domain/permissions';
@@ -17,7 +17,8 @@ import type { App } from './hooks';
 import { envelopesWaiting } from '@/domain/actions/esign';
 import { assistantOn } from '@/features/assistant/deploy';
 import { inLine } from '@/domain/actions/shop';
-import { isLive } from '@/platform/session';
+import { isLive, session } from '@/platform/session';
+import { INTERNAL_PLAN } from '@/config/plans';
 import { TRADE_SECTIONS, type SectionId } from '@/features/trade/store';
 
 /** A trade section of the HVAC and plumbing editions: demo level, so only in the public demo, never in a live workspace. */
@@ -46,6 +47,8 @@ export interface ModuleDef {
   countBad?: boolean;
   /** An extra condition on top of the edition's module list, read from the pack. */
   when?: (app: Pick<App, 'data' | 'pack'>) => boolean;
+  /** Not part of any edition's list: the screen exists exactly when `when` says so. */
+  standalone?: boolean;
 }
 
 export const MODULES: ModuleDef[] = [
@@ -90,6 +93,9 @@ export const MODULES: ModuleDef[] = [
   { id: 'integrations', path: 'integrations', perm: 'integrations', group: 'system', icon: LuPlug, labelKey: 'nav.integrations', page: lazy(() => import('@/features/integrations')) },
   { id: 'assistant', path: 'assistant', perm: 'assistant', group: 'system', icon: LuSparkles, labelKey: 'nav.assistant', page: lazy(() => import('@/features/assistant')), when: ({ data, pack }) => assistantOn(data, pack) },
   { id: 'settings', path: 'settings', perm: 'settings', group: 'system', icon: LuSettings, labelKey: 'nav.settings', page: lazy(() => import('@/features/settings')) },
+  // VYNTEX USA's own workspace only (plan internal), signed in: its AI employees and their approvals (0084)
+  { id: 'aiteam', path: 'ai-employees', perm: 'users', group: 'system', icon: LuBot, labelKey: 'nav.aiteam', page: lazy(() => import('@/features/aiteam')), standalone: true,
+    when: () => isLive() && session()?.planId === INTERNAL_PLAN },
   { id: 'security', path: 'security', perm: 'users', group: 'system', icon: LuLock, labelKey: 'nav.security', page: lazy(() => import('@/features/security')) },
   { id: 'audit', path: 'audit', perm: 'audit', group: 'system', icon: LuScrollText, labelKey: 'nav.audit', page: lazy(() => import('@/features/audit')) },
 ];
@@ -103,6 +109,7 @@ export const moduleById = (id: ModuleDef['id']): ModuleDef | undefined => MODULE
 /** Whether a screen exists for the company on screen (edition, company configuration and the module's own condition). Says nothing about the viewer's role. */
 export function moduleExists(m: ModuleDef, app: Pick<App, 'data' | 'pack'>): boolean {
   if (m.id === 'dashboard') return true;
+  if (m.standalone) return !!m.when?.(app);
   return moduleOn(app.data, app.pack, m.id) && (!m.when || m.when(app));
 }
 /**

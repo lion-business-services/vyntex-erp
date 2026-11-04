@@ -501,7 +501,9 @@ export type ModuleId =
   // the barbershop edition: the live floor (chairs, walk-in queue, kiosk, display), memberships and gift cards, barber pay
   | 'floor' | 'memberships' | 'commissions'
   // the HVAC and plumbing editions' trade sections (demo level, src/features/trade)
-  | 'dispatch' | 'agreements' | 'equipment' | 'supplies' | 'permits';
+  | 'dispatch' | 'agreements' | 'equipment' | 'supplies' | 'permits'
+  // VYNTEX USA's own workspace: its AI employees and what they ask a person to decide (src/features/aiteam)
+  | 'aiteam';
 
 /** A pipeline stage. `kind` is what the rest of the app reasons about; the id and label are free. */
 export interface StageDef {

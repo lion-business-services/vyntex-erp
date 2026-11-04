@@ -14,6 +14,7 @@ import { limit, keyHash } from '../ratelimit.js';
 import { securityEvent } from '../audit.js';
 import { envelopeSend, envelopeRemind } from '../esign/send.js';
 import { reviewSend } from './reviews.js';
+import { newBotKey } from './bot.js';
 
 /** name -> { run, stepUp }. The signature every special has: ({ request, session, cookies, tenant, args, idem }) => Response. */
 /** A database function of this range called with the person's own token: the database decides, as for any allow-list entry. */
@@ -30,7 +31,18 @@ export const SPECIALS = {
   envelope_send: { run: envelopeSend, stepUp: false },
   envelope_remind: { run: envelopeRemind, stepUp: false },
   review_send: { run: reviewSend, stepUp: false },
+  // an AI employee's key (0084): made here, shown once, only its hash reaches the database (the owner, fresh identity check)
+  bot_key_issue: { run: botKeyIssue, stepUp: true },
 };
+
+async function botKeyIssue({ session, cookies, tenant, args }) {
+  if (!isUuid(args.p_bot)) return fail(400, 'invalid_args', {}, { cookies });
+  const k = newBotKey();
+  const r = await userRpc(session.at, 'bot_key_set', { p_tenant: tenant, p_bot: args.p_bot.toLowerCase(), p_key_hash: k.hash, p_hint: k.hint });
+  if (!r.ok) { const e = upstreamError(r); e.extra = { cookies }; throw e; }
+  if (r.data !== true) return fail(404, 'not_found', {}, { cookies });
+  return ok({ result: { key: k.key, hint: k.hint } }, { cookies, headers: { 'cache-control': 'no-store' } });
+}
 
 export async function office(request, name) {
   const spec = Object.hasOwn(SPECIALS, name) ? SPECIALS[name] : null;

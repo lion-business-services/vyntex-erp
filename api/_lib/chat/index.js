@@ -1,6 +1,6 @@
 // Team chat on the server (0087).
-//   send        the office operation `chat_send`: the database stores the message (the person's own rights), then each AI
-//               employee it is meant for gets a delivery job
+//   send        the office operation `chat_send`: the database stores the message (the person's own rights), then it is
+//               sent at once to each AI employee it is meant for; one that does not go through becomes a retried job
 //   deliver     the job `chat.bot_deliver`: POST to the AI employee's own HTTPS address, signed like Stripe signs its
 //               events: header  X-VX-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<body>" with the bot's secret>
 //               The secret is made here when the owner sets the address, shown once, and kept only sealed with the
@@ -21,14 +21,20 @@ const AAD = 'vx-bot-webhook';
 
 export const sign = (secret, body, t = Math.floor(Date.now() / 1000)) => `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${body}`).digest('hex')}`;
 
-/** Queues one delivery per AI employee a message is meant for. */
+/**
+ * Sends a message to each AI employee it is meant for, at once (a few seconds at most, in parallel). A delivery that
+ * does not go through now is queued and tried again by the job runner with a growing wait.
+ */
 export async function queueBots(tenant, messageId, bots) {
-  let n = 0;
-  for (const bot of Array.isArray(bots) ? bots : []) {
-    if (!UUID.test(String(bot)) || !UUID.test(String(messageId))) continue;
-    if (await enqueue('chat.bot_deliver', { bot, message: messageId }, { tenant, idem: `chat:${messageId}:${bot}`, maxAttempts: 6 })) n += 1;
-  }
-  return n;
+  const list = (Array.isArray(bots) ? bots : []).filter((b) => UUID.test(String(b))).slice(0, 10);
+  if (!UUID.test(String(messageId)) || !list.length) return 0;
+  const done = await Promise.all(list.map(async (bot) => {
+    try { await deliverToBot({ payload: { bot, message: messageId } }, { timeoutMs: 4000 }); return true; } catch (e) {
+      if (e instanceof JobError && e.permanent) { log('chat', 'delivery_refused', { code: e.code }); return true; }
+      return !!(await enqueue('chat.bot_deliver', { bot, message: messageId }, { tenant, idem: `chat:${messageId}:${bot}`, maxAttempts: 6 }));
+    }
+  }));
+  return done.filter(Boolean).length;
 }
 
 /** The office operation `chat_send` ({ p_room, p_body, p_reply_to?, p_mentions?, p_files? }). */
@@ -44,7 +50,7 @@ export async function chatSend({ session, tenant, args }, upstreamError) {
 }
 
 /** The job `chat.bot_deliver` ({ bot, message }). */
-export async function deliverToBot(job) {
+export async function deliverToBot(job, { timeoutMs = 8000 } = {}) {
   const { bot, message } = job.payload || {};
   if (!UUID.test(String(bot)) || !UUID.test(String(message))) throw new JobError('payload_invalid', { permanent: true });
   const d = await serviceRpc('chat_bot_delivery', { p_bot: bot, p_message: message });
@@ -59,7 +65,7 @@ export async function deliverToBot(job) {
     reply: { tool: 'chat_send', args: { roomId: x.room.id, replyTo: x.message.id } } });
   let res;
   try {
-    res = await fetch(x.url, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(8000),
+    res = await fetch(x.url, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
       headers: { 'content-type': 'application/json', 'user-agent': 'VYNTEX-ERP-Chat/1', 'x-vx-signature': sign(secret, body), 'x-vx-event': 'chat.message' }, body });
   } catch { throw new JobError('unreachable'); }
   if (res.status >= 200 && res.status < 300) return { delivered: true };

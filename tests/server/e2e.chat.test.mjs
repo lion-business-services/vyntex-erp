@@ -102,10 +102,12 @@ test('team chat: a direct chat with Parker reaches Parker signed, Parker answers
   const sent = await rpc(hq, 'chat_send', { p_room: room, p_body: 'Good morning @Parker, can you check the pipeline?' });
   assert.equal(sent.status, 200, sent.text);
   assert.equal(sent.json.result.botsNotified, 1);
-  const jobs = await S.sql(String.raw`select '@@R@@' || coalesce(jsonb_agg(payload), '[]'::jsonb)::text from app.jobs where kind = 'chat.bot_deliver';`, {});
-  assert.equal(jobs.length, 1);
+  // delivered at once, nothing left in the queue
+  assert.equal(hooks.length, 1, 'sent while the message was being sent');
+  const queued = await S.sql(String.raw`select '@@R@@' || to_jsonb(count(*))::text from app.jobs where kind = 'chat.bot_deliver';`, {});
+  assert.equal(Number(queued), 0);
+  const jobs = [{ bot, message: sent.json.result.message.id }];
   const { deliverToBot } = await import('../../api/_lib/chat/index.js');
-  assert.deepEqual(await deliverToBot({ payload: jobs[0] }), { delivered: true });
   const h = hooks.at(-1);
   assert.equal(h.url, 'https://bots.example.com/parker');
   const m = /^t=(\d+),v1=([0-9a-f]{64})$/.exec(h.headers['x-vx-signature']);
@@ -120,11 +122,18 @@ test('team chat: a direct chat with Parker reaches Parker signed, Parker answers
   await assert.rejects(deliverToBot({ payload: jobs[0] }), (e) => e.permanent === true);
   hookStatus = 503;
   await assert.rejects(deliverToBot({ payload: jobs[0] }), (e) => e.permanent === false);
+  // a bot server that is down now: the message is queued and retried
+  hookStatus = 503;
+  const later = await rpc(hq, 'chat_send', { p_room: room, p_body: 'Are you there?' });
+  assert.equal(later.json.result.botsNotified, 1);
+  const retry = await S.sql(String.raw`select '@@R@@' || to_jsonb(count(*))::text from app.jobs where kind = 'chat.bot_deliver';`, {});
+  assert.equal(Number(retry), 1, 'one job to try again');
   hookStatus = 200;
+  assert.deepEqual(await deliverToBot({ payload: { bot, message: later.json.result.message.id } }), { delivered: true });
 
   // Parker reads its inbox and answers in the chat
   const inbox = await botMcp(key, 'chat_inbox', {});
-  assert.equal(inbox.length, 1); assert.equal(inbox[0].room.id, room);
+  assert.equal(inbox.length, 2); assert.equal(inbox[0].room.id, room);
   const reply = await botMcp(key, 'chat_send', { roomId: room, body: 'Good morning. Three leads need a follow-up today.', replyTo: inbox[0].message.id });
   assert.ok(reply.id);
   const sync = await rpc(hq, 'chat_sync', { p_room: room });

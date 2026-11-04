@@ -196,6 +196,8 @@ hooks.daily.push(async ({ enqueue: q }) => {
   await q('owner.summary', {}, { idem: 'summary:' + day, maxAttempts: 2 });
   await q('invoices.remind', {}, { idem: 'invoices:' + day, maxAttempts: 3 });
 });
+/** A team chat message meant for an AI employee, sent to its own address (0087, api/_lib/chat). */
+register('chat.bot_deliver', async (job) => (await import('../chat/index.js')).deliverToBot(job));
 /** Invoice reminders due today (0086): 3 days before the due date, on it, then 7 and 14 days after. */
 register('invoices.remind', async () => {
   const r = await serviceRpc('invoice_reminders_due', {});

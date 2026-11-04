@@ -49,6 +49,8 @@ const results = [
     ['--test', '--test-concurrency=1', '--test-timeout=900000', path.join(here, 'sections.e2e.test.mjs')], { PGTEST_DIR: (process.env.PGTEST_DIR || '/tmp/vx-pg-live') + '-sections', E2E_SKIP_BUILD: '1' }),
   step('an invoice made from a project, sent with its pay link and paid, in a real browser, against local stand-ins',
     ['--test', '--test-concurrency=1', '--test-timeout=900000', path.join(here, 'invoices.e2e.test.mjs')], { PGTEST_DIR: (process.env.PGTEST_DIR || '/tmp/vx-pg-live') + '-invoices', E2E_SKIP_BUILD: '1' }),
+  step('team chat with Parker and the team: mentions, reactions, live replies, in a real browser, against local stand-ins',
+    ['--test', '--test-concurrency=1', '--test-timeout=900000', path.join(here, 'teamchat.e2e.test.mjs')], { PGTEST_DIR: (process.env.PGTEST_DIR || '/tmp/vx-pg-live') + '-teamchat', E2E_SKIP_BUILD: '1' }),
 ];
 console.log(`== finished in ${((Date.now() - started) / 1000).toFixed(1)} s`);
 process.exit(results.every(Boolean) ? 0 : 1);

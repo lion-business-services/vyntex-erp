@@ -34,12 +34,27 @@ check). It is shown once. It goes straight into the bot's own secret store, neve
 `whoami`, `leads_list`, `leads_get`, `leads_create`, `leads_update`, `clients_list`, `clients_get`, `clients_update`,
 `jobs_list`, `jobs_get`, `jobs_update`, `tasks_list`, `tasks_create`, `tasks_update`, `calendar_list`, `notes_add`,
 `documents_list`, `messages_list`, `messages_draft`, `payments_list`, `catalog_list`, `reports_summary`,
-`automations_list`, `team_list`, `approvals_request`, `approvals_list`. A bot's `tools/list` shows only the tools its
+`automations_list`, `team_list`, `approvals_request`, `approvals_list`, `chat_inbox`, `chat_send`, `chat_rooms`. A bot's `tools/list` shows only the tools its
 access allows. The input schema of each is in api/_lib/bots/tools.js.
+
+## Team chat (0087)
+
+People talk to an AI employee in Team > Chat: a direct chat with it, or an @mention of it in a group. A bot only ever
+reads the rooms it is a member of.
+
+* Delivery, when the owner set the bot's chat address (AI employees > the bot's card > Chat address, fresh identity
+  check): `POST <the bot's https address>` with JSON
+  `{ "type": "chat.message", "id", "at", "bot": { "id", "slug", "name" }, "room": { "id", "kind", "name" }, "message": { "id", "body", "author", "mentions", "replyTo", "files", "at" }, "reply": { "tool": "chat_send", "args": { "roomId", "replyTo" } } }`
+* Signature header: `X-VX-Signature: t=<unix seconds>,v1=<hex HMAC-SHA256 of "<t>.<raw body>" with the signing secret>`.
+  The secret (`vxw_...`) is shown once when the address is saved. Reject a request whose `t` is more than 5 minutes off.
+* Answer with HTTP 2xx. 400, 401, 403, 404, 410 and 422 stop the retries; anything else is tried again with a growing
+  wait, up to 6 times.
+* The bot replies with the `chat_send` tool (`roomId`, `body`, optional `replyTo` and `mentions`). Without an address,
+  the bot reads the same messages with `chat_inbox` whenever it checks in.
+* `chat_send` is internal team chat only. Anything to a client still goes through `messages_draft` and an approval.
 
 ## Not decided yet (ask the owner, do not fill in)
 
-* Outbound notifications to the bots (webhooks): address format, signing, retries
 * Fixed network addresses of the bots' servers, if the list should be limited to them
 * Routine times, 24/7 coverage, data limits beyond secrets
 

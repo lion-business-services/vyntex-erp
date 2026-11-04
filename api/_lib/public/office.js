@@ -16,6 +16,7 @@ import { envelopeSend, envelopeRemind } from '../esign/send.js';
 import { reviewSend } from './reviews.js';
 import { newBotKey } from './bot.js';
 import { invoiceSend } from '../invoices.js';
+import { chatSend, chatTranslate, botWebhookSet } from '../chat/index.js';
 
 /** name -> { run, stepUp }. The signature every special has: ({ request, session, cookies, tenant, args, idem }) => Response. */
 /** A database function of this range called with the person's own token: the database decides, as for any allow-list entry. */
@@ -36,7 +37,20 @@ export const SPECIALS = {
   bot_key_issue: { run: botKeyIssue, stepUp: true },
   // an invoice (0086): emailed with its pay link, then marked sent; sending a sent one again is a reminder
   invoice_send: { run: invoiceSendOp, stepUp: false },
+  // team chat (0087): a message (then each AI employee it is meant for is notified), a translation, a bot's chat address
+  chat_send: { run: wrapped(chatSend), stepUp: false },
+  chat_translate: { run: wrapped(chatTranslate), stepUp: false },
+  bot_webhook_set: { run: wrapped(botWebhookSet), stepUp: true },
 };
+
+/** An operation that answers { status, result | error }, or throws the database's refusal. */
+function wrapped(fn) {
+  return async (c) => {
+    let r;
+    try { r = await fn(c, upstreamError); } catch (e) { if (e instanceof HttpError) e.extra = { cookies: c.cookies }; throw e; }
+    return r.status === 200 ? ok({ result: r.result }, { cookies: c.cookies, headers: { 'cache-control': 'no-store' } }) : fail(r.status, r.error, {}, { cookies: c.cookies });
+  };
+}
 
 async function invoiceSendOp(c) {
   let r;

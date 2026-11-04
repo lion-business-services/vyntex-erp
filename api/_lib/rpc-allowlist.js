@@ -38,6 +38,10 @@ export const RPCS = {
   // invoices (0086). Sending is the office operation invoice_send (api/_lib/public/office.js)
   invoice_list: { stepUp: false, read: true }, invoice_save: { stepUp: false }, invoice_discard: { stepUp: false }, invoice_void: { stepUp: true },
   invoice_send: { stepUp: false, special: 'office' },
+  // team chat (0087). Sending, translating and a bot's chat address are office operations (api/_lib/chat)
+  chat_sync: { stepUp: false, read: true }, chat_history: { stepUp: false, read: true }, chat_room_open: { stepUp: false }, chat_room_update: { stepUp: false },
+  chat_edit: { stepUp: false }, chat_delete: { stepUp: false }, chat_react: { stepUp: false }, chat_read: { stepUp: false }, chat_mute: { stepUp: false },
+  chat_send: { stepUp: false, special: 'office' }, chat_translate: { stepUp: false, special: 'office' }, bot_webhook_set: { stepUp: true, special: 'office' },
   // exports
   export_request: { stepUp: true }, export_1099_data: { stepUp: true },
   // worker tax IDs and consent (migrations 0005 to 0007; these functions take no company argument)

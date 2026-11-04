@@ -505,7 +505,9 @@ export type ModuleId =
   // VYNTEX USA's own workspace: its AI employees and what they ask a person to decide (src/features/aiteam)
   | 'aiteam'
   // invoices emailed with a pay link, a tab of Payments in a live workspace (src/features/invoices)
-  | 'invoices';
+  | 'invoices'
+  // the team's own chat, with the AI employees (src/features/teamchat), a tab of Team in a live workspace
+  | 'teamchat';
 
 /** A pipeline stage. `kind` is what the rest of the app reasons about; the id and label are free. */
 export interface StageDef {

@@ -42,6 +42,27 @@ access allows. The input schema of each is in api/_lib/bots/tools.js.
 People talk to an AI employee in Team > Chat: a direct chat with it, or an @mention of it in a group. A bot only ever
 reads the rooms it is a member of.
 
+### Fast replies: chat_inbox with wait (0088), the default
+
+Nothing to set up: the bot's key is enough. This is how NOVA CRM's bots answer (`chat/updates?wait=25`).
+
+```text
+loop forever (one loop per AI employee, always running):
+    call chat_inbox { "wait": 25 }       # held until a direct message or an @mention arrives, or 25 seconds pass
+    for each item (oldest first): answer with chat_send { "roomId": item.room.id, "replyTo": item.message.id, "body": ... }
+    call again at once                    # the 25 second wait is the pause; do not sleep for minutes
+    on 429: wait for Retry-After; on 5xx or a network error: wait 2 s, then 5 s, then 10 s, and try again
+```
+
+* A message reaches the bot about 1 to 2 seconds after it is sent (it shows up once it is one second old, so none is
+  ever skipped). Each item: `{ "room": { "id", "kind", "name" }, "message": { "id", "body", "author", "mentions", "replyTo", "files", "at" } }`.
+* Reading marks the messages read; the bot's own messages are never in it. `limit` 1 to 100 (default 50); a full page
+  means call again at once.
+* A quiet loop makes about 3 calls a minute; an empty answer is not written to the activity log. At most two waiting
+  calls per bot at a time; a third answers at once.
+
+### Optional: the chat address (0087)
+
 * Delivery, when the owner set the bot's chat address (AI employees > the bot's card > Chat address, fresh identity
   check): `POST <the bot's https address>` with JSON
   `{ "type": "chat.message", "id", "at", "bot": { "id", "slug", "name" }, "room": { "id", "kind", "name" }, "message": { "id", "body", "author", "mentions", "replyTo", "files", "at" }, "reply": { "tool": "chat_send", "args": { "roomId", "replyTo" } } }`
@@ -50,7 +71,7 @@ reads the rooms it is a member of.
 * Answer with HTTP 2xx. 400, 401, 403, 404, 410 and 422 stop the retries; anything else is tried again with a growing
   wait, up to 6 times.
 * The bot replies with the `chat_send` tool (`roomId`, `body`, optional `replyTo` and `mentions`). Without an address,
-  the bot reads the same messages with `chat_inbox` whenever it checks in.
+  the bot reads the same messages with `chat_inbox` (above).
 * `chat_send` is internal team chat only. Anything to a client still goes through `messages_draft` and an approval.
 
 ## Not decided yet (ask the owner, do not fill in)

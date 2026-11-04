@@ -131,9 +131,21 @@ test('team chat: a direct chat with Parker reaches Parker signed, Parker answers
   hookStatus = 200;
   assert.deepEqual(await deliverToBot({ payload: { bot, message: later.json.result.message.id } }), { delivered: true });
 
-  // Parker reads its inbox and answers in the chat
-  const inbox = await botMcp(key, 'chat_inbox', {});
+  // Parker reads its inbox and answers in the chat (0088: wait holds the call until the messages are a second old)
+  const inbox = await botMcp(key, 'chat_inbox', { wait: 5 });
   assert.equal(inbox.length, 2); assert.equal(inbox[0].room.id, room);
+  // a waiting call answers about a second after a new message, not after the full wait
+  const t0 = Date.now();
+  const held = botMcp(key, 'chat_inbox', { wait: 20 });
+  await new Promise((r) => setTimeout(r, 300));
+  await rpc(hq, 'chat_send', { p_room: room, p_body: 'One more thing.' });
+  const got = await held;
+  assert.equal(got.length, 1); assert.equal(got[0].message.body, 'One more thing.');
+  assert.ok(Date.now() - t0 < 6000, 'answered within seconds, took ' + (Date.now() - t0) + ' ms');
+  // nothing new: the wait runs out and answers empty
+  const t1 = Date.now();
+  assert.deepEqual(await botMcp(key, 'chat_inbox', { wait: 2 }), []);
+  assert.ok(Date.now() - t1 >= 1900, 'held for the wait');
   const reply = await botMcp(key, 'chat_send', { roomId: room, body: 'Good morning. Three leads need a follow-up today.', replyTo: inbox[0].message.id });
   assert.ok(reply.id);
   const sync = await rpc(hq, 'chat_sync', { p_room: room });

@@ -9,7 +9,7 @@ import { get, post } from '@/platform/live/http';
 import { planName, plansFor, yearlySavings } from '@/lib/pricing';
 import { money } from '@/lib/money';
 import { PACKS, isIndustry } from '@/packs';
-import { Badge, Button, Card, Note, cx } from '@/ui';
+import { Badge, Button, Card, Note, confirmDialog, cx, toast } from '@/ui';
 import type { Tone } from '@/ui';
 import './billing.css';
 
@@ -17,7 +17,7 @@ export interface BillingStatus {
   tenant: string; slug: string; name: string; industry: string; plan: string; status: string; role: string;
   trialStartedAt: string | null; trialExpiresAt: string | null;
   subscription: null | { status: string; plan: string | null; billing: string | null; currentPeriodEnd: string | null; cancelAtPeriodEnd: boolean; graceUntil: string | null; lastPaymentAt: string | null };
-  hasCustomer: boolean; available: boolean; mode: 'test' | 'live' | null;
+  hasCustomer: boolean; available: boolean; mode: 'test' | 'live' | null; trialCancelled?: boolean;
 }
 
 const DAY = 86_400_000;
@@ -129,14 +129,14 @@ export function BillingPanel({ tenantId, compact = false, trial = false, onReady
                     <p className="vx-bill-price"><b>{t('bill.trial.today')}</b></p>
                     <p className="xs muted">{t('bill.trial.then', { amount: money(recurring), period: t(billing === 'yearly' ? 'bill.perYear' : 'bill.perMonth'), date: ends })}</p>
                     <Button variant={p.mostPopular ? 'primary' : undefined} icon={<LuCreditCard aria-hidden="true" />} disabled={busy !== null} onClick={() => start(p.id)} data-testid={`bill-trial-${p.id}`}>
-                      {busy === p.id ? t('bill.paying') : t('bill.trial.start')}
+                      {busy === p.id ? t('bill.trial.starting') : t('bill.trial.start')}
                     </Button>
                   </article>
                 );
               })}
             </div>
           )}
-          {plans.length === 0 && <Button variant="primary" icon={<LuCreditCard aria-hidden="true" />} disabled={busy !== null} onClick={() => start('')} data-testid="bill-trial-card">{busy === 'card' ? t('bill.paying') : t('bill.trial.addCard')}</Button>}
+          {plans.length === 0 && <Button variant="primary" icon={<LuCreditCard aria-hidden="true" />} disabled={busy !== null} onClick={() => start('')} data-testid="bill-trial-card">{busy === 'card' ? t('bill.trial.starting') : t('bill.trial.addCard')}</Button>}
           <p className="xs muted vx-trial-note"><LuShieldCheck aria-hidden="true" /><span>{t('bill.trial.methods')}</span></p>
           {plans.length > 0 && <p className="xs muted">{t('bill.trial.reminders')}</p>}
         </>}
@@ -165,6 +165,32 @@ export function BillingPanel({ tenantId, compact = false, trial = false, onReady
       {!owner && <p className="small muted" data-testid="bill-owner-only">{t('bill.ownerOnly')}</p>}
 
       {owner && !st.available && <Note>{t('bill.notReady')}</Note>}
+
+      {/* the free trial: cancel in one click, nothing is charged; take it back before the last day */}
+      {owner && st.available && ((sub && sub.status === 'trialing') || (st.plan === 'trial' && st.trialExpiresAt && st.status === 'active')) && (() => {
+        const ends = sub && sub.status === 'trialing' ? sub.currentPeriodEnd : st.trialExpiresAt;
+        const cancelled = sub && sub.status === 'trialing' ? sub.cancelAtPeriodEnd : !!st.trialCancelled;
+        const quotedTrial = !(sub && sub.status === 'trialing');
+        const run = async (resume: boolean) => {
+          if (!resume && !(await confirmDialog(t(quotedTrial ? 'bill.trialx.askQuoted' : 'bill.trialx.ask', { date: date(ends) }), t('bill.trialx.cancel'), t('bill.trialx.keep')))) return;
+          setBusy(resume ? 'resume' : 'cancel'); setError('');
+          const r = await post<{ cancelled: boolean; until: string | null }>('/api/billing/trial/cancel', { tenant: tenantId, resume });
+          setBusy(null);
+          if (!r.ok) { setError(t(`bill.err.${r.code}`) !== `bill.err.${r.code}` ? t(`bill.err.${r.code}`) : t('bill.err.generic')); return; }
+          toast(t(resume ? 'bill.trialx.resumed' : 'bill.trialx.done', { date: date(ends) }));
+          await load();
+        };
+        return (
+          <div className="vx-bill-manage vx-trialx" data-testid="bill-trialx">
+            <div>
+              <b>{cancelled ? t('bill.trialx.cancelledH') : t('bill.trialx.h')}</b>
+              <p className="small muted">{cancelled ? t('bill.trialx.cancelledP', { date: date(ends) }) : t(quotedTrial ? 'bill.trialx.pQuoted' : 'bill.trialx.p', { date: date(ends) })}</p>
+            </div>
+            {!cancelled && <Button disabled={busy !== null} onClick={() => { void run(false); }} data-testid="bill-trial-cancel">{busy === 'cancel' ? t('bill.trial.cancelling') : t('bill.trialx.cancel')}</Button>}
+            {cancelled && !quotedTrial && <Button variant="primary" disabled={busy !== null} onClick={() => { void run(true); }} data-testid="bill-trial-resume">{busy === 'resume' ? t('bill.trial.keeping') : t('bill.trialx.resume')}</Button>}
+          </div>
+        );
+      })()}
 
       {owner && st.available && subscribed && (
         <div className="vx-bill-manage">

@@ -203,6 +203,52 @@ async function checkTrialCard(deps, tenant, paymentMethod) {
   return r.ok && typeof r.data === 'string' ? r.data : 'unknown';
 }
 
+/**
+ * Cancel the free trial (or take the cancellation back), in one click from the billing page. Nothing is ever charged
+ * for a cancelled trial; the workspace stays open until the trial's last day, then Stripe ends the subscription and the
+ * company is paused with every record kept (handleEvent, customer.subscription.deleted).
+ *   a Stripe trial      cancel_at_period_end on the trialing subscription (resume: false again, while still trialing)
+ *   a saved card only   (quoted edition) the saved cards are removed from Stripe and the trial is marked cancelled
+ * Only the owner, decided by the route; the subscription and the company are always the ones the database has.
+ */
+export async function cancelTrial(deps, { company, resume = false }) {
+  const acct = company.account || {};
+  const stripeTrial = !!acct.subscription_id && acct.status === 'trialing';
+  const cardTrial = !acct.subscription_id && company.plan === 'trial' && company.status === 'active' && !!company.trial_expires_at;
+  if (!stripeTrial && !cardTrial) throw new BillingError('no_trial', 409);
+  if (stripeTrial) {
+    const sub = await deps.stripe('POST', `/subscriptions/${acct.subscription_id}`, { cancel_at_period_end: resume ? 'false' : 'true' },
+      { idem: `trial-${resume ? 'resume' : 'cancel'}:${acct.subscription_id}:${Math.floor(deps.now() / 60000)}` });
+    if (sub.status !== 'trialing' && sub.status !== 'active') throw new BillingError('no_trial', 409);
+    await syncSubscription(deps, sub.id, company.tenant_id);
+    const until = sub.trial_end || sub.current_period_end;
+    const fresh = await deps.rpc('billing_event_add', { p_tenant: company.tenant_id, p_kind: resume ? 'trial.resumed' : 'trial.cancelled', p_stripe_id: `${sub.id}:${resume ? 'r' : 'c'}:${Math.floor(deps.now() / 60000)}`, p_amount: 0, p_currency: 'usd', p_status: sub.status, p_facts: {} });
+    if (fresh.ok && fresh.data === true) {
+      const kind = resume ? 'trial_resumed' : 'trial_cancelled';
+      await tell(deps, { tenant: company.tenant_id, kind, to: 'owner', facts: { company, at: until }, idem: `bill:${kind}:${sub.id}:${Math.floor(deps.now() / 60000)}` });
+      await tell(deps, { tenant: company.tenant_id, kind, to: 'vyntex', facts: { company, at: until }, idem: `bill:${kind}:vx:${sub.id}:${Math.floor(deps.now() / 60000)}` });
+    }
+    return { cancelled: !resume, until: until ? new Date(until * 1000).toISOString() : null };
+  }
+  if (resume) throw new BillingError('no_trial', 409);
+  // a quoted edition's trial: no charge was ever scheduled; the cards on file are removed so none stays behind
+  const customer = acct.customer_id;
+  if (customer) {
+    const list = await deps.stripe('GET', '/payment_methods', { customer, type: 'card', limit: 10 });
+    for (const pm of list && Array.isArray(list.data) ? list.data : []) {
+      await deps.stripe('POST', `/payment_methods/${pm.id}/detach`, {}, { idem: `trial-card-remove:${pm.id}` });
+    }
+  }
+  const r = await deps.rpc('billing_trial_cancel', { p_tenant: company.tenant_id });
+  if (!r.ok) throw new BillingError('cancel_failed', 503);
+  const fresh = await deps.rpc('billing_event_add', { p_tenant: company.tenant_id, p_kind: 'trial.cancelled', p_stripe_id: `card:${company.tenant_id}`, p_amount: 0, p_currency: 'usd', p_status: 'cancelled', p_facts: {} });
+  if (fresh.ok && fresh.data === true) {
+    await tell(deps, { tenant: company.tenant_id, kind: 'trial_cancelled', to: 'owner', facts: { company, at: company.trial_expires_at, quoted: true }, idem: `bill:trial_cancelled:card:${company.tenant_id}` });
+    await tell(deps, { tenant: company.tenant_id, kind: 'trial_cancelled', to: 'vyntex', facts: { company, at: company.trial_expires_at, quoted: true }, idem: `bill:trial_cancelled:vx:card:${company.tenant_id}` });
+  }
+  return { cancelled: true, until: company.trial_expires_at || null };
+}
+
 let portalConfig = null;
 /** Stripe's customer portal. The configuration is found (by our metadata) or made once: invoices, payment methods, address, cancel at period end. */
 export async function createPortal(deps, { company, origin }) {

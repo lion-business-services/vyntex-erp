@@ -54,6 +54,12 @@ select test.ok(public.billing_trial_started((select id from public.tenants where
 select test.ok((select status = 'active' and trial_started_at is not null
                 and trial_expires_at between now() + interval '168 hours' - interval '1 minute' and now() + interval '168 hours' + interval '1 minute'
                 from public.tenants where slug = 'trial-sample'), 'the company is open for seven days from the card') \g /dev/null
+-- 0083: one-click cancellation, by the server only; the trial reminders stop
+select test.is(test.as('tr_owner', format('select public.billing_trial_cancel(%L)', (select id from public.tenants where slug = 'trial-sample'))),
+  'error:42501', 'an owner cannot call it directly: the server does, after its checks') \g /dev/null
+select test.ok(public.billing_trial_cancel((select id from public.tenants where slug = 'trial-sample')), 'the server cancels the trial') \g /dev/null
+select test.ok((select cancel_at_period_end from app.billing_accounts where tenant_id = (select id from public.tenants where slug = 'trial-sample')), 'the cancellation is recorded') \g /dev/null
+select test.ok(not public.billing_trial_cancel(test.id('a')), 'a company that is not on a trial has nothing to cancel') \g /dev/null
 select trial_expires_at as first_deadline from public.tenants where slug = 'trial-sample' \gset
 insert into public.tenant_members (tenant_id, user_id, role, name, email)
   select id, test.new_user('tr_owner2'), 'owner', 'Second Owner', 'owner2@example.com' from public.tenants where slug = 'trial-sample' \g /dev/null

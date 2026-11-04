@@ -367,3 +367,45 @@ test('the reminders before the first charge name the date, the amount and how to
     assert.ok(!/[—–]/.test(m.text + m.subject), 'no long dashes');
   }
 });
+
+/* ---------- cancelling the free trial in one click (0083) ---------- */
+
+test('cancelling a Stripe trial: cancel at the end of the trial (never charged), told to the owner, and it can be taken back', async () => {
+  const w = trialWorld();
+  const base = w.deps.stripe;
+  let flag = false;
+  w.deps.stripe = async (m, p, a, o) => {
+    if (m === 'POST' && p === '/subscriptions/sub_trial1') { w.calls.stripe.push({ method: m, path: p, params: a, idem: o.idem }); flag = a.cancel_at_period_end === 'true'; return { id: 'sub_trial1', status: 'trialing', trial_end: 1_800_604_800, current_period_end: 1_800_604_800, cancel_at_period_end: flag }; }
+    return base(m, p, a, o);
+  };
+  const c = company({ status: 'active', plan: 'builder', account: { subscription_id: 'sub_trial1', status: 'trialing', customer_id: 'cus_known' } });
+  const out = await B.cancelTrial(w.deps, { company: c });
+  assert.deepEqual(out, { cancelled: true, until: new Date(1_800_604_800 * 1000).toISOString() });
+  assert.deepEqual(w.calls.stripe.find((x) => x.method === 'POST' && x.path === '/subscriptions/sub_trial1').params, { cancel_at_period_end: 'true' });
+  assert.ok(w.calls.rpc.some((x) => x.fn === 'billing_sync'), 'the company is synced from Stripe at once');
+  const mail = w.calls.mail.find((m) => JSON.stringify(m.to).includes('owner@acme.test'));
+  assert.match(mail.text, /will not be charged/);
+  assert.match(mail.text, /no se le cobrará/i);
+  const back = await B.cancelTrial(w.deps, { company: c, resume: true });
+  assert.equal(back.cancelled, false);
+  assert.equal(flag, false);
+});
+
+test('cancelling a saved-card trial (quoted edition) removes the cards from Stripe; nothing else can be cancelled', async () => {
+  const w = trialWorld();
+  const base = w.deps.stripe;
+  w.deps.stripe = async (m, p, a, o) => {
+    if (m === 'GET' && p === '/payment_methods') { w.calls.stripe.push({ method: m, path: p, params: a }); return { data: [{ id: 'pm_1' }, { id: 'pm_2' }] }; }
+    if (m === 'POST' && /^\/payment_methods\/pm_\d\/detach$/.test(p)) { w.calls.stripe.push({ method: m, path: p, idem: o.idem }); return { id: p.split('/')[2] }; }
+    return base(m, p, a, o);
+  };
+  const c = company({ industry: 'practice', status: 'active', plan: 'trial', trial_expires_at: '2027-01-08T00:00:00Z', account: { customer_id: 'cus_known', subscription_id: null, status: 'none' } });
+  const out = await B.cancelTrial(w.deps, { company: c });
+  assert.equal(out.cancelled, true);
+  assert.deepEqual(w.calls.stripe.filter((x) => x.path.endsWith('/detach')).map((x) => x.path), ['/payment_methods/pm_1/detach', '/payment_methods/pm_2/detach']);
+  assert.ok(w.calls.rpc.some((x) => x.fn === 'billing_trial_cancel'));
+  await assert.rejects(B.cancelTrial(w.deps, { company: c, resume: true }), (e) => e.code === 'no_trial');
+  for (const other of [company({ status: 'active', plan: 'builder', account: { subscription_id: 'sub_x', status: 'active' } }), company({ status: 'awaiting_card' })]) {
+    await assert.rejects(B.cancelTrial(w.deps, { company: other }), (e) => e.code === 'no_trial');
+  }
+});

@@ -40,9 +40,10 @@ try { vercel = JSON.parse(fs.readFileSync(path.join(root, 'vercel.json'), 'utf8'
 
 /** The api rewrites of vercel.json as { test, file, param }: "/api/auth/:path*" -> "/api/auth?vxpath=:path*". */
 const apiRewrites = (vercel.rewrites || [])
-  .map((r) => /^\/api\/([a-z0-9-]+)\/:path\*$/.exec(r.source) && /^\/api\/([a-z0-9-]+)(?:\?([a-z]+)=:path\*)?$/.exec(r.destination) ? { r, s: /^\/api\/([a-z0-9-]+)\/:path\*$/.exec(r.source), d: /^\/api\/([a-z0-9-]+)(?:\?([a-z]+)=:path\*)?$/.exec(r.destination) } : null)
+  .map((r) => /^\/api\/([a-z0-9-]+)\/:path\*$/.exec(r.source) && /^\/api\/([a-z0-9-]+)(?:\?([a-z]+)=([a-z0-9-]+\/)?:path\*)?$/.exec(r.destination) ? { r, s: /^\/api\/([a-z0-9-]+)\/:path\*$/.exec(r.source), d: /^\/api\/([a-z0-9-]+)(?:\?([a-z]+)=([a-z0-9-]+\/)?:path\*)?$/.exec(r.destination) } : null)
   .filter(Boolean)
-  .map(({ s, d }) => ({ prefix: `/api/${s[1]}/`, file: d[1], param: d[2] || 'vxpath' }));
+  // "/api/bot/:path*" -> "/api/public?vxpath=bot/:path*": a door of its own on an existing function (the lead part is kept)
+  .map(({ s, d }) => ({ prefix: `/api/${s[1]}/`, file: d[1], param: d[2] || 'vxpath', lead: d[3] || '' }));
 
 /** vercel.json "headers" rules as regular expressions over the path. */
 const headerRules = process.env.VX_HEADERS === '1'
@@ -61,8 +62,9 @@ function resolveApi(url) {
     const rest = url.pathname.slice(hit.prefix.length);
     const rewritten = new URL(url);
     rewritten.pathname = '/api/' + hit.file;
-    rewritten.searchParams.set(hit.param, rest);
-    return { file: hit.file, url: process.env.VX_REWRITE_STYLE === 'destination' ? rewritten : url };
+    rewritten.searchParams.set(hit.param, hit.lead + rest);
+    // a door of its own always hands the function the rewritten address, the way Vercel does
+    return { file: hit.file, url: process.env.VX_REWRITE_STYLE === 'destination' || hit.lead ? rewritten : url };
   }
   return { file: url.pathname.slice(5).replace(/[^a-z0-9-]/gi, ''), url };
 }

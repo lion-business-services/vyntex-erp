@@ -56,6 +56,8 @@ if (unitOnly) process.exit(status);
     run(['e2e.partners.test.mjs'], { ...process.env, ...dirs, VX_PG_PUBLIC_READY: '1' });
     console.log('== end-to-end tests of the public 7-day trial and seat limits (e2e.trial.test.mjs) on the same database');
     run(['e2e.trial.test.mjs'], { ...process.env, ...dirs, VX_PG_PUBLIC_READY: '1' });
+    console.log('== end-to-end tests of the AI employees (e2e.bots.test.mjs) on the same database');
+    run(['e2e.bots.test.mjs'], { ...process.env, ...dirs, VX_PG_PUBLIC_READY: '1' });
   } finally {
     spawnSync('bash', [path.join(here, 'pg_local.sh'), 'stop'], { env: publicEnv });
   }

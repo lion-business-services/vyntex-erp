@@ -30,6 +30,11 @@ export const RPCS = {
   // still answer under /api/public/office/<name>.
   envelope_send: { stepUp: false, special: 'office' }, envelope_remind: { stepUp: false, special: 'office' }, review_send: { stepUp: false, special: 'office' },
   intake_key_rotate: { stepUp: true, special: 'office' }, intake_key_state: { stepUp: false, special: 'office', read: true },
+  // AI employees of the VYNTEX USA workspace and what they ask a person to decide (0084). The key is made by the server
+  // (bot_key_issue, api/_lib/public/office.js) and shown once
+  bot_list: { stepUp: false, read: true }, bot_save: { stepUp: true }, bot_set_status: { stepUp: false },
+  bot_key_issue: { stepUp: true, special: 'office' }, bot_key_revoke: { stepUp: false }, bot_activity_list: { stepUp: false, read: true },
+  approvals_list: { stepUp: false, read: true }, approval_decide: { stepUp: false }, approval_done: { stepUp: false },
   // exports
   export_request: { stepUp: true }, export_1099_data: { stepUp: true },
   // worker tax IDs and consent (migrations 0005 to 0007; these functions take no company argument)

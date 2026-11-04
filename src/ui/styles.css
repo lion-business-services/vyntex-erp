@@ -213,6 +213,12 @@ input[type=checkbox],input[type=radio]{accent-color:var(--accent)}
 .tabs button{border:0;background:none;color:var(--text-2);padding:10px 14px;font-weight:650;font-size:14px;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;gap:7px;align-items:center;transition:color var(--motion-fast) var(--ease-vyntex),border-color var(--motion-standard) var(--ease-vyntex)}
 .tabs button:hover{color:var(--text)}
 .tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent)}
+/* the tabs of a section (Tasks | Deadlines, Appointments | Team calendar, Team | Chat | ...): each tab is its own address */
+.section-tabs{margin-bottom:12px}
+.section-tabs a{color:var(--text-2);padding:10px 14px;font-weight:650;font-size:14px;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;display:inline-flex;gap:7px;align-items:center;text-decoration:none;
+  transition:color var(--motion-fast) var(--ease-vyntex),border-color var(--motion-standard) var(--ease-vyntex)}
+.section-tabs a:hover{color:var(--text)}
+.section-tabs a[aria-current="page"]{color:var(--text);border-bottom-color:var(--accent)}
 
 /* tables: real tables on wide screens, stacked cards on phones */
 .table-wrap{overflow-x:auto}

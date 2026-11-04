@@ -49,6 +49,14 @@ export interface ModuleDef {
   when?: (app: Pick<App, 'data' | 'pack'>) => boolean;
   /** Not part of any edition's list: the screen exists exactly when `when` says so. */
   standalone?: boolean;
+  /**
+   * Shown as a tab of another section instead of a menu entry of its own, when that section is in the menu (Deadlines
+   * inside Tasks, Team calendar inside Appointments, Client messages and AI employees inside Team). Its address, its
+   * permission and its on/off switch stay its own; without the host section it is a menu entry as before.
+   */
+  under?: ModuleId;
+  /** The tab label when it is shown inside a section (defaults to the menu label). */
+  tabKey?: string;
 }
 
 export const MODULES: ModuleDef[] = [
@@ -59,25 +67,25 @@ export const MODULES: ModuleDef[] = [
   { id: 'leads', path: 'leads', perm: 'leads', group: 'work', icon: LuUserPlus, labelKey: 'nav.leads', page: lazy(() => import('@/features/leads')), count: ({ data }) => newLeads(data).length },
   { id: 'clients', path: 'clients', perm: 'clients', group: 'work', icon: LuUsers, labelKey: 'nav.clients', page: lazy(() => import('@/features/clients')) },
   { id: 'jobs', path: 'jobs', perm: 'jobs', group: 'work', icon: LuBriefcase, labelKey: 'nav.jobs', page: lazy(() => import('@/features/jobs')) },
-  { id: 'appointments', path: 'appointments', perm: 'appointments', group: 'work', icon: LuCalendarClock, labelKey: 'nav.appointments', page: lazy(() => import('@/features/appointments')) },
+  { id: 'appointments', path: 'appointments', perm: 'appointments', group: 'work', icon: LuCalendarClock, labelKey: 'nav.appointments', tabKey: 'nav.tab.appointments', page: lazy(() => import('@/features/appointments')) },
   // ---- the HVAC and plumbing trade sections (demo level)
   { id: 'dispatch', path: 'dispatch', perm: 'jobs', group: 'work', icon: LuTruck, labelKey: 'nav.dispatch', page: lazy(() => import('@/features/trade/dispatch')), when: trade('dispatch') },
   { id: 'agreements', path: 'agreements', perm: 'clients', group: 'work', icon: LuCalendarCheck, labelKey: 'nav.agreements', page: lazy(() => import('@/features/trade/agreements')), when: trade('agreements') },
   { id: 'equipment', path: 'equipment', perm: 'clients', group: 'work', icon: LuWrench, labelKey: 'nav.equipment', page: lazy(() => import('@/features/trade/client-equipment')), when: trade('equipment') },
   { id: 'supplies', path: 'supplies', perm: 'jobs', group: 'work', icon: LuPackageOpen, labelKey: 'nav.supplies', page: lazy(() => import('@/features/trade/supplies')), when: trade('supplies') },
   { id: 'permits', path: 'permits', perm: 'jobs', group: 'work', icon: LuClipboardCheck, labelKey: 'nav.permits', page: lazy(() => import('@/features/trade/compliance')), when: trade('permits') },
-  { id: 'calendar', path: 'calendar', perm: 'calendar', group: 'work', icon: LuCalendarDays, labelKey: 'nav.calendar', page: lazy(() => import('@/features/calendar')) },
+  { id: 'calendar', path: 'calendar', perm: 'calendar', group: 'work', icon: LuCalendarDays, labelKey: 'nav.calendar', under: 'appointments', tabKey: 'nav.tab.teamCalendar', page: lazy(() => import('@/features/calendar')) },
   { id: 'tasks', path: 'tasks', perm: 'tasks', group: 'work', icon: LuListChecks, labelKey: 'nav.tasks', page: lazy(() => import('@/features/tasks')), count: ({ data }) => data.tasks.filter(isOverdue).length, countBad: true },
   // ---- business
-  { id: 'team', path: 'team', perm: 'team', group: 'business', icon: LuHardHat, labelKey: 'nav.team', page: lazy(() => import('@/features/team')) },
+  { id: 'team', path: 'team', perm: 'team', group: 'business', icon: LuHardHat, labelKey: 'nav.team', tabKey: 'nav.tab.profiles', page: lazy(() => import('@/features/team')) },
   { id: 'catalog', path: 'catalog', perm: 'catalog', group: 'business', icon: LuBookOpen, labelKey: 'nav.catalog', page: lazy(() => import('@/features/catalog')) },
   { id: 'opportunities', path: 'opportunities', perm: 'opportunities', group: 'business', icon: LuLightbulb, labelKey: 'nav.opportunities', page: lazy(() => import('@/features/opportunities')) },
   { id: 'documents', path: 'documents', perm: 'documents', group: 'business', icon: LuFileText, labelKey: 'nav.documents', page: lazy(() => import('@/features/documents')) },
   { id: 'esign', path: 'esign', perm: 'esign', group: 'business', icon: LuSignature, labelKey: 'nav.esign', page: lazy(() => import('@/features/esign')), count: ({ data }) => envelopesWaiting(data) },
-  { id: 'messages', path: 'messages', perm: 'comms', group: 'business', icon: LuMail, labelKey: 'nav.messages', page: lazy(() => import('@/features/messages')), count: ({ data }) => data.messages.filter((m) => m.status === 'draft').length },
+  { id: 'messages', path: 'messages', perm: 'comms', group: 'business', icon: LuMail, labelKey: 'nav.messages', under: 'team', tabKey: 'nav.tab.clientMessages', page: lazy(() => import('@/features/messages')), count: ({ data }) => data.messages.filter((m) => m.status === 'draft').length },
   { id: 'payments', path: 'payments', perm: 'money', group: 'business', icon: LuWallet, labelKey: 'nav.money', page: lazy(() => import('@/features/payments')) },
   { id: 'reviews', path: 'reviews', perm: 'reviews', group: 'business', icon: LuStar, labelKey: 'nav.reviews', page: lazy(() => import('@/features/reviews')) },
-  { id: 'deadlines', path: 'deadlines', perm: 'deadlines', group: 'business', icon: LuAlarmClock, labelKey: 'nav.deadlines', page: lazy(() => import('@/features/deadlines')) },
+  { id: 'deadlines', path: 'deadlines', perm: 'deadlines', group: 'business', icon: LuAlarmClock, labelKey: 'nav.deadlines', under: 'tasks', page: lazy(() => import('@/features/deadlines')) },
   { id: 'memberships', path: 'memberships', perm: 'clients', group: 'business', icon: LuCrown, labelKey: 'nav.memberships', page: lazy(() => import('@/features/memberships')) },
   { id: 'commissions', path: 'barber-pay', perm: 'payroll', group: 'business', icon: LuPercent, labelKey: 'nav.commissions', page: lazy(() => import('@/features/commissions')) },
   { id: 'reports', path: 'reports', perm: 'reports', group: 'business', icon: LuChartColumn, labelKey: 'nav.reports', page: lazy(() => import('@/features/reports')) },
@@ -94,7 +102,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'assistant', path: 'assistant', perm: 'assistant', group: 'system', icon: LuSparkles, labelKey: 'nav.assistant', page: lazy(() => import('@/features/assistant')), when: ({ data, pack }) => assistantOn(data, pack) },
   { id: 'settings', path: 'settings', perm: 'settings', group: 'system', icon: LuSettings, labelKey: 'nav.settings', page: lazy(() => import('@/features/settings')) },
   // VYNTEX USA's own workspace only (plan internal), signed in: its AI employees and their approvals (0084)
-  { id: 'aiteam', path: 'ai-employees', perm: 'users', group: 'system', icon: LuBot, labelKey: 'nav.aiteam', page: lazy(() => import('@/features/aiteam')), standalone: true,
+  { id: 'aiteam', path: 'ai-employees', perm: 'users', group: 'system', icon: LuBot, labelKey: 'nav.aiteam', under: 'team', page: lazy(() => import('@/features/aiteam')), standalone: true,
     when: () => isLive() && session()?.planId === INTERNAL_PLAN },
   { id: 'security', path: 'security', perm: 'users', group: 'system', icon: LuLock, labelKey: 'nav.security', page: lazy(() => import('@/features/security')) },
   { id: 'audit', path: 'audit', perm: 'audit', group: 'system', icon: LuScrollText, labelKey: 'nav.audit', page: lazy(() => import('@/features/audit')) },
@@ -128,4 +136,21 @@ export function modulesFor(app: Pick<App, 'data' | 'pack' | 'can'>): ModuleDef[]
     (app.pack.id !== 'barber' || BARBER_DAILY_MODULES.includes(m.id)) &&
     moduleExists(m, app) &&
     (!m.perm || app.can(m.perm))).sort((a, b) => order(a) - order(b));
+}
+
+/**
+ * The menu: the screens the viewer gets, less the ones shown as a tab of a section that is itself in the menu. Each entry
+ * carries the screens of its section (itself first), so the menu can light up for any of them and the page can show tabs.
+ */
+export interface MenuEntry { module: ModuleDef; tabs: ModuleDef[] }
+export function menuFor(app: Pick<App, 'data' | 'pack' | 'can'>): MenuEntry[] {
+  const list = modulesFor(app);
+  const shown = new Set(list.map((m) => m.id));
+  const hosted = (m: ModuleDef) => !!m.under && shown.has(m.under);
+  return list.filter((m) => !hosted(m)).map((m) => ({ module: m, tabs: [m, ...list.filter((c) => hosted(c) && c.under === m.id)] }));
+}
+/** The section a screen is shown in (its tabs), or undefined when it stands alone. */
+export function sectionOf(id: ModuleDef['id'], app: Pick<App, 'data' | 'pack' | 'can'>): MenuEntry | undefined {
+  const e = menuFor(app).find((x) => x.tabs.some((m) => m.id === id));
+  return e && e.tabs.length > 1 ? e : undefined;
 }

@@ -7,7 +7,7 @@ import { useRoute, A, workspaceOf } from './router';
 import { useApp } from './hooks';
 import { Shell } from './Shell';
 import { PAGES } from './routes';
-import { moduleExists } from './modules';
+import { moduleExists, sectionOf, type ModuleDef } from './modules';
 import { NoAccess } from './shared';
 import { Empty, Overlays, Button } from '@/ui';
 import { hasSample, loadSample, setPrefs, useStore } from '@/store/store';
@@ -73,7 +73,7 @@ function Workspace() {
     // a screen the company's edition does not have is not there at all, whatever the address says
     if (!def || !moduleExists(def.module, app)) body = <Empty title={t('app.notFound')} action={<A to=""><Button variant="primary">{t('app.goHome')}</Button></A>} />;
     else if (def.perm && !can(def.perm)) body = <NoAccess />;
-    else { const Page = def.page; body = <Page key={section + '/' + (id || '')} id={id} sub={rest.join('/') || undefined} />; }
+    else { const Page = def.page; body = <><SectionTabs current={def.module} /><Page key={section + '/' + (id || '')} id={id} sub={rest.join('/') || undefined} /></>; }
   }
   return (
     <Shell onTour={() => setTour(true)}>
@@ -131,4 +131,23 @@ export function App() {
   // every page outside a workspace (sales, sign-in, invitations, signing) gets the living day ground; a workspace keeps a still one
   const inWorkspace = ws.mode === 'demo' || (ws.mode === 'workspace' && isLive() && who?.slug === ws.slug) || portal;
   return <>{DAY_SKY && !inWorkspace && <DayBackdrop />}<Suspense fallback={<Loading />}>{page}</Suspense><Overlays /></>;
+}
+
+/** The tabs of a section, above its page: each tab is a screen with its own address, permission and on/off switch. */
+function SectionTabs({ current }: { current: ModuleDef }) {
+  const app = useApp();
+  const entry = sectionOf(current.id, app);
+  if (!entry) return null;
+  return (
+    <nav className="tabs section-tabs" aria-label={app.t(entry.module.labelKey)} data-testid="section-tabs">
+      {entry.tabs.map((m) => {
+        const n = m.count?.(app) ?? 0;
+        return (
+          <A key={m.id} to={'/' + m.path} aria-current={m.id === current.id ? 'page' : undefined} data-tab={m.id}>
+            {app.t(m.tabKey ?? m.labelKey)}{n > 0 && <span className="count">{n}</span>}
+          </A>
+        );
+      })}
+    </nav>
+  );
 }

@@ -922,6 +922,10 @@ var baseES = {
 // src/i18n/app.ts
 var appDict = {
   en: {
+    "nav.tab.profiles": "Profiles",
+    "nav.tab.clientMessages": "Client messages",
+    "nav.tab.teamCalendar": "Team calendar",
+    "nav.tab.appointments": "Appointments",
     "nav.dashboard": "Dashboard",
     "nav.leads": "Leads",
     "nav.clients": "{Clients}",
@@ -1232,6 +1236,10 @@ var appDict = {
     "sync.reason.locked": "the record is locked"
   },
   es: {
+    "nav.tab.profiles": "Perfiles",
+    "nav.tab.clientMessages": "Mensajes a clientes",
+    "nav.tab.teamCalendar": "Calendario del equipo",
+    "nav.tab.appointments": "Citas",
     "nav.dashboard": "Panel",
     "nav.leads": "Prospectos",
     "nav.clients": "{Clients}",
@@ -1543,6 +1551,10 @@ var appDict = {
   },
   // Chinese: the frame of the workspace. Anything not written here reads in English.
   zh: {
+    "nav.tab.profiles": "\u6210\u5458\u8D44\u6599",
+    "nav.tab.clientMessages": "\u5BA2\u6237\u6D88\u606F",
+    "nav.tab.teamCalendar": "\u56E2\u961F\u65E5\u5386",
+    "nav.tab.appointments": "\u9884\u7EA6",
     "nav.dashboard": "\u5DE5\u4F5C\u53F0",
     "nav.leads": "\u7EBF\u7D22",
     "nav.clients": "\u5BA2\u6237",

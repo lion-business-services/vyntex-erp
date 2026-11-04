@@ -194,7 +194,7 @@ function Team({ bots, owner, reload }: { bots: Bot[] | null; owner: boolean; rel
                   <span>{b.lastUsedAt ? t('ai.bot.lastUsed', { when: dateTime(b.lastUsedAt) }) : t('ai.bot.never')}</span>
                   <span>·</span>
                   <LuMessagesSquare aria-hidden="true" />
-                  <span>{b.webhookUrl ? t('ai.hook.on', { hint: b.webhookHint ?? '' }) : t('ai.hook.off')}</span>
+                  <span>{b.webhookUrl ? t('ai.hook.on', { hint: b.webhookHint ?? '' }) + (b.webhookAuth ? ' · ' + t('ai.hook.authOn') : '') : t('ai.hook.off')}</span>
                 </div>
                 <div className="row tight wrap">
                   <Button size="sm" variant="ghost" icon={b.status === 'active' ? <LuPause /> : <LuPlay />} disabled={busy === b.id} onClick={() => void toggle(b)}>{t(b.status === 'active' ? 'ai.bot.pause' : 'ai.bot.resume')}</Button>
@@ -256,10 +256,14 @@ function BotForm({ bot, onClose, onSaved }: { bot: Partial<Bot>; onClose: () => 
 function HookForm({ bot, onClose, onDone }: { bot: Bot; onClose: () => void; onDone: (secret: string | null) => Promise<void> }) {
   const { t } = useApp();
   const [url, setUrl] = useState(bot.webhookUrl ?? '');
+  // 0091: the Authorization header the bot's routine expects. Empty: the saved one stays (or none if none was saved)
+  const [auth, setAuth] = useState(''); const [dropAuth, setDropAuth] = useState(false);
   const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
   const save = async (value: string) => {
     if (value && !/^https:\/\/[A-Za-z0-9.-]+(:[0-9]{2,5})?(\/\S*)?$/.test(value)) { setErr(t('ai.hook.bad')); return; }
-    setBusy(true); const r = await botApi.setWebhook(bot.id, value); setBusy(false);
+    const a = auth.trim();
+    if (a && (a.length > 2000 || /[^\x20-\x7e]/.test(a))) { setErr(t('ai.hook.authBad')); return; }
+    setBusy(true); const r = await botApi.setWebhook(bot.id, value, a ? a : dropAuth ? '' : undefined); setBusy(false);
     if (!r.ok) { setErr(t('ai.reason.generic')); return; }
     await onDone(r.data.secret);
   };
@@ -269,6 +273,11 @@ function HookForm({ bot, onClose, onDone }: { bot: Bot; onClose: () => void; onD
         <Button variant="primary" disabled={busy || !url.trim()} onClick={() => void save(url.trim())} data-testid="ai-hook-save">{t('ai.form.save')}</Button></>}>
       <p className="small">{t('ai.hook.lead', { name: bot.name })}</p>
       <Field label={t('ai.hook.url')} htmlFor="ai-hook-url" hint={t('ai.hook.hint')}><input id="ai-hook-url" className="input" type="url" placeholder="https://" value={url} maxLength={500} onChange={(e) => setUrl(e.target.value)} data-testid="ai-hook-url" /></Field>
+      <Field label={t('ai.hook.auth')} htmlFor="ai-hook-auth" hint={bot.webhookAuth ? t('ai.hook.authSaved', { hint: bot.webhookAuthHint ?? '' }) : t('ai.hook.authHint')}>
+        <input id="ai-hook-auth" className="input" type="password" autoComplete="off" spellCheck={false} placeholder={bot.webhookAuth ? '••••••••' : 'Bearer …'} value={auth} maxLength={2000}
+          onChange={(e) => { setAuth(e.target.value); setDropAuth(false); }} data-testid="ai-hook-auth" />
+      </Field>
+      {bot.webhookAuth && !auth && <label className="row tight small"><input type="checkbox" checked={dropAuth} onChange={(e) => setDropAuth(e.target.checked)} data-testid="ai-hook-auth-drop" />{t('ai.hook.authDrop')}</label>}
       <p className="xs dim">{t('ai.hook.sign')}</p>
       {err && <Note tone="bad">{err}</Note>}
     </Modal>

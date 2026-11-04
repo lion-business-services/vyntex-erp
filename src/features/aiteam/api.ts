@@ -12,7 +12,7 @@ export type Access = Partial<Record<Section, Level>>;
 
 export interface Bot {
   id: string; slug: string; name: string; title: string; department: string; reportsTo: string; mission: string;
-  access: Access; status: 'active' | 'paused'; hasKey: boolean; keyHint: string | null; keyCreatedAt: string | null; lastUsedAt: string | null; pending: number; webhookUrl?: string | null; webhookHint?: string | null;
+  access: Access; status: 'active' | 'paused'; hasKey: boolean; keyHint: string | null; keyCreatedAt: string | null; lastUsedAt: string | null; pending: number; webhookUrl?: string | null; webhookHint?: string | null; webhookAuth?: boolean; webhookAuthHint?: string | null;
 }
 export interface Approval {
   id: string; kind: string; level: 2 | 3; what: string; why: string; riskDo: string; riskDont: string; recommendation: string; deadline: string | null;
@@ -42,7 +42,7 @@ export const botApi = {
   save: (bot: Partial<Bot>) => call<string>('bot_save', { p_bot: bot }),
   setStatus: (id: string, status: 'active' | 'paused') => call<boolean>('bot_set_status', { p_bot: id, p_status: status }),
   issueKey: (id: string) => call<{ key: string; hint: string }>('bot_key_issue', { p_bot: id }),
-  setWebhook: (id: string, url: string) => call<{ secret: string | null; hint: string | null }>('bot_webhook_set', { p_bot: id, p_url: url }),
+  setWebhook: (id: string, url: string, auth?: string) => call<{ secret: string | null; hint: string | null }>('bot_webhook_set', { p_bot: id, p_url: url, ...(auth === undefined ? {} : { p_auth: auth }) }),
   revokeKey: (id: string) => call<boolean>('bot_key_revoke', { p_bot: id }),
   activity: (bot?: string) => call<Activity[]>('bot_activity_list', bot ? { p_bot: bot } : {}),
   approvals: () => call<Approval[]>('approvals_list'),

@@ -90,12 +90,17 @@ test('team chat: a direct chat with Parker reaches Parker signed, Parker answers
 
   // the owner gives Parker a chat address: the signing secret is shown once, kept only sealed
   assert.equal((await rpc(hq, 'bot_webhook_set', { p_bot: bot, p_url: 'http://bots.example.com/x' })).status, 400, 'https only');
-  const hook = await rpc(hq, 'bot_webhook_set', { p_bot: bot, p_url: 'https://bots.example.com/parker' });
+  assert.equal((await rpc(hq, 'bot_webhook_set', { p_bot: bot, p_url: 'https://bots.example.com/parker', p_auth: 'Bearer bad\nline' })).status, 400, 'a header is one line');
+  const hook = await rpc(hq, 'bot_webhook_set', { p_bot: bot, p_url: 'https://bots.example.com/parker', p_auth: 'Bearer routine-token-1234' });
   assert.equal(hook.status, 200, hook.text);
-  const secret = hook.json.result.secret; secrets.add(secret);
+  let secret = hook.json.result.secret; secrets.add(secret);
   assert.match(secret, /^vxw_[0-9a-f]{64}$/);
   const sealed = await S.sql(String.raw`select '@@R@@' || to_jsonb(webhook_secret_sealed)::text from app.bots where id = (select v from _in where k = 'b')::uuid;`, { b: bot });
   assert.ok(!String(sealed).includes(secret.slice(4)), 'the secret is stored sealed');
+  const authRow = await S.sql(String.raw`select '@@R@@' || jsonb_build_object('sealed', webhook_auth_sealed, 'hint', webhook_auth_hint)::text from app.bots where id = (select v from _in where k = 'b')::uuid;`, { b: bot });
+  assert.ok(authRow.sealed && !authRow.sealed.includes('routine-token'), 'the Authorization header is stored sealed (0091)'); assert.equal(authRow.hint, '1234');
+  const listed = (await rpc(hq, 'bot_list', {})).json.result.find((x) => x.id === bot);
+  assert.equal(listed.webhookAuth, true); assert.ok(!JSON.stringify(listed).includes('routine-token'), 'never shown again');
 
   // a direct chat with Parker; a message; the delivery job; a signed POST to Parker's address
   const room = (await rpc(hq, 'chat_room_open', { p_room: { kind: 'direct', with: { type: 'bot', id: bot } } })).json.result;
@@ -116,6 +121,14 @@ test('team chat: a direct chat with Parker reaches Parker signed, Parker answers
   const payload = JSON.parse(h.body);
   assert.equal(payload.type, 'chat.message'); assert.equal(payload.room.id, room); assert.match(payload.message.body, /check the pipeline/);
   assert.deepEqual(payload.reply.args, { roomId: room, replyTo: payload.message.id });
+  // 0091: the routine's Authorization header, and the full message at the top of the payload
+  assert.equal(h.headers.authorization, 'Bearer routine-token-1234');
+  assert.equal(payload.roomId, room); assert.equal(payload.messageId, sent.json.result.message.id); assert.equal(payload.roomKind, 'direct');
+  assert.equal(payload.sender.type, 'member'); assert.ok(payload.sender.name); assert.match(payload.body, /check the pipeline/);
+  // changing only the address keeps the saved header
+  const again = await rpc(hq, 'bot_webhook_set', { p_bot: bot, p_url: 'https://bots.example.com/parker' });
+  assert.equal(again.status, 200); secret = again.json.result.secret; secrets.add(secret);
+  assert.equal((await rpc(hq, 'bot_list', {})).json.result.find((x) => x.id === bot).webhookAuth, true, 'kept');
 
   // a refusal that will not change is not tried again; anything else is
   hookStatus = 410;

@@ -229,6 +229,13 @@ export async function envelopeSend(envelopeId: string): Promise<EnvelopeAnswer<{
   refresh();
   return { ok: true, data: a.data.result };
 }
+/** A fresh private link for any signer who has not answered yet, to copy and share or to sign here (0090). Nothing is emailed. */
+export async function envelopeLink(envelopeId: string, signerId: string): Promise<EnvelopeAnswer<{ url: string }>> {
+  const a = await officeOp<{ url?: string }>('envelope_link', { p_envelope: envelopeId, p_signer: signerId });
+  if (!a.ok) return envelopeFail(a);
+  const url = String(a.data.result?.url || '');
+  return url.includes('/sign/') ? { ok: true, data: { url } } : { ok: false, reason: 'server' };
+}
 /** Asks the server to remind everyone who has their link and has not answered. Each gets a new link. */
 export async function envelopeRemind(envelopeId: string): Promise<EnvelopeAnswer<{ reminded: number; expired: boolean }>> {
   const a = await officeOp<{ reminded?: number; expired?: boolean }>('envelope_remind', { p_envelope: envelopeId });

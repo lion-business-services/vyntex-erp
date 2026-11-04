@@ -184,6 +184,14 @@ export async function remindRequest(envelopeId: string): Promise<Done<{ reminded
   return r.data.expired ? { ok: false, reason: 'expired' } : { ok: true, data: { reminded: r.data.reminded } };
 }
 
+/** Live workspaces: a signer's private link, made by the server (0090). */
+export async function signerLink(envelopeId: string, signerId: string): Promise<Done<{ url: string }>> {
+  if (!isLive()) return { ok: false, reason: 'sample' };
+  const { envelopeLink } = await import('@/platform/live/ops');
+  const r = await envelopeLink(envelopeId, signerId);
+  return r.ok ? { ok: true, data: { url: r.data.url } } : { ok: false, reason: r.reason };
+}
+
 const busy = new Set<string>();
 const hydrating = new Map<string, Promise<boolean>>();
 /**

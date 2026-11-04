@@ -4,7 +4,7 @@
 //   /esign/<id>/sign/<signer>   the signer's page, opened inside the app in a sample workspace
 // In a sample workspace nothing is emailed and nothing is legally signed; the screens say so wherever it matters.
 import { useEffect, useMemo, useState } from 'react';
-import { LuBellRing, LuBan, LuDownload, LuExternalLink, LuFilePen, LuPenLine, LuPlus, LuSend, LuTrash2, LuArrowUp, LuArrowDown, LuScanSearch } from 'react-icons/lu';
+import { LuBellRing, LuBan, LuCopy, LuDownload, LuExternalLink, LuFilePen, LuPenLine, LuPlus, LuSend, LuTrash2, LuArrowUp, LuArrowDown, LuScanSearch } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { A, go, useRoute } from '@/app/router';
 import { BackLink } from '@/app/Shell';
@@ -28,7 +28,7 @@ import { FieldEditor } from './fields';
 import { FieldBox, SigningFlow, type SigningAdapter } from './signing';
 import { PageSheet, pageMode, pageSizes, useViewer } from './pages';
 import { pdfObjectUrl, releasePdfUrl } from './pdfview';
-import { downloadFile, drawDocument, ensureSource, finishEnvelope, objectUrl, openFile, placementPreview, remindRequest, sendDrawn, sendingPending, type DrawnDocument, type DrawProblem } from './prepare';
+import { downloadFile, drawDocument, ensureSource, finishEnvelope, objectUrl, openFile, placementPreview, remindRequest, sendDrawn, signerLink, sendingPending, type DrawnDocument, type DrawProblem } from './prepare';
 import './esign.css';
 
 const STATUS_TONE: Record<Envelope['status'], Tone> = { draft: 'neutral', sent: 'warn', partly_signed: 'info', completed: 'ok', declined: 'bad', expired: 'neutral', void: 'neutral' };
@@ -345,6 +345,20 @@ function Detail({ env, doc }: { env: EnvelopeX; doc?: DocRecord }) {
 
   const doRemind = () => { void remindRequest(env.id).then((r) => toast(r.ok ? t(live ? 'esign.reminded' : 'esign.remindedSample', { n: r.data.reminded }) : t(failWord(r.reason, 'esign.err.not_open')), !r.ok)); };
   const doVoid = async () => { if (await confirmDialog(t('esign.voidConfirm'), t('esign.void'), t('common.cancel'))) { act(voidEnvelope, env.id); toast(t('esign.voided')); } };
+  // a signer's private link (0090): copied to share on WhatsApp or a text, or opened here to sign the company's part
+  const linkFail = (reason: string) => toast(t(reason === 'already_answered' || reason === 'not_open' ? 'esign.link.' + reason : failWord(reason, 'esign.link.failed')), true);
+  const copyLink = async (signerId: string, name: string) => {
+    const r = await signerLink(env.id, signerId);
+    if (!r.ok) { linkFail(r.reason); return; }
+    try { await navigator.clipboard.writeText(r.data.url); toast(t('esign.link.copied', { name })); }
+    catch { window.prompt(t('esign.link.copyBelow', { name }), r.data.url); }
+  };
+  const signHere = async (signerId: string) => {
+    const tab = window.open('', '_blank');
+    const r = await signerLink(env.id, signerId);
+    if (!r.ok) { tab?.close(); linkFail(r.reason); return; }
+    if (tab) { tab.opener = null; tab.location.href = r.data.url; } else window.location.href = r.data.url;
+  };
   const again = () => { if (!doc) return; const r = act(createEnvelope, doc.id, { signers: env.signers.map((s) => ({ id: uid('sg'), name: s.name, email: s.email, role: s.role, userId: s.userId })), ordered: env.ordered, message: env.message }); if (r.ok) go(`/esign/${r.data.id}`); else toast(t('esign.err.' + r.reason), true); };
   const who = (id?: string) => env.signers.find((s) => s.id === id)?.name ?? '';
   const pages = pageSizes(env.pages, env.view);
@@ -374,6 +388,12 @@ function Detail({ env, doc }: { env: EnvelopeX; doc?: DocRecord }) {
                     </div>
                   </div>
                   {!live && mayAct && !cannotSign(env, s.id, now) && <A to={`/esign/${env.id}/sign/${s.id}`} className="btn sm primary" data-testid="esign-open-signer"><LuPenLine aria-hidden="true" />{t('esign.detail.openSigner')}</A>}
+                  {live && mayAct && open && !late && s.status !== 'signed' && s.status !== 'declined' && (
+                    <div className="row tight es-link-acts">
+                      <Button size="sm" icon={<LuCopy aria-hidden="true" />} onClick={() => void copyLink(s.id, s.name)} data-testid="esign-copy-link">{t('esign.link.copy')}</Button>
+                      {s.role === 'firm' && <Button size="sm" variant="primary" icon={<LuPenLine aria-hidden="true" />} onClick={() => void signHere(s.id)} data-testid="esign-sign-here">{t('esign.link.signHere')}</Button>}
+                    </div>
+                  )}
                 </li>
               ))}
             </ol>

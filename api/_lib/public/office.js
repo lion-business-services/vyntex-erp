@@ -12,7 +12,7 @@ import { guard } from '../guard.js';
 import { userRpc } from '../supabase.js';
 import { limit, keyHash } from '../ratelimit.js';
 import { securityEvent } from '../audit.js';
-import { envelopeSend, envelopeRemind } from '../esign/send.js';
+import { envelopeSend, envelopeRemind, envelopeLink } from '../esign/send.js';
 import { reviewSend } from './reviews.js';
 import { newBotKey } from './bot.js';
 import { invoiceSend } from '../invoices.js';
@@ -32,6 +32,8 @@ export const SPECIALS = {
   intake_key_state: { run: direct('intake_key_state'), stepUp: false },
   envelope_send: { run: envelopeSend, stepUp: false },
   envelope_remind: { run: envelopeRemind, stepUp: false },
+  // a signer's private link to copy (WhatsApp, a text) or to sign the company's part here (0090)
+  envelope_link: { run: envelopeLink, stepUp: false },
   review_send: { run: reviewSend, stepUp: false },
   // an AI employee's key (0084): made here, shown once, only its hash reaches the database (the owner, fresh identity check)
   bot_key_issue: { run: botKeyIssue, stepUp: true },

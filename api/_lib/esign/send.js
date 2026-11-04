@@ -112,3 +112,19 @@ export async function sweepAll() {
   for (const d of open.ok ? open.data || [] : []) { try { if ((await finalize(d.tenantId, d.envelopeId)) === 'made') out.finalized += 1; } catch { /* the next run tries again */ } }
   return out;
 }
+
+/**
+ * POST /api/ws/rpc/envelope_link  { tenant, args: { p_envelope, p_signer } }  ->  { result: { url, expiresAt } }
+ * A fresh private link for any signer who has not answered yet, to copy and share (WhatsApp, a text) or to open and sign the
+ * company's part from inside the ERP (0090). The link in their email keeps working. Nothing is emailed.
+ */
+export async function envelopeLink({ request, session, cookies, tenant, args }) {
+  const id = args.p_envelope; const signer = args.p_signer;
+  if (!isUuid(id) || !isUuid(signer)) return fail(400, 'invalid_args', {}, { cookies });
+  const token = newToken();
+  const r = await userRpc(session.at, 'envelope_link_new', { p_tenant: tenant, p_envelope: id, p_signer: signer, p_token_hash: hashToken(token) });
+  if (!r.ok) { const e = upstreamError(r); e.extra = { cookies }; throw e; }
+  if (!r.data || r.data.error) return fail(409, 'rejected', { reason: (r.data && r.data.error) || 'not_open' }, { cookies });
+  const origin = (appOrigin(request) || env('APP_ORIGIN')).replace(/\/+$/, '');
+  return ok({ result: { url: `${origin}/sign/${token}`, expiresAt: r.data.expiresAt ?? null } }, { cookies });
+}

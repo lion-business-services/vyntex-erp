@@ -44,6 +44,10 @@
       "destination": "/api/public?vxpath=bot/:path*"
     },
     {
+      "source": "/api/pay/:path*",
+      "destination": "/api/public?vxpath=pay/:path*"
+    },
+    {
       "source": "/api/billing/:path*",
       "destination": "/api/billing?vxpath=:path*"
     },

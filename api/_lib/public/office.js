@@ -15,6 +15,7 @@ import { securityEvent } from '../audit.js';
 import { envelopeSend, envelopeRemind } from '../esign/send.js';
 import { reviewSend } from './reviews.js';
 import { newBotKey } from './bot.js';
+import { invoiceSend } from '../invoices.js';
 
 /** name -> { run, stepUp }. The signature every special has: ({ request, session, cookies, tenant, args, idem }) => Response. */
 /** A database function of this range called with the person's own token: the database decides, as for any allow-list entry. */
@@ -33,7 +34,15 @@ export const SPECIALS = {
   review_send: { run: reviewSend, stepUp: false },
   // an AI employee's key (0084): made here, shown once, only its hash reaches the database (the owner, fresh identity check)
   bot_key_issue: { run: botKeyIssue, stepUp: true },
+  // an invoice (0086): emailed with its pay link, then marked sent; sending a sent one again is a reminder
+  invoice_send: { run: invoiceSendOp, stepUp: false },
 };
+
+async function invoiceSendOp(c) {
+  let r;
+  try { r = await invoiceSend(c, upstreamError); } catch (e) { if (e instanceof HttpError) e.extra = { cookies: c.cookies }; throw e; }
+  return r.status === 200 ? ok({ result: r.result }, { cookies: c.cookies }) : fail(r.status, r.error, {}, { cookies: c.cookies });
+}
 
 async function botKeyIssue({ session, cookies, tenant, args }) {
   if (!isUuid(args.p_bot)) return fail(400, 'invalid_args', {}, { cookies });

@@ -194,6 +194,14 @@ hooks.daily.push(async ({ enqueue: q }) => {
   await q('vault.expire', {}, { idem: 'vault:' + day, maxAttempts: 3 });
   await q('public.purge', {}, { idem: 'purge:' + day, maxAttempts: 3 });
   await q('owner.summary', {}, { idem: 'summary:' + day, maxAttempts: 2 });
+  await q('invoices.remind', {}, { idem: 'invoices:' + day, maxAttempts: 3 });
+});
+/** Invoice reminders due today (0086): 3 days before the due date, on it, then 7 and 14 days after. */
+register('invoices.remind', async () => {
+  const r = await serviceRpc('invoice_reminders_due', {});
+  if (absent(r)) return;
+  const { invoiceReminders } = await import('../invoices.js');
+  await invoiceReminders();
 });
 
 // ---------------------------------------------------------------------------------------------------------------------

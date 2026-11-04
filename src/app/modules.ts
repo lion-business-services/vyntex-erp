@@ -84,6 +84,9 @@ export const MODULES: ModuleDef[] = [
   { id: 'esign', path: 'esign', perm: 'esign', group: 'business', icon: LuSignature, labelKey: 'nav.esign', page: lazy(() => import('@/features/esign')), count: ({ data }) => envelopesWaiting(data) },
   { id: 'messages', path: 'messages', perm: 'comms', group: 'business', icon: LuMail, labelKey: 'nav.messages', under: 'team', tabKey: 'nav.tab.clientMessages', page: lazy(() => import('@/features/messages')), count: ({ data }) => data.messages.filter((m) => m.status === 'draft').length },
   { id: 'payments', path: 'payments', perm: 'money', group: 'business', icon: LuWallet, labelKey: 'nav.money', page: lazy(() => import('@/features/payments')) },
+  // invoices are sent from the server (0086): a tab of Payments in a live workspace that has Payments
+  { id: 'invoices', path: 'invoices', perm: 'money', group: 'business', icon: LuFileText, labelKey: 'nav.invoices', under: 'payments', standalone: true,
+    page: lazy(() => import('@/features/invoices')), when: ({ data, pack }) => isLive() && moduleOn(data, pack, 'payments') },
   { id: 'reviews', path: 'reviews', perm: 'reviews', group: 'business', icon: LuStar, labelKey: 'nav.reviews', page: lazy(() => import('@/features/reviews')) },
   { id: 'deadlines', path: 'deadlines', perm: 'deadlines', group: 'business', icon: LuAlarmClock, labelKey: 'nav.deadlines', under: 'tasks', page: lazy(() => import('@/features/deadlines')) },
   { id: 'memberships', path: 'memberships', perm: 'clients', group: 'business', icon: LuCrown, labelKey: 'nav.memberships', page: lazy(() => import('@/features/memberships')) },

@@ -35,6 +35,9 @@ export const RPCS = {
   bot_list: { stepUp: false, read: true }, bot_save: { stepUp: true }, bot_set_status: { stepUp: false },
   bot_key_issue: { stepUp: true, special: 'office' }, bot_key_revoke: { stepUp: false }, bot_activity_list: { stepUp: false, read: true },
   approvals_list: { stepUp: false, read: true }, approval_decide: { stepUp: false }, approval_done: { stepUp: false },
+  // invoices (0086). Sending is the office operation invoice_send (api/_lib/public/office.js)
+  invoice_list: { stepUp: false, read: true }, invoice_save: { stepUp: false }, invoice_discard: { stepUp: false }, invoice_void: { stepUp: true },
+  invoice_send: { stepUp: false, special: 'office' },
   // exports
   export_request: { stepUp: true }, export_1099_data: { stepUp: true },
   // worker tax IDs and consent (migrations 0005 to 0007; these functions take no company argument)

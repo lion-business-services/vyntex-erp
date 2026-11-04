@@ -59,8 +59,11 @@ select test.is(test.as('a_owner', $q$select public.operator_create_company('x-tr
   'error:42501', 'a company owner cannot give trials') \g /dev/null
 insert into public.tenant_members (tenant_id, user_id, role, name, email)
   select id, test.new_user('inv_owner'), 'owner', 'Ivy', 'invited@example.com' from public.tenants where slug = 'inv-trial' \g /dev/null
+select test.ok((select status = 'awaiting_card' and trial_expires_at is null from public.tenants where slug = 'inv-trial'),
+  'an operator''s trial also waits for the card when the owner joins (0082)') \g /dev/null
+select test.ok(public.billing_trial_started((select id from public.tenants where slug = 'inv-trial'), null, true), 'the card is on file') \g /dev/null
 select test.ok((select status = 'active' and trial_expires_at > now() + interval '6 days' from public.tenants where slug = 'inv-trial'),
-  'the clock starts when the owner joins') \g /dev/null
+  'the clock starts when the card is on file') \g /dev/null
 
 -- the billing tables are closed to people, and the billing functions to everyone but the server
 select test.ok(test.blocked(test.as('a_owner', 'select 1 from app.billing_accounts')), 'an owner cannot read billing accounts') \g /dev/null

@@ -3,7 +3,9 @@
 //   quote()            what a plan costs, read from config/vyntex-build-pricing.json (through the server domain bundle)
 //   ensurePrices()     the Stripe product and prices for a plan, found by lookup key or created once (insert only:
 //                      a price in Stripe is never changed; a new pricing version gets new prices, old subscriptions keep theirs)
-//   createCheckout()   a Stripe Checkout link: the plan (monthly or yearly) plus the one-time setup fee on the first invoice
+//   createCheckout()   a Stripe Checkout link: the plan (monthly or yearly) plus the one-time setup fee on the first invoice.
+//                      With trial: true (a company waiting for its card, 0082): the 7-day trial with the card on file:
+//                      a subscription with a Stripe trial for a priced edition ($0 today), a saved card for a quoted one
 //   createPortal()     Stripe's customer portal: card, bank account, invoices, cancellation at the end of the period
 //   handleEvent()      acts on one Stripe event, read back from Stripe's API by its id (a webhook body is never trusted)
 //   daily()            pauses companies whose grace period ended, sends the trial and payment reminders once each
@@ -17,6 +19,9 @@ import { billingEmail } from './emails.js';
 const { pricing } = bundle;
 export const BILLINGS = ['monthly', 'yearly'];
 const PAYMENT_METHODS = ['card', 'us_bank_account'];
+/** The free trial takes a card (Apple Pay and Google Pay are cards): a bank debit cannot be verified on the spot. */
+const TRIAL_METHODS = ['card'];
+export const TRIAL_DAYS = 7;
 const OPEN_STATES = ['active', 'trialing'];
 
 export class BillingError extends Error {
@@ -97,9 +102,15 @@ export async function ensureCustomer(deps, company, email) {
  *   kind 'plan'    plan + billing from the pricing file (owner or operator)
  *   kind 'custom'  amounts an operator typed for a quoted edition: recurringCents, interval, setupCents, label
  */
-export async function createCheckout(deps, { company, email, origin, by, source, kind = 'plan', planId, billing, custom, lang = 'en' }) {
+export async function createCheckout(deps, { company, email, origin, by, source, kind = 'plan', planId, billing, custom, lang = 'en', trial = false }) {
   // VYNTEX's own workspace is free for good (src/config/plans.ts): nothing to pay, from any screen
   if (company.plan === 'internal') throw new BillingError('internal_workspace', 409);
+  // the free trial is decided here, never by the browser: only a company waiting for its card gets one, from its owner
+  if (trial) {
+    if (company.status !== 'awaiting_card' || company.plan !== 'trial') throw new BillingError('trial_not_available', 409);
+    if (source !== 'owner' || kind !== 'plan') throw new BillingError('trial_not_available', 409);
+    if (!pricing.isPriced(company.industry)) return saveCardCheckout(deps, { company, email, origin, lang });
+  }
   const acct = company.account || {};
   if (acct.subscription_id && ['active', 'trialing', 'past_due', 'unpaid', 'incomplete'].includes(acct.status)) throw new BillingError('already_subscribed', 409);
   const customer = await ensureCustomer(deps, company, email);
@@ -122,19 +133,26 @@ export async function createCheckout(deps, { company, email, origin, by, source,
     const q = quote(company.industry, planId, billing);
     const prices = await ensurePrices(deps, q);
     lineItems = [{ price: prices.recurring, quantity: 1 }];
-    if (prices.setup) lineItems.push({ price: prices.setup, quantity: 1 });
-    Object.assign(metadata, { plan_id: q.planId, billing: q.billing, pricing_version: String(q.version || '') });
-    record = { plan: q.planId, billing: q.billing, setup: q.setupCents, recurring: q.recurringCents };
+    // a trial charges nothing today: no one-time line on the trial's checkout
+    if (prices.setup && !trial) lineItems.push({ price: prices.setup, quantity: 1 });
+    Object.assign(metadata, { plan_id: q.planId, billing: q.billing, pricing_version: String(q.version || '') }, trial ? { trial: `${TRIAL_DAYS}d` } : {});
+    record = { plan: q.planId, billing: q.billing, setup: trial ? 0 : q.setupCents, recurring: q.recurringCents };
   }
-  const back = `${origin}/${company.slug}/settings/billing`;
+  // a trial comes back to the sign-in page of the workspace, which opens it as soon as Stripe confirms
+  const back = trial ? `${origin}/${company.slug}` : `${origin}/${company.slug}/settings/billing`;
   const session = await deps.stripe('POST', '/checkout/sessions', {
     mode: 'subscription',
     customer,
     client_reference_id: company.tenant_id,
     line_items: lineItems,
-    payment_method_types: PAYMENT_METHODS,
+    payment_method_types: trial ? TRIAL_METHODS : PAYMENT_METHODS,
     metadata,
-    subscription_data: { metadata, description: `VYNTEX ERP: ${company.name}` },
+    subscription_data: {
+      metadata, description: `VYNTEX ERP: ${company.name}`,
+      // the trial: no charge today; Stripe cancels a trial that ends with no card, it never bills one
+      ...(trial ? { trial_period_days: TRIAL_DAYS, trial_settings: { end_behavior: { missing_payment_method: 'cancel' } } } : {}),
+    },
+    ...(trial ? { payment_method_collection: 'always' } : {}),
     customer_update: { name: 'auto', address: 'auto' },
     billing_address_collection: 'auto',
     allow_promotion_codes: 'false',
@@ -142,12 +160,47 @@ export async function createCheckout(deps, { company, email, origin, by, source,
     expires_at: expiresAt,
     success_url: `${back}?billing=success`,
     cancel_url: `${back}?billing=cancelled`,
-  }, { idem: `checkout:${company.tenant_id}:${record.plan || 'custom'}:${record.billing}:${record.recurring}:${record.setup}:${source}:${Math.floor(now / 60000)}` });
+  }, { idem: `checkout:${company.tenant_id}:${record.plan || 'custom'}:${record.billing}:${record.recurring}:${record.setup}:${source}:${trial ? 'trial' : 'buy'}:${Math.floor(now / 60000)}` });
   await deps.rpc('billing_checkout_add', {
     p_session: session.id, p_tenant: company.tenant_id, p_by: by || null, p_source: source, p_plan: record.plan, p_billing: record.billing,
     p_setup: record.setup, p_recurring: record.recurring, p_expires: new Date(expiresAt * 1000).toISOString(),
   });
-  return { url: session.url, id: session.id, expiresAt: new Date(expiresAt * 1000).toISOString(), amounts: { setupCents: record.setup, recurringCents: record.recurring, billing: record.billing, plan: record.plan } };
+  return { url: session.url, id: session.id, expiresAt: new Date(expiresAt * 1000).toISOString(), trial: !!trial, amounts: { setupCents: record.setup, recurringCents: record.recurring, billing: record.billing, plan: record.plan } };
+}
+
+/** A quoted edition's trial: Stripe saves the card (setup mode), nothing is charged; VYNTEX sends the quote. */
+async function saveCardCheckout(deps, { company, email, origin, lang }) {
+  const customer = await ensureCustomer(deps, company, email);
+  const now = deps.now();
+  const expiresAt = Math.floor(now / 1000) + 3600;
+  const metadata = { vx: 'erp', tenant_id: company.tenant_id, source: 'owner', trial: 'card' };
+  const back = `${origin}/${company.slug}`;
+  const session = await deps.stripe('POST', '/checkout/sessions', {
+    mode: 'setup', customer, client_reference_id: company.tenant_id, payment_method_types: TRIAL_METHODS, currency: 'usd',
+    metadata, setup_intent_data: { metadata, description: `VYNTEX ERP trial: ${company.name}` },
+    locale: lang === 'es' ? 'es' : 'auto', expires_at: expiresAt,
+    success_url: `${back}?billing=success`, cancel_url: `${back}?billing=cancelled`,
+  }, { idem: `trial-card:${company.tenant_id}:${Math.floor(now / 60000)}` });
+  return { url: session.url, id: session.id, expiresAt: new Date(expiresAt * 1000).toISOString(), trial: true, amounts: { setupCents: 0, recurringCents: 0, billing: null, plan: null } };
+}
+
+/** Stripe's fingerprint of a card (the same card gives the same value at any company), or null. */
+async function cardFingerprint(deps, paymentMethod) {
+  const id = idOf(paymentMethod);
+  if (!id) return null;
+  const pm = typeof paymentMethod === 'object' && paymentMethod.card ? paymentMethod : await deps.stripe('GET', `/payment_methods/${id}`);
+  return pm && pm.card && typeof pm.card.fingerprint === 'string' ? pm.card.fingerprint : null;
+}
+
+/**
+ * The card that started a trial: one free trial per card. The fingerprint is kept only as a keyed hash (deps.cardHash).
+ * Answers 'new' | 'same' | 'reused' | 'unknown' (no card to check: the trial goes on, the event is logged).
+ */
+async function checkTrialCard(deps, tenant, paymentMethod) {
+  const fp = await cardFingerprint(deps, paymentMethod);
+  if (!fp || !deps.cardHash) return 'unknown';
+  const r = await deps.rpc('billing_trial_card', { p_tenant: tenant, p_card_hash: deps.cardHash(fp) });
+  return r.ok && typeof r.data === 'string' ? r.data : 'unknown';
 }
 
 let portalConfig = null;
@@ -227,10 +280,12 @@ export async function handleEvent(deps, eventId) {
   switch (type) {
     case 'checkout.session.completed':
     case 'checkout.session.async_payment_succeeded': {
+      if (obj.mode === 'setup' && (obj.metadata || {}).trial === 'card') return trialCardSaved(deps, obj);
       if (obj.mode !== 'subscription' || !obj.subscription) return { ignored: true };
       const done = await deps.rpc('billing_checkout_done', { p_session: obj.id, p_status: 'complete' });
-      const { tenant } = await syncSubscription(deps, idOf(obj.subscription), await tenantOf(deps, obj));
+      const { tenant, sub } = await syncSubscription(deps, idOf(obj.subscription), await tenantOf(deps, obj));
       if (!tenant) return { ignored: true, reason: 'unknown_company' };
+      if ((obj.metadata || {}).trial && sub && sub.status === 'trialing') return trialSubscribed(deps, { tenant, sub, session: obj, done });
       const fresh = await deps.rpc('billing_event_add', { p_tenant: tenant, p_kind: 'checkout.completed', p_stripe_id: obj.id, p_amount: obj.amount_total ?? null, p_currency: obj.currency || 'usd', p_status: obj.payment_status || null, p_facts: { source: (obj.metadata || {}).source || null } });
       if (fresh.ok && fresh.data === true) {
         const amounts = { total: obj.amount_total, plan: (obj.metadata || {}).plan_id || null, billing: (obj.metadata || {}).billing || null };
@@ -300,6 +355,64 @@ export async function handleEvent(deps, eventId) {
   }
 }
 
+/** A trial subscription has started ($0 today). One trial per card: a card that already had one starts the plan now. */
+async function trialSubscribed(deps, { tenant, sub, session, done }) {
+  const card = await checkTrialCard(deps, tenant, sub.default_payment_method);
+  let current = sub;
+  if (card === 'reused') {
+    current = await deps.stripe('POST', `/subscriptions/${sub.id}`, { trial_end: 'now', proration_behavior: 'none' }, { idem: `trial-end-now:${sub.id}` });
+    await syncSubscription(deps, sub.id, tenant);
+  }
+  const until = current.trial_end ? new Date(current.trial_end * 1000).toISOString() : null;
+  await deps.rpc('billing_trial_started', { p_tenant: tenant, p_until: until, p_clock: false });
+  const m = session.metadata || {};
+  const amounts = { plan: m.plan_id || null, billing: m.billing || null, at: card === 'reused' ? null : until, ...(await planInfo(deps, tenant, m)) };
+  const fresh = await deps.rpc('billing_event_add', { p_tenant: tenant, p_kind: card === 'reused' ? 'trial.card_reused' : 'trial.started', p_stripe_id: session.id, p_amount: 0, p_currency: 'usd', p_status: current.status || null, p_facts: { card } });
+  if (fresh.ok && fresh.data === true) {
+    const kind = card === 'reused' ? 'trial_skipped' : 'trial_started';
+    await tell(deps, { tenant, kind, to: 'owner', facts: amounts, idem: `bill:${kind}:${session.id}` });
+    await tell(deps, { tenant, kind, to: 'vyntex', facts: amounts, idem: `bill:${kind}:vx:${session.id}` });
+  }
+  return { done: true, trial: card === 'reused' ? 'skipped' : 'started', checkout: done && done.ok ? done.data : null };
+}
+
+/** A quoted edition's trial: the card is saved. It becomes the default card; the 7 days start (or not, for a reused card). */
+async function trialCardSaved(deps, session) {
+  const tenant = await tenantOf(deps, session);
+  if (!tenant) return { ignored: true, reason: 'unknown_company' };
+  const si = session.setup_intent ? await deps.stripe('GET', `/setup_intents/${idOf(session.setup_intent)}`) : null;
+  const pm = si ? si.payment_method : null;
+  if (!pm || (si && si.status !== 'succeeded')) return { ignored: true, reason: 'no_card' };
+  const customer = idOf(session.customer);
+  if (customer) await deps.stripe('POST', `/customers/${customer}`, { invoice_settings: { default_payment_method: idOf(pm) } }, { idem: `default-card:${customer}:${idOf(pm)}` });
+  const card = await checkTrialCard(deps, tenant, pm);
+  const fresh = await deps.rpc('billing_event_add', { p_tenant: tenant, p_kind: card === 'reused' ? 'trial.card_reused' : 'trial.card_saved', p_stripe_id: session.id, p_amount: 0, p_currency: 'usd', p_status: 'saved', p_facts: { card } });
+  if (card === 'reused') {
+    if (fresh.ok && fresh.data === true) {
+      await tell(deps, { tenant, kind: 'trial_card_reused', to: 'owner', facts: {}, idem: `bill:trial_card_reused:${session.id}` });
+      await tell(deps, { tenant, kind: 'trial_card_reused', to: 'vyntex', facts: {}, idem: `bill:trial_card_reused:vx:${session.id}` });
+    }
+    return { done: true, trial: 'refused' };
+  }
+  const until = new Date(deps.now() + TRIAL_DAYS * 86400000).toISOString();
+  await deps.rpc('billing_trial_started', { p_tenant: tenant, p_until: until, p_clock: true });
+  if (fresh.ok && fresh.data === true) {
+    await tell(deps, { tenant, kind: 'trial_started', to: 'owner', facts: { at: until, quoted: true }, idem: `bill:trial_started:${session.id}` });
+    await tell(deps, { tenant, kind: 'trial_started', to: 'vyntex', facts: { at: until, quoted: true }, idem: `bill:trial_started:vx:${session.id}` });
+  }
+  return { done: true, trial: 'started' };
+}
+
+/** What the plan will charge, in cents, and its name, from the pricing file (never from an event). */
+async function planInfo(deps, tenant, m) {
+  try {
+    const company = await companyOf(deps, tenant);
+    if (!company) return { amount: null, planName: null };
+    const q = quote(company.industry, m.plan_id, m.billing);
+    return { amount: q.recurringCents, planName: q.name };
+  } catch { return { amount: null, planName: null }; }
+}
+
 /** Once a day: pause companies whose grace period ended, then send the reminders that are due (each once). */
 export async function daily(deps) {
   let paused = 0; let sent = 0;
@@ -314,7 +427,13 @@ export async function daily(deps) {
   for (const n of due.ok && Array.isArray(due.data) ? due.data : []) {
     const mark = await deps.rpc('billing_notice_mark', { p_tenant: n.tenant_id, p_kind: n.kind, p_period: n.period });
     if (!mark.ok || mark.data !== true) continue;
-    const r = await tell(deps, { tenant: n.tenant_id, kind: n.kind, to: 'owner', facts: { at: n.at }, idem: `bill:${n.kind}:${n.tenant_id}:${n.period}` });
+    let facts = { at: n.at };
+    if (n.kind === 'charge_3d' || n.kind === 'charge_1d') {
+      const company = await companyOf(deps, n.tenant_id);
+      const a = (company && company.account) || {};
+      facts = { at: n.at, plan: a.plan_id || null, billing: a.billing || null, ...(await planInfo(deps, n.tenant_id, { plan_id: a.plan_id, billing: a.billing })) };
+    }
+    const r = await tell(deps, { tenant: n.tenant_id, kind: n.kind, to: 'owner', facts, idem: `bill:${n.kind}:${n.tenant_id}:${n.period}` });
     if (n.kind === 'trial_ended') await tell(deps, { tenant: n.tenant_id, kind: 'trial_ended', to: 'vyntex', facts: { at: n.at }, idem: `bill:${n.kind}:vx:${n.tenant_id}:${n.period}` });
     if (r.delivered) sent += 1;
   }

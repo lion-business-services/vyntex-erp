@@ -32,12 +32,28 @@ select test.is(public.trial_request_create('fine-name', 'Fine LLC', 'nope', 'y@e
 select test.is(test.as('a_owner', $q$select public.trial_request_create('a-b-c', 'X', 'clean', 'z@example.com', 'Z', repeat('3', 64), repeat('4', 64))$q$),
   'error:42501', 'nobody signed in can call it: the server key only') \g /dev/null
 
--- the clock starts when the owner accepts, once
+-- 0082: accepting the invitation does not open the company: it waits for a card, with no clock
 insert into public.tenant_members (tenant_id, user_id, role, name, email)
   select id, test.new_user('tr_owner'), 'owner', 'Tina Trial', 'owner@example.com' from public.tenants where slug = 'trial-sample' \g /dev/null
+select test.ok((select status = 'awaiting_card' and trial_started_at is null and trial_expires_at is null
+                from public.tenants where slug = 'trial-sample'), 'accepting the invitation leaves the company waiting for its card') \g /dev/null
+select test.ok(test.blocked(test.as('tr_owner', format('select 1 from public.clients where tenant_id = %L', (select id from public.tenants where slug = 'trial-sample')))),
+  'a company waiting for its card is closed to its own owner') \g /dev/null
+select test.ok(test.blocked(test.as('tr_owner', format($q$insert into public.tasks (tenant_id, title) values (%L, 'Before the card')$q$, (select id from public.tenants where slug = 'trial-sample')))),
+  'and nothing can be written') \g /dev/null
+select test.is(test.as('tr_owner', format('select public.billing_trial_started(%L, null, true)', (select id from public.tenants where slug = 'trial-sample'))),
+  'error:42501', 'only the server (after Stripe confirms the card) can start the trial') \g /dev/null
+select test.is(test.as('tr_owner', format('select public.billing_trial_card(%L, %L)', (select id from public.tenants where slug = 'trial-sample'), repeat('a', 64))),
+  'error:42501', 'nor record a card') \g /dev/null
+select test.ok((select count(*) = 0 from app.trial_cards), 'no card was recorded by the refused calls') \g /dev/null
+-- the card is on file: the server opens the company and the seven days start now, once
+select test.ok(public.billing_trial_card((select id from public.tenants where slug = 'trial-sample'), repeat('a', 64)) = 'new', 'a first card is new') \g /dev/null
+select test.ok(public.billing_trial_card(test.id('b'), repeat('a', 64)) = 'reused', 'the same card at another company is refused a second trial') \g /dev/null
+select test.ok(public.billing_trial_card(test.id('b'), 'not-a-hash') = 'invalid', 'only a 64-character hash is accepted') \g /dev/null
+select test.ok(public.billing_trial_started((select id from public.tenants where slug = 'trial-sample'), null, true), 'the card starts the trial') \g /dev/null
 select test.ok((select status = 'active' and trial_started_at is not null
                 and trial_expires_at between now() + interval '168 hours' - interval '1 minute' and now() + interval '168 hours' + interval '1 minute'
-                from public.tenants where slug = 'trial-sample'), 'accepting the invitation opens the company for seven days') \g /dev/null
+                from public.tenants where slug = 'trial-sample'), 'the company is open for seven days from the card') \g /dev/null
 select trial_expires_at as first_deadline from public.tenants where slug = 'trial-sample' \gset
 insert into public.tenant_members (tenant_id, user_id, role, name, email)
   select id, test.new_user('tr_owner2'), 'owner', 'Second Owner', 'owner2@example.com' from public.tenants where slug = 'trial-sample' \g /dev/null

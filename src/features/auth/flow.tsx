@@ -27,7 +27,8 @@ type Stage =
   | { at: 'checking' } | { at: 'unconfigured' } | { at: 'offline' }
   | { at: 'form'; error?: string } | { at: 'forgot' }
   | { at: 'verify' } | { at: 'recovery' } | { at: 'enroll' } | { at: 'codes'; codes: string[]; email: string }
-  | { at: 'picker'; list: Membership[] } | { at: 'paused'; name: string; tenantId: string; role: string };
+  | { at: 'picker'; list: Membership[] } | { at: 'paused'; name: string; tenantId: string; role: string }
+  | { at: 'card'; name: string; tenantId: string; role: string };
 
 const quiet = { stepUp: false, session: false } as const;
 
@@ -346,6 +347,8 @@ export function AuthFlow({ slug, onReady }: { slug?: string; /** A page that is 
     const mine = slug ? membershipFor(s, slug) : undefined;
     // a company VYNTEX has paused: say so, instead of a workspace that refuses every request
     if (mine && mine.status === 'suspended') { show({ at: 'paused', name: mine.name, tenantId: mine.tenantId, role: mine.role }); return; }
+    // a new trial waiting for its card (0082): the workspace opens once Stripe confirms the card, never before
+    if (mine && mine.status === 'awaiting_card') { show({ at: 'card', name: mine.name, tenantId: mine.tenantId, role: mine.role }); return; }
     if (slug && mine) {
       const gate = await openWorkspace(slug);
       if (gate.state === 'ready') return;   // the session is set: the page above draws the workspace
@@ -388,6 +391,13 @@ export function AuthFlow({ slug, onReady }: { slug?: string; /** A page that is 
       body = <><div className="note warn" role="status" data-testid="auth-paused" tabIndex={-1} data-autofocus><p className="small">{t('auth.paused.body', { company: stage.name })}</p></div>
         {/* an owner or manager can see why and pay right here (VYNTEX ERP): the workspace opens as soon as Stripe confirms */}
         {PausedBilling && (stage.role === 'owner' || stage.role === 'manager') && <Suspense fallback={null}><PausedBilling tenantId={stage.tenantId} compact /></Suspense>}
+        <div className="row"><Button onClick={() => { void other(); }}>{t('auth.paused.other')}</Button></div></>;
+      break;
+    case 'card':
+      title = t('bill.trial.title');
+      body = <>{PausedBilling && (stage.role === 'owner' || stage.role === 'manager')
+          ? <Suspense fallback={null}><PausedBilling tenantId={stage.tenantId} compact trial onReady={() => { void advance(true); }} /></Suspense>
+          : <div className="note" role="status" data-testid="auth-card-wait"><p className="small">{t('bill.trial.ownerOnly', { company: stage.name })}</p></div>}
         <div className="row"><Button onClick={() => { void other(); }}>{t('auth.paused.other')}</Button></div></>;
       break;
     case 'picker': title = t('auth.picker.title'); sub = t('auth.picker.sub'); body = <Picker list={stage.list} />; break;

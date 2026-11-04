@@ -250,3 +250,120 @@ test('every owner email is bilingual, uses the official phone only, and has no l
     assert.match(m.text, /https:\/\/erp\.vyntexusa\.com\/acme-build\/settings\/billing/);
   }
 });
+
+/* ---------- the 7-day trial with a card on file (0082) ---------- */
+
+/** The fake world, plus the card side of Stripe: payment methods, setup intents, ending a trial, the default card. */
+function trialWorld({ fingerprint = 'fp_card_1', trialCard = 'new', sub = {}, si = null } = {}) {
+  const w = world({ rpcData: { billing_trial_card: trialCard } });
+  const base = w.deps.stripe;
+  const subscription = { id: 'sub_trial1', status: 'trialing', customer: 'cus_known', default_payment_method: 'pm_1', trial_end: 1_800_604_800, current_period_end: 1_800_604_800, metadata: { tenant_id: TENANT, plan_id: 'builder', billing: 'monthly', trial: '7d' }, ...sub };
+  w.deps.stripe = async (method, path, params = {}, opts = {}) => {
+    if (method === 'GET' && path === '/payment_methods/pm_1') { w.calls.stripe.push({ method, path }); return { id: 'pm_1', card: { fingerprint } }; }
+    if (method === 'GET' && path.startsWith('/setup_intents/')) { w.calls.stripe.push({ method, path }); return si ?? { id: 'seti_1', status: 'succeeded', payment_method: 'pm_1' }; }
+    if (method === 'GET' && path === '/subscriptions/sub_trial1') { w.calls.stripe.push({ method, path }); return subscription; }
+    if (method === 'POST' && path === '/subscriptions/sub_trial1') { w.calls.stripe.push({ method, path, params, idem: opts.idem }); return { ...subscription, status: 'active', trial_end: null }; }
+    if (method === 'POST' && path.startsWith('/customers/cus_')) { w.calls.stripe.push({ method, path, params, idem: opts.idem }); return { id: path.split('/')[2] }; }
+    return base(method, path, params, opts);
+  };
+  w.deps.cardHash = (fp) => 'f'.repeat(63) + String(fp.length % 10);
+  return w;
+}
+const waiting = (extra = {}) => company({ status: 'awaiting_card', plan: 'trial', ...extra });
+
+test('a trial checkout: only for a company waiting for its card, $0 today, 7 Stripe trial days, card only, cancel without a card', async () => {
+  const { deps, calls } = trialWorld();
+  const out = await B.createCheckout(deps, { company: waiting(), email: 'owner@acme.test', origin: 'https://erp.vyntexusa.com', by: null, source: 'owner', planId: 'builder', billing: 'monthly', trial: true });
+  assert.equal(out.trial, true);
+  const s = calls.stripe.find((c) => c.path === '/checkout/sessions').params;
+  assert.equal(s.mode, 'subscription');
+  assert.deepEqual(s.payment_method_types, ['card']);
+  assert.equal(s.payment_method_collection, 'always');
+  assert.equal(s.subscription_data.trial_period_days, 7);
+  assert.deepEqual(s.subscription_data.trial_settings, { end_behavior: { missing_payment_method: 'cancel' } });
+  assert.equal(s.metadata.trial, '7d');
+  assert.equal(s.line_items.length, 1, 'no one-time line: nothing is charged today');
+  assert.equal(s.success_url, 'https://erp.vyntexusa.com/acme-build?billing=success', 'back to the sign-in page that opens the workspace');
+  // the browser cannot ask for a trial for a company that is not waiting for its card
+  for (const c of [company({ status: 'active' }), waiting({ plan: 'pro' })]) {
+    await assert.rejects(B.createCheckout(deps, { company: c, email: 'x@y.z', origin: 'https://erp.vyntexusa.com', source: 'owner', planId: 'builder', billing: 'monthly', trial: true }), (e) => e.code === 'trial_not_available');
+  }
+  await assert.rejects(B.createCheckout(deps, { company: waiting(), origin: 'https://erp.vyntexusa.com', source: 'operator', planId: 'builder', billing: 'monthly', trial: true }), (e) => e.code === 'trial_not_available');
+  await assert.rejects(B.createCheckout(deps, { company: waiting({ plan: 'internal' }), origin: 'https://erp.vyntexusa.com', source: 'owner', planId: 'builder', billing: 'monthly', trial: true }), (e) => e.code === 'internal_workspace');
+});
+
+test('a quoted edition\'s trial saves the card (setup mode): nothing is charged', async () => {
+  const { deps, calls } = trialWorld();
+  const out = await B.createCheckout(deps, { company: waiting({ industry: 'practice' }), email: 'owner@acme.test', origin: 'https://erp.vyntexusa.com', source: 'owner', planId: '', billing: 'monthly', trial: true });
+  assert.equal(out.trial, true);
+  const s = calls.stripe.find((c) => c.path === '/checkout/sessions').params;
+  assert.equal(s.mode, 'setup');
+  assert.deepEqual(s.payment_method_types, ['card']);
+  assert.equal(s.metadata.trial, 'card');
+  assert.equal(s.line_items, undefined);
+});
+
+test('the trial subscription opens the company, starts the 7 days and emails the terms; a card that had a trial starts the plan now', async () => {
+  const session = { id: 'cs_test_trial', mode: 'subscription', subscription: 'sub_trial1', customer: 'cus_known', amount_total: 0, metadata: { tenant_id: TENANT, plan_id: 'builder', billing: 'monthly', trial: '7d', source: 'owner' } };
+  {
+    const w = trialWorld();
+    w.deps.stripe = ((inner) => async (m, p, a, o) => (m === 'GET' && p === '/events/evt_t1' ? { id: 'evt_t1', type: 'checkout.session.completed', data: { object: session } } : inner(m, p, a, o)))(w.deps.stripe);
+    const r = await B.handleEvent(w.deps, 'evt_t1');
+    assert.equal(r.trial, 'started');
+    const started = w.calls.rpc.find((c) => c.fn === 'billing_trial_started');
+    assert.deepEqual([started.args.p_clock, started.args.p_until], [false, new Date(1_800_604_800 * 1000).toISOString()]);
+    assert.equal(w.calls.rpc.find((c) => c.fn === 'billing_trial_card').args.p_card_hash.length, 64, 'only a keyed hash of the card leaves the server');
+    const toOwner = w.calls.mail.find((m) => JSON.stringify(m.to).includes('owner@acme.test'));
+    assert.match(toOwner.text, /\$0\.00/);
+    assert.match(toOwner.text, /\$169\.00 a month/);
+    assert.match(toOwner.text, /unless you cancel/);
+    assert.ok(!w.calls.stripe.some((c) => c.method === 'POST' && c.path === '/subscriptions/sub_trial1'), 'a new card keeps its trial');
+    // the same event again: nothing twice
+    const n = w.calls.mail.length; await B.handleEvent(w.deps, 'evt_t1'); assert.equal(w.calls.mail.length, n);
+  }
+  {
+    const w = trialWorld({ trialCard: 'reused' });
+    w.deps.stripe = ((inner) => async (m, p, a, o) => (m === 'GET' && p === '/events/evt_t2' ? { id: 'evt_t2', type: 'checkout.session.completed', data: { object: session } } : inner(m, p, a, o)))(w.deps.stripe);
+    const r = await B.handleEvent(w.deps, 'evt_t2');
+    assert.equal(r.trial, 'skipped');
+    const end = w.calls.stripe.find((c) => c.method === 'POST' && c.path === '/subscriptions/sub_trial1');
+    assert.deepEqual(end.params, { trial_end: 'now', proration_behavior: 'none' });
+    assert.match(w.calls.mail.find((m) => JSON.stringify(m.to).includes('owner@acme.test')).subject, /plan has started/);
+  }
+});
+
+test('a saved card (quoted edition) becomes the default card and starts the 168-hour clock; a reused card does not', async () => {
+  const session = { id: 'cs_test_card', mode: 'setup', setup_intent: 'seti_1', customer: 'cus_known', metadata: { tenant_id: TENANT, trial: 'card', source: 'owner' } };
+  {
+    const w = trialWorld();
+    w.deps.stripe = ((inner) => async (m, p, a, o) => (m === 'GET' && p === '/events/evt_c1' ? { id: 'evt_c1', type: 'checkout.session.completed', data: { object: session } } : inner(m, p, a, o)))(w.deps.stripe);
+    const r = await B.handleEvent(w.deps, 'evt_c1');
+    assert.equal(r.trial, 'started');
+    assert.deepEqual(w.calls.stripe.find((c) => c.method === 'POST' && c.path === '/customers/cus_known').params, { invoice_settings: { default_payment_method: 'pm_1' } });
+    assert.equal(w.calls.rpc.find((c) => c.fn === 'billing_trial_started').args.p_clock, true);
+  }
+  {
+    const w = trialWorld({ trialCard: 'reused' });
+    w.deps.stripe = ((inner) => async (m, p, a, o) => (m === 'GET' && p === '/events/evt_c2' ? { id: 'evt_c2', type: 'checkout.session.completed', data: { object: session } } : inner(m, p, a, o)))(w.deps.stripe);
+    const r = await B.handleEvent(w.deps, 'evt_c2');
+    assert.equal(r.trial, 'refused');
+    assert.ok(!w.calls.rpc.some((c) => c.fn === 'billing_trial_started'), 'no trial for a card that already had one');
+  }
+  {
+    const w = trialWorld({ si: { id: 'seti_2', status: 'requires_payment_method', payment_method: null } });
+    w.deps.stripe = ((inner) => async (m, p, a, o) => (m === 'GET' && p === '/events/evt_c3' ? { id: 'evt_c3', type: 'checkout.session.completed', data: { object: { ...session, setup_intent: 'seti_2' } } } : inner(m, p, a, o)))(w.deps.stripe);
+    assert.equal((await B.handleEvent(w.deps, 'evt_c3')).reason, 'no_card');
+  }
+});
+
+test('the reminders before the first charge name the date, the amount and how to cancel, in both languages', () => {
+  const c = { name: 'Acme Build', slug: 'acme-build' };
+  for (const kind of ['charge_3d', 'charge_1d']) {
+    const m = billingEmail(kind, { company: c, audience: 'owner', origin: 'https://erp.vyntexusa.com', at: '2027-03-10T12:00:00Z', amount: 16900, billing: 'monthly', planName: 'VYNTEX ERP Builder' });
+    assert.match(m.text, /\$169\.00/);
+    assert.match(m.text, /cancel/i);
+    assert.match(m.text, /cancelar/i);
+    assert.match(m.text, /https:\/\/erp\.vyntexusa\.com\/acme-build\/settings\/billing/);
+    assert.ok(!/[—–]/.test(m.text + m.subject), 'no long dashes');
+  }
+});

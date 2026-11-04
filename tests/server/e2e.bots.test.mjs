@@ -132,7 +132,7 @@ test('the owner adds an AI employee, issues its key once, and the bot works with
   const tools = (await mcp(key, 'tools/list', {})).json.result.tools.map((t) => t.name);
   assert.ok(tools.includes('leads_create') && tools.includes('messages_draft') && tools.includes('approvals_request'));
   assert.ok(!tools.includes('team_list'), 'no team access, no team tool');
-  assert.ok(!tools.some((t) => /_(send|delete|remove|pay|charge|refund|publish|post|price|sign)$/.test(t)), 'no tool sends, deletes, pays, publishes or prices');
+  assert.ok(!tools.filter((t) => t !== 'chat_send').some((t) => /_(send|delete|remove|pay|charge|refund|publish|post|price|sign)$/.test(t)), 'no tool sends, deletes, pays, publishes or prices (chat_send is the internal team chat, never a client)');
   assert.equal((await mcp(key, 'resources/list', {})).json.error.code, -32601);
 
   // the tools, on this company only

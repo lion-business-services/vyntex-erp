@@ -54,6 +54,11 @@ async function run(bot, tool, args) {
   if (args !== undefined && !isPlainObject(args)) return { error: 'invalid_arguments' };
   const r = await serviceRpc('bot_call', { p_bot: bot.bot, p_tool: dbName(tool), p_args: args || {} });
   if (!r.ok) throw new HttpError(503, 'upstream_unavailable');
+  // a bot's chat message that @mentions another AI employee reaches that one too
+  if (tool === 'chat_send' && r.data && Array.isArray(r.data.bots) && r.data.bots.length) {
+    const { queueBots } = await import('../chat/index.js');
+    await queueBots(bot.tenant, r.data.id, r.data.bots);
+  }
   return r.data;
 }
 

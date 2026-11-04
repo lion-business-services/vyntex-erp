@@ -7,7 +7,7 @@
 //   Connection   what to give a bot's server: the MCP address, the plain address and the header
 // Only in the VYNTEX USA workspace (plan internal), signed in, for people who manage access (owner, manager).
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LuBot, LuCheck, LuCopy, LuKeyRound, LuPause, LuPencil, LuPlay, LuPlus, LuSend, LuX } from 'react-icons/lu';
+import { LuBot, LuCheck, LuCopy, LuKeyRound, LuMessagesSquare, LuPause, LuPencil, LuPlay, LuPlus, LuSend, LuX } from 'react-icons/lu';
 import type { PageProps } from '@/app/modules';
 import { useApp } from '@/app/hooks';
 import { A } from '@/app/router';
@@ -144,6 +144,7 @@ function Team({ bots, owner, reload }: { bots: Bot[] | null; owner: boolean; rel
   const { t, dateTime } = useApp();
   const [editing, setEditing] = useState<Partial<Bot> | null>(null);
   const [shown, setShown] = useState<{ name: string; secret: string } | null>(null);
+  const [hook, setHook] = useState<Bot | null>(null);
   const [busy, setBusy] = useState('');
   if (!bots) return <Card><p className="muted">{t('ai.loading')}</p></Card>;
 
@@ -191,11 +192,15 @@ function Team({ bots, owner, reload }: { bots: Bot[] | null; owner: boolean; rel
                   <span>{b.hasKey ? t('ai.bot.keyHint', { hint: b.keyHint ?? '' }) : t('ai.bot.noKey')}</span>
                   <span>·</span>
                   <span>{b.lastUsedAt ? t('ai.bot.lastUsed', { when: dateTime(b.lastUsedAt) }) : t('ai.bot.never')}</span>
+                  <span>·</span>
+                  <LuMessagesSquare aria-hidden="true" />
+                  <span>{b.webhookUrl ? t('ai.hook.on', { hint: b.webhookHint ?? '' }) : t('ai.hook.off')}</span>
                 </div>
                 <div className="row tight wrap">
                   <Button size="sm" variant="ghost" icon={b.status === 'active' ? <LuPause /> : <LuPlay />} disabled={busy === b.id} onClick={() => void toggle(b)}>{t(b.status === 'active' ? 'ai.bot.pause' : 'ai.bot.resume')}</Button>
                   {owner && <Button size="sm" variant="ghost" icon={<LuKeyRound />} disabled={busy === b.id} onClick={() => void issue(b)} data-testid="ai-issue">{t(b.hasKey ? 'ai.bot.replace' : 'ai.bot.issue')}</Button>}
                   {b.hasKey && <Button size="sm" variant="ghost" icon={<LuX />} disabled={busy === b.id} onClick={() => void revoke(b)}>{t('ai.bot.revoke')}</Button>}
+                  {owner && <Button size="sm" variant="ghost" icon={<LuMessagesSquare />} onClick={() => setHook(b)} data-testid="ai-hook">{t('ai.hook.set')}</Button>}
                   {owner && <Button size="sm" variant="ghost" icon={<LuPencil />} onClick={() => setEditing(b)}>{t('ai.bot.edit')}</Button>}
                 </div>
               </section>
@@ -205,6 +210,7 @@ function Team({ bots, owner, reload }: { bots: Bot[] | null; owner: boolean; rel
       </Card>
       {editing && <BotForm bot={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); toast(t('ai.bot.saved')); await reload(); }} />}
       {shown && <KeyShown name={shown.name} secret={shown.secret} onClose={() => setShown(null)} />}
+      {hook && <HookForm bot={hook} onClose={() => setHook(null)} onDone={async (secret) => { const name = hook.name; setHook(null); await reload(); if (secret) setShown({ name: name + ' · ' + t('ai.hook.title'), secret }); else toast(t('ai.hook.cleared')); }} />}
     </>
   );
 }
@@ -242,6 +248,28 @@ function BotForm({ bot, onClose, onSaved }: { bot: Partial<Bot>; onClose: () => 
         ))}
       </div>
       <p className="xs dim">{t('ai.never')}</p>
+      {err && <Note tone="bad">{err}</Note>}
+    </Modal>
+  );
+}
+
+function HookForm({ bot, onClose, onDone }: { bot: Bot; onClose: () => void; onDone: (secret: string | null) => Promise<void> }) {
+  const { t } = useApp();
+  const [url, setUrl] = useState(bot.webhookUrl ?? '');
+  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false);
+  const save = async (value: string) => {
+    if (value && !/^https:\/\/[A-Za-z0-9.-]+(:[0-9]{2,5})?(\/\S*)?$/.test(value)) { setErr(t('ai.hook.bad')); return; }
+    setBusy(true); const r = await botApi.setWebhook(bot.id, value); setBusy(false);
+    if (!r.ok) { setErr(t('ai.reason.generic')); return; }
+    await onDone(r.data.secret);
+  };
+  return (
+    <Modal title={t('ai.hook.title') + ': ' + bot.name} onClose={onClose} labelClose={t('common.close')}
+      footer={<>{bot.webhookUrl && <Button variant="ghost" disabled={busy} onClick={() => void save('')}>{t('ai.hook.clear')}</Button>}
+        <Button variant="primary" disabled={busy || !url.trim()} onClick={() => void save(url.trim())} data-testid="ai-hook-save">{t('ai.form.save')}</Button></>}>
+      <p className="small">{t('ai.hook.lead', { name: bot.name })}</p>
+      <Field label={t('ai.hook.url')} htmlFor="ai-hook-url" hint={t('ai.hook.hint')}><input id="ai-hook-url" className="input" type="url" placeholder="https://" value={url} maxLength={500} onChange={(e) => setUrl(e.target.value)} data-testid="ai-hook-url" /></Field>
+      <p className="xs dim">{t('ai.hook.sign')}</p>
       {err && <Note tone="bad">{err}</Note>}
     </Modal>
   );

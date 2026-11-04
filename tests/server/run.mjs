@@ -60,6 +60,8 @@ if (unitOnly) process.exit(status);
     run(['e2e.bots.test.mjs'], { ...process.env, ...dirs, VX_PG_PUBLIC_READY: '1' });
     console.log('== end-to-end tests of invoices and their Stripe pay link (e2e.invoices.test.mjs) on the same database');
     run(['e2e.invoices.test.mjs'], { ...process.env, ...dirs, VX_PG_PUBLIC_READY: '1' });
+    console.log('== end-to-end tests of team chat, its delivery to AI employees and translation (e2e.chat.test.mjs) on the same database');
+    run(['e2e.chat.test.mjs'], { ...process.env, ...dirs, VX_PG_PUBLIC_READY: '1' });
   } finally {
     spawnSync('bash', [path.join(here, 'pg_local.sh'), 'stop'], { env: publicEnv });
   }

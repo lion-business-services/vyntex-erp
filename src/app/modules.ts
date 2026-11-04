@@ -7,7 +7,7 @@ import {
   LuAlarmClock, LuArmchair, LuBadgeCheck, LuCrown, LuPercent, LuBanknote, LuBookOpen, LuBriefcase, LuCalculator, LuCalendarClock, LuCalendarDays, LuChartColumn, LuFileText, LuHandCoins,
   LuHardHat, LuLayoutDashboard, LuLightbulb, LuListChecks, LuLock, LuMail, LuPlug, LuScrollText, LuSettings, LuShare2, LuShieldCheck, LuSignature, LuSparkles,
   LuStar, LuUserPlus, LuUsers, LuUsersRound, LuWallet, LuZap,
-  LuTruck, LuWrench, LuCalendarCheck, LuClipboardCheck, LuPackageOpen, LuBot,
+  LuTruck, LuWrench, LuCalendarCheck, LuClipboardCheck, LuPackageOpen, LuBot, LuMessagesSquare,
 } from 'react-icons/lu';
 import type { ModuleId } from '@/domain/types';
 import type { Permission } from '@/domain/permissions';
@@ -57,6 +57,8 @@ export interface ModuleDef {
   under?: ModuleId;
   /** The tab label when it is shown inside a section (defaults to the menu label). */
   tabKey?: string;
+  /** The place of its tab inside the section (smaller first; the host is always first). */
+  tabOrder?: number;
 }
 
 export const MODULES: ModuleDef[] = [
@@ -82,7 +84,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'opportunities', path: 'opportunities', perm: 'opportunities', group: 'business', icon: LuLightbulb, labelKey: 'nav.opportunities', page: lazy(() => import('@/features/opportunities')) },
   { id: 'documents', path: 'documents', perm: 'documents', group: 'business', icon: LuFileText, labelKey: 'nav.documents', page: lazy(() => import('@/features/documents')) },
   { id: 'esign', path: 'esign', perm: 'esign', group: 'business', icon: LuSignature, labelKey: 'nav.esign', page: lazy(() => import('@/features/esign')), count: ({ data }) => envelopesWaiting(data) },
-  { id: 'messages', path: 'messages', perm: 'comms', group: 'business', icon: LuMail, labelKey: 'nav.messages', under: 'team', tabKey: 'nav.tab.clientMessages', page: lazy(() => import('@/features/messages')), count: ({ data }) => data.messages.filter((m) => m.status === 'draft').length },
+  { id: 'messages', path: 'messages', perm: 'comms', group: 'business', icon: LuMail, labelKey: 'nav.messages', under: 'team', tabOrder: 20, tabKey: 'nav.tab.clientMessages', page: lazy(() => import('@/features/messages')), count: ({ data }) => data.messages.filter((m) => m.status === 'draft').length },
   { id: 'payments', path: 'payments', perm: 'money', group: 'business', icon: LuWallet, labelKey: 'nav.money', page: lazy(() => import('@/features/payments')) },
   // invoices are sent from the server (0086): a tab of Payments in a live workspace that has Payments
   { id: 'invoices', path: 'invoices', perm: 'money', group: 'business', icon: LuFileText, labelKey: 'nav.invoices', under: 'payments', standalone: true,
@@ -104,8 +106,11 @@ export const MODULES: ModuleDef[] = [
   { id: 'integrations', path: 'integrations', perm: 'integrations', group: 'system', icon: LuPlug, labelKey: 'nav.integrations', page: lazy(() => import('@/features/integrations')) },
   { id: 'assistant', path: 'assistant', perm: 'assistant', group: 'system', icon: LuSparkles, labelKey: 'nav.assistant', page: lazy(() => import('@/features/assistant')), when: ({ data, pack }) => assistantOn(data, pack) },
   { id: 'settings', path: 'settings', perm: 'settings', group: 'system', icon: LuSettings, labelKey: 'nav.settings', page: lazy(() => import('@/features/settings')) },
+  // the team's chat (0087): a tab of Team, right after the profiles, in a live workspace with a Team section
+  { id: 'teamchat', path: 'chat', perm: 'team', group: 'business', icon: LuMessagesSquare, labelKey: 'nav.teamchat', under: 'team', tabOrder: 10, standalone: true,
+    page: lazy(() => import('@/features/teamchat')), when: ({ data, pack }) => isLive() && moduleOn(data, pack, 'team') },
   // VYNTEX USA's own workspace only (plan internal), signed in: its AI employees and their approvals (0084)
-  { id: 'aiteam', path: 'ai-employees', perm: 'users', group: 'system', icon: LuBot, labelKey: 'nav.aiteam', under: 'team', page: lazy(() => import('@/features/aiteam')), standalone: true,
+  { id: 'aiteam', path: 'ai-employees', perm: 'users', group: 'system', icon: LuBot, labelKey: 'nav.aiteam', under: 'team', tabOrder: 30, page: lazy(() => import('@/features/aiteam')), standalone: true,
     when: () => isLive() && session()?.planId === INTERNAL_PLAN },
   { id: 'security', path: 'security', perm: 'users', group: 'system', icon: LuLock, labelKey: 'nav.security', page: lazy(() => import('@/features/security')) },
   { id: 'audit', path: 'audit', perm: 'audit', group: 'system', icon: LuScrollText, labelKey: 'nav.audit', page: lazy(() => import('@/features/audit')) },
@@ -150,7 +155,7 @@ export function menuFor(app: Pick<App, 'data' | 'pack' | 'can'>): MenuEntry[] {
   const list = modulesFor(app);
   const shown = new Set(list.map((m) => m.id));
   const hosted = (m: ModuleDef) => !!m.under && shown.has(m.under);
-  return list.filter((m) => !hosted(m)).map((m) => ({ module: m, tabs: [m, ...list.filter((c) => hosted(c) && c.under === m.id)] }));
+  return list.filter((m) => !hosted(m)).map((m) => ({ module: m, tabs: [m, ...list.filter((c) => hosted(c) && c.under === m.id).sort((a, b) => (a.tabOrder ?? 50) - (b.tabOrder ?? 50))] }));
 }
 /** The section a screen is shown in (its tabs), or undefined when it stands alone. */
 export function sectionOf(id: ModuleDef['id'], app: Pick<App, 'data' | 'pack' | 'can'>): MenuEntry | undefined {

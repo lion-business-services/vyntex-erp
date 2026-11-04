@@ -140,6 +140,8 @@ select test.ok(pg_temp.call('sterling', 'approvals.request', '{"kind":"launch_ro
 select test.ok(test.j('hq_staff', format('select public.approval_decide(%L, %L, %L)', test.id('hq'), :'ap', 'approved')) ->> 'error' = '42501', 'staff cannot decide') \g /dev/null
 select test.ok(test.j('bx_owner', format('select public.approval_decide(%L, %L, %L)', test.id('bx'), :'ap', 'approved')) ->> 'decided' = 'false', 'another company cannot decide it') \g /dev/null
 select test.ok(test.w('hq_manager', format('update public.messages set status = ''queued'' where id = %L', :'msg')) like '42501:%', 'a person cannot queue a bot''s draft directly') \g /dev/null
+select test.ok(test.w('hq_manager', format('update public.messages set status = ''queued'', extra = ''{}'' where id = %L', :'msg')) like '42501:%', 'not even by removing its mark (0089)') \g /dev/null
+select test.ok(test.w('hq_manager', format('update public.messages set extra = ''{}'' where id = %L', :'msg')) = 'ok' and (select extra ? 'drafted_by_bot' from public.messages where id = :'msg'::uuid), 'the mark stays on an edit') \g /dev/null
 select test.ok(test.j('hq_owner', format('select public.approval_decide(%L, %L, %L)', test.id('hq'), :'ap3', 'rejected')) = '{"decided": true, "queued": false}'::jsonb, 'the owner decides any level') \g /dev/null
 select test.ok(test.j('hq_manager', format('select public.approval_decide(%L, %L, %L, %L)', test.id('hq'), :'ap', 'approved', 'Go ahead')) = '{"decided": true, "queued": true}'::jsonb,
   'a manager approves; the bot''s draft is queued at once') \g /dev/null

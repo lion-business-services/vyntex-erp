@@ -38,7 +38,9 @@ test('the VYNTEX USA owner adds an AI employee, gives it a key, and approves wha
   const hq = await st.vyntex.company({ industry: 'build', name: 'VYNTEX USA Sample', slug: 'vyntex-hq-sample', plan: 'internal' });
   const p = await ownerOf(hq, 'Daysi Sample');
   const base = '/' + hq.slug;
-  await p.page.click('[data-nav=ai-employees]');
+  // AI employees is a tab of Team
+  await p.page.click('[data-nav=team]');
+  await p.page.click('[data-testid=section-tabs] [data-tab=aiteam]');
   await p.page.waitForSelector('[data-testid=aiteam]');
   assert.match(await p.page.innerText('[data-testid=aiteam]'), /Access is not approval/);
 
@@ -99,5 +101,7 @@ test('the VYNTEX USA owner adds an AI employee, gives it a key, and approves wha
   // another company has no AI employees screen
   const other = await st.vyntex.company({ industry: 'build', name: 'Other Builders', slug: 'other-builders-ai', plan: 'quoted' });
   const o = await ownerOf(other, 'Oscar Sample');
-  assert.equal(await o.page.locator('[data-nav=ai-employees]').count(), 0);
+  await o.page.click('[data-nav=team]');
+  await o.page.waitForSelector('[data-testid=section-tabs]');
+  assert.equal(await o.page.locator('[data-tab=aiteam]').count(), 0);
 });

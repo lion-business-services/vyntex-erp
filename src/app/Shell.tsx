@@ -23,7 +23,7 @@ import { INTERNAL_PLAN } from '@/config/plans';
 import { money } from '@/lib/money';
 import { session } from '@/platform/session';
 import { useStoredImage } from '@/features/settings/image';
-import { GROUPS, TEAM_ICON_OFFICE, modulesFor, type ModuleDef } from './modules';
+import { GROUPS, TEAM_ICON_OFFICE, menuFor, type ModuleDef } from './modules';
 import { searchAll } from './search';
 import { assistantOn } from '@/features/assistant/deploy';
 import { ThemeToggle } from '@/ui/ThemeToggle';
@@ -46,7 +46,7 @@ function inkOn(hex: string): string {
 
 const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
 
-interface NavItem { to: string; label: string; icon: ReactNode; count?: number; countBad?: boolean; group: ModuleDef['group'] }
+interface NavItem { to: string; label: string; icon: ReactNode; count?: number; countBad?: boolean; group: ModuleDef['group']; /** the other screens of its section */ also?: string[] }
 
 export function Shell({ children, onTour }: { children: ReactNode; onTour: () => void }) {
   const app = useApp();
@@ -78,11 +78,13 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
   const list = useMemo(() => notices(data, { compliance: pack.compliance, viewer }), [data, pack.compliance, viewer]);
   const unread = list.filter((n) => !data.readNotifications.includes(n.id));
 
-  const modules = useMemo(() => modulesFor(app), [app]);
-  const nav: NavItem[] = isWorker ? [{ to: '', label: t('nav.portal'), icon: <LuHardHat />, group: 'work' }] : modules.map((m) => {
+  const menu_ = useMemo(() => menuFor(app), [app]);
+  const nav: NavItem[] = isWorker ? [{ to: '', label: t('nav.portal'), icon: <LuHardHat />, group: 'work' }] : menu_.map(({ module: m, tabs }) => {
     // the team page of an edition without field workers is the office team
     const Icon = m.id === 'team' && !pack.usesWorkers ? TEAM_ICON_OFFICE : m.icon;
-    return { to: m.path ? '/' + m.path : '', label: t(m.labelKey), icon: <Icon />, count: m.count?.(app), countBad: m.countBad, group: m.group };
+    // a section counts what waits in any of its tabs
+    const count = tabs.reduce((n, x) => n + (x.count?.(app) ?? 0), 0);
+    return { to: m.path ? '/' + m.path : '', label: t(m.labelKey), icon: <Icon />, count: count || undefined, countBad: tabs.some((x) => x.countBad && (x.count?.(app) ?? 0) > 0), group: m.group, also: tabs.slice(1).map((x) => x.path) };
   });
   const visible = nav;
   const groups = GROUPS;
@@ -119,7 +121,7 @@ export function Shell({ children, onTour }: { children: ReactNode; onTour: () =>
               <div key={g}>
                 {!isWorker && g !== 'work' && <div className="nav-cap">{t('nav.group.' + g)}</div>}
                 {items.map((n) => (
-                  <A key={n.to} to={n.to} aria-current={(n.to.slice(1) || '') === section ? 'page' : undefined} data-nav={n.to.slice(1) || 'dashboard'}>
+                  <A key={n.to} to={n.to} aria-current={(n.to.slice(1) || '') === section || n.also?.includes(section) ? 'page' : undefined} data-nav={n.to.slice(1) || 'dashboard'}>
                     {n.icon}<span>{n.label}</span>{!!n.count && <span className={cx('count', n.countBad && 'bad')}>{n.count}</span>}
                   </A>
                 ))}

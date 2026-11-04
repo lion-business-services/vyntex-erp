@@ -5,6 +5,7 @@ import type { Dict } from './index';
 
 export const appDict: Dict = {
   en: {
+    'nav.tab.profiles': 'Profiles', 'nav.tab.clientMessages': 'Client messages', 'nav.tab.teamCalendar': 'Team calendar', 'nav.tab.appointments': 'Appointments',
     'nav.dashboard': 'Dashboard', 'nav.leads': 'Leads', 'nav.clients': '{Clients}', 'nav.jobs': '{Jobs}', 'nav.calendar': 'Calendar', 'nav.tasks': 'Tasks',
     'nav.team': '{Team}', 'nav.documents': 'Documents', 'nav.money': 'Payments', 'nav.reports': 'Reports', 'nav.automations': 'Automations',
     'nav.assistant': 'VYNTEX AI', 'nav.settings': 'Settings', 'nav.compliance': '1099 & compliance', 'nav.portal': 'My work',
@@ -79,6 +80,7 @@ export const appDict: Dict = {
     'sync.reason.not_allowed': 'your role does not allow it', 'sync.reason.invalid': 'the record is not valid', 'sync.reason.conflict': 'someone else changed it first', 'sync.reason.locked': 'the record is locked',
   },
   es: {
+    'nav.tab.profiles': 'Perfiles', 'nav.tab.clientMessages': 'Mensajes a clientes', 'nav.tab.teamCalendar': 'Calendario del equipo', 'nav.tab.appointments': 'Citas',
     'nav.dashboard': 'Panel', 'nav.leads': 'Prospectos', 'nav.clients': '{Clients}', 'nav.jobs': '{Jobs}', 'nav.calendar': 'Calendario', 'nav.tasks': 'Tareas',
     'nav.team': '{Team}', 'nav.documents': 'Documentos', 'nav.money': 'Pagos', 'nav.reports': 'Reportes', 'nav.automations': 'Automatizaciones',
     'nav.assistant': 'VYNTEX AI', 'nav.settings': 'Configuración', 'nav.compliance': '1099 y cumplimiento', 'nav.portal': 'Mi trabajo',
@@ -154,6 +156,7 @@ export const appDict: Dict = {
   },
   // Chinese: the frame of the workspace. Anything not written here reads in English.
   zh: {
+    'nav.tab.profiles': '成员资料', 'nav.tab.clientMessages': '客户消息', 'nav.tab.teamCalendar': '团队日历', 'nav.tab.appointments': '预约',
     'nav.dashboard': '工作台', 'nav.leads': '线索', 'nav.clients': '客户', 'nav.jobs': '服务项目', 'nav.calendar': '日历', 'nav.tasks': '任务', 'nav.team': '团队', 'nav.documents': '文件',
     'nav.money': '收款', 'nav.reports': '报表', 'nav.automations': '自动化', 'nav.settings': '设置', 'nav.messages': '消息', 'nav.appointments': '预约', 'nav.catalog': '服务目录',
     'nav.opportunities': '商机', 'nav.reviews': '评价', 'nav.esign': '电子签名', 'nav.integrations': '集成', 'nav.social': '社交媒体', 'nav.cash': '备用金', 'nav.payroll': '薪资',

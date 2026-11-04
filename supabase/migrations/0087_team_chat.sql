@@ -4,9 +4,9 @@
 --   * a room is a group (named, with admins) or a direct chat between two people, or a person and an AI employee
 --   * only the room's members read it: the access rules below, and every function checks membership again
 --   * a message to a room an AI employee is in reaches that AI employee when the room is a direct chat with it, or the
---     message @mentions it. The server sends it to the bot's own address, signed (api/_lib/chat/deliver.js); the bot
+--     message @mentions it. The server sends it to the bot's own address, signed (api/_lib/chat/index.js); the bot
 --     answers with the chat_send tool (public.bot_call). An AI employee only ever reads the rooms it is a member of
---   * text is kept as written; a translation is cached per message and language (api/_lib/chat/translate.js)
+--   * text is kept as written; a translation is cached per message and language (api/_lib/chat/index.js)
 --   * a person edits or removes only their own messages; a removed message keeps its place and loses its text
 --   * files go to the company's private storage under chat/ (0028 rules), shown through one-minute links
 -- Every write goes through the functions below; nobody writes the tables directly.

@@ -21,7 +21,7 @@ let S;
 const mails = [];
 const hooks = [];
 const ai = [];
-let hookStatus = 200;
+let hookStatus = 200; let hookBody = '{}';
 const stripeCalls = [];
 let stripeFake = async () => new Response('{}', { status: 500 });
 let startedPg = false;
@@ -43,7 +43,7 @@ async function startStack() {
     const u = String(url);
     if (u.startsWith('https://api.resend.com/emails')) { mails.push(JSON.parse(init.body)); return new Response(JSON.stringify({ id: 'email_' + randomBytes(6).toString('hex') }), { status: 200 }); }
     if (u.startsWith('https://api.stripe.com/')) return stripeFake(u, init);
-    if (u.startsWith('https://bots.example.com/')) { hooks.push({ url: u, headers: init.headers, body: init.body }); return new Response('{}', { status: hookStatus }); }
+    if (u.startsWith('https://bots.example.com/')) { hooks.push({ url: u, headers: init.headers, body: init.body }); return new Response(hookBody, { status: hookStatus }); }
     if (u.startsWith('https://api.anthropic.com/')) { ai.push(JSON.parse(init.body)); return new Response(JSON.stringify({ content: [{ type: 'text', text: 'Buenos días, @Parker. ¿Puede revisar el pipeline?' }], usage: {} }), { status: 200, headers: { 'content-type': 'application/json' } }); }
     if (!u.startsWith(sb.url)) throw new Error('a test tried to reach an outside address: ' + u.slice(0, 60));
     return realFetch(url, init);
@@ -130,12 +130,35 @@ test('team chat: a direct chat with Parker reaches Parker signed, Parker answers
   assert.equal(again.status, 200); secret = again.json.result.secret; secrets.add(secret);
   assert.equal((await rpc(hq, 'bot_list', {})).json.result.find((x) => x.id === bot).webhookAuth, true, 'kept');
 
-  // a refusal that will not change is not tried again; anything else is
-  hookStatus = 410;
-  await assert.rejects(deliverToBot({ payload: jobs[0] }), (e) => e.permanent === true);
-  hookStatus = 503;
-  await assert.rejects(deliverToBot({ payload: jobs[0] }), (e) => e.permanent === false);
-  // a bot server that is down now: the message is queued and retried
+  // 0093: any non-2xx answer is tried again (2, 10, 30 seconds in production), and every push is logged with its answer
+  const { pushWithRetries, testPush } = await import('../../api/_lib/chat/index.js');
+  hookStatus = 401; hookBody = '{"error":"ERROR_NOT_LOGGED_IN"}';
+  await assert.rejects(deliverToBot({ payload: jobs[0] }), (e) => e.permanent === false, 'a 401 is tried again');
+  const n0 = hooks.length;
+  const p = await pushWithRetries(hq.tenantId, bot, jobs[0].message, { waits: [10, 10, 10] });
+  assert.equal(p.ok, false); assert.equal(p.status, 401);
+  assert.equal(hooks.length - n0, 4, 'at once, then 3 retries');
+  const logged = await S.sql(String.raw`select '@@R@@' || jsonb_build_object('status', status_code, 'error', error, 'attempts', attempts)::text from app.bot_webhook_deliveries where bot_id = (select v from _in where k = 'b')::uuid order by created_at desc limit 1;`, { b: bot });
+  assert.deepEqual(logged, { status: 401, error: '{"error":"ERROR_NOT_LOGGED_IN"}', attempts: 4 }, 'the answer is logged');
+  hookStatus = 503; hookBody = 'down';
+  const before = hooks.length;
+  const iv = setInterval(() => { if (hooks.length > before) { hookStatus = 200; hookBody = '{}'; clearInterval(iv); } }, 1);
+  const fix = pushWithRetries(hq.tenantId, bot, jobs[0].message, { waits: [30, 30, 30] });
+  const ok = await fix;
+  assert.equal(ok.ok, true); assert.ok(ok.attempts >= 2, 'delivered on a retry');
+  const card = (await rpc(hq, 'bot_list', {})).json.result.find((x) => x.id === bot);
+  assert.equal(card.lastDelivery.status, 200, 'the card shows the last push');
+  // the test push: a sample payload, the answer, logged as a test
+  hookStatus = 401; hookBody = 'ERROR_NOT_LOGGED_IN';
+  const tp = await rpc(hq, 'bot_webhook_test', { p_bot: bot });
+  assert.equal(tp.status, 200, tp.text);
+  assert.equal(tp.json.result.status, 401); assert.equal(tp.json.result.error, 'ERROR_NOT_LOGGED_IN');
+  const th = hooks.at(-1); const tb = JSON.parse(th.body);
+  assert.equal(tb.type, 'chat.test'); assert.equal(th.headers.authorization, 'Bearer routine-token-1234'); assert.ok(th.headers['x-vx-signature']);
+  assert.equal((await rpc(hq, 'bot_list', {})).json.result.find((x) => x.id === bot).lastDelivery.kind, 'test');
+  hookStatus = 200; hookBody = '{}';
+  assert.equal((await testPush(bot)).status, 200);
+  // a bot server that is down when the message is sent: the first attempt now, the rest queued for the job runner
   hookStatus = 503;
   const later = await rpc(hq, 'chat_send', { p_room: room, p_body: 'Are you there?' });
   assert.equal(later.json.result.botsNotified, 1);
@@ -145,6 +168,7 @@ test('team chat: a direct chat with Parker reaches Parker signed, Parker answers
   assert.deepEqual(await deliverToBot({ payload: { bot, message: later.json.result.message.id } }), { delivered: true });
 
   // Parker reads its inbox and answers in the chat (0088: wait holds the call until the messages are a second old)
+  await new Promise((r) => setTimeout(r, 1200)); // both messages over a second old
   const inbox = await botMcp(key, 'chat_inbox', { wait: 5 });
   assert.equal(inbox.length, 2); assert.equal(inbox[0].room.id, room);
   // a waiting call answers about a second after a new message, not after the full wait

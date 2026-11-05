@@ -86,7 +86,9 @@ export function toProposal(tool: string, input: Record<string, unknown>, env: En
     case 'record_client_payment': {
       const amount = typeof input.amount === 'number' && isFinite(input.amount) ? Math.round(input.amount * 100) / 100 : 0;
       const method = METHODS.includes(input.method as PayMethod) ? (input.method as PayMethod) : 'check';
-      p = { kind: 'payment', jobId: str(input.job_id, 60), amount, method, date: isoDate(input.date) ?? today() }; break;
+      const jobId = str(input.job_id, 60);
+      // a payment on a project that is still an estimate: the confirm also marks it as a signed contract
+      p = { kind: 'payment', jobId, amount, method, date: isoDate(input.date) ?? today(), ...(byId(env.data.jobs, jobId)?.status === 'estimate' ? { approve: true } : {}) }; break;
     }
     case 'book_appointment': {
       const date = isoDate(input.date); const time = typeof input.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(input.time) ? input.time : undefined;

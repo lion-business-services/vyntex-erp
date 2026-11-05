@@ -52,6 +52,7 @@ export function execute(p: Proposal, env: Env): Outcome {
         break;
       }
       case 'payment': {
+        if (p.approve && byId(getSnapshot().data.jobs, p.jobId)?.status === 'estimate') act(setJobStatus, p.jobId, 'contract');
         const before = byId(getSnapshot().data.jobs, p.jobId)?.received.length ?? 0;
         act(addClientPayment, p.jobId, { amount: p.amount, date: p.date, method: p.method, ref: '' });
         const d = getSnapshot().data; const job = byId(d.jobs, p.jobId);

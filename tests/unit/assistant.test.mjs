@@ -217,3 +217,26 @@ test('VYNTEX AI: a role without money cannot make an invoice', async () => {
   const r = toProposal('create_invoice', { job_id: e.data.jobs[0].id, lines: [{ description: 'x', quantity: 1, unit_price: 10 }] }, e);
   assert.equal(typeof r, 'string');
 });
+
+test('a payment on a project that is still an estimate: one confirm marks it signed and records the payment', async () => {
+  const e = await env('build', 'en');
+  const job = e.data.jobs.find((j) => j.price > 3000) ?? e.data.jobs[0];
+  job.status = 'estimate'; job.price = Math.max(job.price, 12420);
+  // VYNTEX AI's tool call
+  const p = toProposal('record_client_payment', { job_id: job.id, amount: 3000, method: 'zelle', date: '2026-10-29' }, e);
+  assert.equal(typeof p, 'object', String(p));
+  assert.equal(p.approve, true);
+  assert.equal(asst.check(p, e), null, 'it can be confirmed');
+  const card = asst.describe(p, e);
+  assert.ok(card.rows.some(([, v]) => /→/.test(v)), 'the card says the status changes');
+  assert.match(card.note, /signed projects/);
+  // without the approval flag the reason is clear, not a dead end
+  assert.match(asst.check({ ...p, approve: false }, e), /still an estimate/);
+  // the built-in assistant finds the estimate by name too
+  const r = asst.interpret(`record a payment of $3000 by zelle for ${job.name}`, e);
+  assert.ok(JSON.stringify(r).includes('"approve":true'), JSON.stringify(r).slice(0, 300));
+  // Spanish
+  const es = await env('build', 'es');
+  const j2 = es.data.jobs[0]; j2.status = 'estimate'; j2.price = 12420;
+  assert.match(asst.check({ kind: 'payment', jobId: j2.id, amount: 100, method: 'zelle', date: '2026-10-29' }, es), /todavía es un presupuesto/);
+});

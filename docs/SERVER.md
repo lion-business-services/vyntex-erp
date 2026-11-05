@@ -436,7 +436,7 @@ Retry waits 30 s, 1 min, 2 min, ... up to an hour; after the last attempt the jo
 
 ```js
 export default {
-  id, name, kind: 'oauth' | 'key' | 'platform',
+  id, name, kind: 'oauth' | 'key' | 'platform' | 'embedded',   // embedded: the provider's own sign-up window (WhatsApp Embedded Signup)
   env: ['...'],                      // settings that must exist; missing => not_connected / not_configured
   scopes: ['...'],                   // the least that works
   approval: null | { needed: true, flag: '<ID>_APPROVED', note },   // pending_approval until the flag is true

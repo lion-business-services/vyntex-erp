@@ -186,7 +186,7 @@ function Conversation(_: PageProps) {
     }
     if (can2.voice && canRecord()) {
       try { rec.current = await startRecording(() => { void dictate(); }); setVoice('recording'); }
-      catch { toast(t('asst.voice.denied'), true); }
+      catch (e) { const name = (e as { name?: string })?.name; toast(t(name === 'NotFoundError' || name === 'OverconstrainedError' ? 'asst.voice.noMic' : 'asst.voice.denied'), true); }
       return;
     }
     // no server dictation here: the browser's own, when it has one

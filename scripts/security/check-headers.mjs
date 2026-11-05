@@ -70,7 +70,8 @@ export function checkConfig(config) {
   check('frame-options', String(page['x-frame-options'] || '').toUpperCase() === 'DENY', 'X-Frame-Options is DENY');
   check('referrer', ['no-referrer', 'same-origin', 'strict-origin', 'strict-origin-when-cross-origin'].includes(String(page['referrer-policy'] || '').toLowerCase()), 'Referrer-Policy does not send full addresses to other sites');
   const perms = String(page['permissions-policy'] || '');
-  check('permissions', ['camera', 'microphone', 'geolocation'].every((f) => new RegExp(`${f}=\\(\\)`).test(perms)), 'Permissions-Policy turns off camera, microphone and location');
+  // the microphone may be used by the site itself (VYNTEX AI's voice to text, 0096), never by a frame or another site
+  check('permissions', ['camera', 'geolocation'].every((f) => new RegExp(`${f}=\\(\\)`).test(perms)) && /microphone=\((self)?\)/.test(perms), 'Permissions-Policy turns off camera and location, and keeps the microphone to the site itself');
 
   const api = headersFor(config, '/api/health');
   check('api-no-store', /no-store/i.test(String(api['cache-control'] || '')), 'answers of /api/ are never cached (Cache-Control: no-store)');

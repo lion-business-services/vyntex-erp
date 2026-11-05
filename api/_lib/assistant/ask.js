@@ -75,7 +75,7 @@ export const TOOLS = [
   fn('request_review', 'Send a client a request for a review. The person is asked to confirm before it is sent.', { client_id: id, job_id: id }, ['client_id']),
   // every other section (0097): one entry of <actions>, by its id, with its arguments as JSON
   fn('do_action', 'Do anything else in the ERP: one entry of <actions> by its id, with its arguments as a JSON object string (ids from the business data or from find_records). Entries marked [confirm] wait for the person to confirm.', { action: { type: 'string', maxLength: 40 }, arguments: { type: 'string', maxLength: 6000, description: 'JSON object, for example {"lead":"l_123","stage":"won"}' } }, ['action']),
-  fn('find_records', 'Look up records that are not in the business data summary (it holds only the first ones of each list). Returns ids and fields; then answer or act in your next step.', { collection: { type: 'string', enum: ['leads', 'clients', 'projects', 'tasks', 'appointments', 'documents', 'envelopes', 'posts', 'opportunities', 'deadlines', 'services', 'messages', 'reviews', 'workers', 'walkins'] }, query: { type: 'string', maxLength: 120, description: 'a name or word to match; empty lists the latest' }, limit: { type: 'number' } }, ['collection']),
+  fn('find_records', 'Look up records that are not in the business data summary (it holds only the first ones of each list). Returns ids and fields; then answer or act in your next step.', { collection: { type: 'string', enum: ['leads', 'clients', 'projects', 'tasks', 'appointments', 'documents', 'envelopes', 'posts', 'opportunities', 'deadlines', 'services', 'messages', 'reviews', 'workers', 'walkins', 'invoices', 'appointment_types', 'pass_plans', 'passes', 'offices'] }, query: { type: 'string', maxLength: 120, description: 'a name or word to match; empty lists the latest' }, limit: { type: 'number' } }, ['collection']),
 ];
 export const TOOL_NAMES = new Set(TOOLS.map((t) => t.function.name));
 
@@ -92,7 +92,8 @@ export function systemPrompt(lang, data, company, actions = '') {
     '5. Do not say that something was done: the ERP runs your tool calls and tells the person the result. Say briefly what you are doing.',
     '6. Money only when the data has a "money" section; otherwise the person\'s role does not include it.',
     '9. Besides the named tools, <actions> lists everything else the person may do in every section; call do_action with its id. Prefer a named tool when one fits.',
-    '10. When the record you need is not in the business data, call find_records first (alone, without other tools in that answer); its results come back to you.',
+    '10. When the record you need is not in the business data, call find_records first (alone, without other tools in that answer); its results come back to you. Invoices are found by find_records with collection "invoices" and used by their number (INV-0003).',
+    '12. Files the person attached to this chat can be saved as documents with document_save_attachment, by their file name.',
     '11. Never touch security, roles, people\'s access, tax IDs, bank details or automation rules: say these are done on their own screens by the owner.',
     '7. Use the company\'s words in "words" (for example its word for projects and clients). Keep replies short, plain and friendly: no headings, no tables.',
     `8. Reply in ${lang === 'es' ? 'Spanish, natural and professional, with "usted"' : 'English'}, or in the language the person writes in. Today is ${new Date().toISOString().slice(0, 10)} unless the data says otherwise.`,

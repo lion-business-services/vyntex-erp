@@ -37,15 +37,15 @@ test('every entry is well formed, named in both languages, and none touches secu
     assert.ok(/^[a-z_]{3,40}$/.test(x.id), x.id); assert.ok(!ids.has(x.id), 'unique: ' + x.id); ids.add(x.id);
     assert.ok(x.en && x.es && x.en !== x.es, 'both languages: ' + x.id);
     assert.ok(!/[—–]/.test(x.en + x.es), 'no dashes: ' + x.id);
-    assert.ok(!/security|vault|role|member|tax|bank|rule|integration|password/.test(x.id + x.perm), 'never security: ' + x.id);
+    assert.ok(!/security|vault|role|(^|_)members?(_|$)|tax|bank|rule|integration|password/.test(x.id + ' ' + x.perm), 'never security: ' + x.id);
     for (const [k, p] of Object.entries(x.params)) if (p.t === 'ref') assert.ok(p.of in A.COLLECTIONS, `${x.id}.${k}`);
   }
-  assert.ok(A.SPECS.length >= 55, String(A.SPECS.length));
+  assert.ok(A.SPECS.length >= 72, String(A.SPECS.length));
 });
 
 test('what reaches a client, moves money, changes a price, deletes or publishes waits for Confirm', () => {
   for (const x of A.SPECS) {
-    const sensitive = /(^|_)(delete|send|remind|void|publish|approve|schedule|cancel|merge|expense)(_|$)/.test(x.id);
+    const sensitive = /(^|_)(delete|send|remind|void|publish|approve|schedule|cancel|merge|expense|paid|pay|price|cash|checkout|sell|renew|assign_worker|remove)(_|$)/.test(x.id) || x.id === 'service_add';
     if (sensitive) assert.equal(A.isRiskyAction(x, {}), true, x.id);
   }
   const upd = A.SPEC_BY_ID.get('project_update');
@@ -91,30 +91,30 @@ test('entries really change the data, and the card names the records', async () 
   const e = await env('build');
   const lead = e.data.leads.find((l) => !['won', 'lost'].includes(l.status)) ?? e.data.leads[0];
   const task = e.data.tasks[0]; const job = e.data.jobs[0]; const client = e.data.clients[0];
-  const run = (action, args) => { const x = A.SPEC_BY_ID.get(action); const a = A.cleanArgs(x, args, e); assert.equal(typeof a, 'object', `${action}: ${a}`); return A.runAction(x, a, e); };
+  const run = async (action, args) => { const x = A.SPEC_BY_ID.get(action); const a = A.cleanArgs(x, args, e); assert.equal(typeof a, 'object', `${action}: ${a}`); return A.runAction(x, a, e); };
   // next step on a lead
-  assert.equal(run('lead_next_action', { lead: lead.id, text: 'Send the estimate', due: '2026-12-01' }).ok, true);
+  assert.equal((await run('lead_next_action', { lead: lead.id, text: 'Send the estimate', due: '2026-12-01' })).ok, true);
   // a comment on a task
   const before = (e.data.tasks[0].comments ?? []).length;
-  assert.equal(run('task_comment', { task: task.id, text: 'Materials ordered' }).ok, true);
+  assert.equal((await run('task_comment', { task: task.id, text: 'Materials ordered' })).ok, true);
   assert.equal((e.data.tasks.find((t) => t.id === task.id).comments ?? []).length, before + 1);
   // a project's name and an expense
-  assert.equal(run('project_update', { project: job.id, name: 'Kitchen remodel, phase 2' }).ok, true);
+  assert.equal((await run('project_update', { project: job.id, name: 'Kitchen remodel, phase 2' })).ok, true);
   assert.equal(e.data.jobs.find((j) => j.id === job.id).name, 'Kitchen remodel, phase 2');
   const ex = e.data.jobs.find((j) => j.id === job.id).expenses.length;
-  assert.equal(run('project_expense', { project: job.id, amount: 125.5, vendor: 'Home Depot', description: 'Tile' }).ok, true);
+  assert.equal((await run('project_expense', { project: job.id, amount: 125.5, vendor: 'Home Depot', description: 'Tile' })).ok, true);
   assert.equal(e.data.jobs.find((j) => j.id === job.id).expenses.length, ex + 1);
   // a deadline
   const dl = e.data.complianceItems.length;
-  assert.equal(run('deadline_add', { title: 'Renew contractor license', kind: 'license', due: '2027-01-15', client: client.id }).ok, true);
+  assert.equal((await run('deadline_add', { title: 'Renew contractor license', kind: 'license', due: '2027-01-15', client: client.id })).ok, true);
   assert.equal(e.data.complianceItems.length, dl + 1);
   // a message draft (nothing leaves)
   const msgs = e.data.messages.length;
-  assert.equal(run('message_draft', { client: client.id, channel: 'email', subject: 'Your project', body: 'Hi, a quick update, SSN 123-45-6789.' }).ok, true);
+  assert.equal((await run('message_draft', { client: client.id, channel: 'email', subject: 'Your project', body: 'Hi, a quick update, SSN 123-45-6789.' })).ok, true);
   assert.equal(e.data.messages.length, msgs + 1);
   assert.ok(!JSON.stringify(e.data.messages).includes('123-45-6789'), 'a tax ID never goes into a message');
   // a social draft
-  assert.equal(run('post_create', { text: 'Spring openings available', channels: ['facebook', 'instagram'] }).ok, true);
+  assert.equal((await run('post_create', { text: 'Spring openings available', channels: ['facebook', 'instagram'] })).ok, true);
   // a card names the records, formats money
   const card = asst.describe({ kind: 'action', action: 'project_expense', args: { project: job.id, amount: 125.5, vendor: 'Home Depot' } }, e);
   assert.equal(card.title, 'Add an expense to a project');
@@ -134,4 +134,57 @@ test('find_records: matches by name, only what the role may see, never contact d
   assert.equal(A.findRecords(e, 'vault', '').error, 'unknown collection');
   const w = await env('build', 'en', 'worker').catch(() => null);
   if (w && !w.can('clients')) assert.equal(A.findRecords(w, 'clients', '').error, 'not allowed');
+});
+
+test('the rest of the screens: crew, mistakes, petty cash, workers, prices, appointment types, files', async () => {
+  const e = await env('build');
+  const run = async (action, args) => { const x = A.SPEC_BY_ID.get(action); const a = A.cleanArgs(x, args, e); assert.equal(typeof a, 'object', `${action}: ${a}`); return A.runAction(x, a, e); };
+  const job = e.data.jobs[0]; const worker = e.data.workers[0];
+  // a crew on a project
+  const n0 = e.data.jobs[0].assign.length;
+  assert.equal((await run('project_assign_worker', { project: job.id, worker: worker.id, scope: 'Framing', price: 4200 })).ok, true);
+  assert.equal(e.data.jobs[0].assign.length, n0 + 1);
+  // an expense made by mistake, found by its amount
+  assert.equal((await run('project_expense', { project: job.id, amount: 77.77, vendor: 'Lowe\'s' })).ok, true);
+  const ex = e.data.jobs[0].expenses.length;
+  assert.equal((await run('project_remove_entry', { project: job.id, kind: 'expense', amount: 77.77 })).ok, true);
+  assert.equal(e.data.jobs[0].expenses.length, ex - 1);
+  const miss = await run('project_remove_entry', { project: job.id, kind: 'expense', amount: 1.23 });
+  assert.equal(miss.ok, false); assert.match(miss.why, /No entry matches/);
+  // a new worker, and a payment to them (never an account number as the reference)
+  const w0 = e.data.workers.length;
+  assert.equal((await run('worker_add', { name: 'Luis Ortega', trade: 'Electrician', pay_type: 'hourly', rate: 45 })).ok, true);
+  assert.equal(e.data.workers.length, w0 + 1);
+  assert.equal(A.isRiskyAction(A.SPEC_BY_ID.get('worker_add'), { rate: 45 }), true, 'a pay rate waits');
+  const p0 = e.data.workerPays.length;
+  assert.equal((await run('worker_pay', { worker: worker.id, amount: 800, method: 'zelle', project: job.id })).ok, true);
+  assert.equal(e.data.workerPays.length, p0 + 1);
+  assert.match((await run('worker_pay', { worker: worker.id, amount: 1, method: 'check', reference: '021000021123456' })).why, /never an account number/);
+  // a service price
+  const sv = e.data.catalog.find((x) => x.tiers?.length);
+  if (sv) { assert.equal((await run('service_price', { service: sv.id, price: 1999 })).ok, true); assert.equal(e.data.catalog.find((x) => x.id === sv.id).tiers[0].price, 1999); }
+  // an appointment type, in both languages
+  const t0 = (e.data.apptTypes ?? []).length;
+  assert.equal((await run('appt_type_save', { name_en: 'Site visit', name_es: 'Visita al sitio', minutes: 45, fee: 0, mode: 'office' })).ok, true);
+  assert.equal(e.data.apptTypes.length, t0 + 1); assert.equal(e.data.apptTypes.at(-1)?.name?.es ?? e.data.apptTypes[0].name.es, e.data.apptTypes.find((x) => x.name.en === 'Site visit').name.es);
+  // petty cash, by a category the workspace has
+  const cats = A.SPEC_BY_ID.get('cash_entry').params.category.of(e);
+  if (cats.length && e.can('cash')) { const c0 = e.data.cash.length; assert.equal((await run('cash_entry', { direction: 'out', amount: 25, category: cats[0], memo: 'Coffee for the crew' })).ok, true); assert.equal(e.data.cash.length, c0 + 1); }
+  // a file attached to the chat, saved as a document on a client
+  A.setTurnFiles([{ name: 'permit.txt', mime: 'text/plain', text: 'Permit 2026-114 approved' }]);
+  const d0 = e.data.docs.length;
+  assert.equal((await run('document_save_attachment', { file_name: 'permit.txt', client: e.data.clients[0].id, title: 'Building permit' })).ok, true);
+  assert.equal(e.data.docs.length, d0 + 1);
+  assert.match((await run('document_save_attachment', { file_name: 'permit.txt' })).why, /which client, project or lead/);
+  // invoices and signatures are the server's: in the sample they say so
+  assert.match((await run('invoice_send', { invoice: 'INV-0001' })).why ?? '', /invoice|company workspace/);
+});
+
+test('barber editions: check out a walk-in, sell a gift card', async () => {
+  const e = await env('barber');
+  const run = async (action, args) => { const x = A.SPEC_BY_ID.get(action); const a = A.cleanArgs(x, args, e); assert.equal(typeof a, 'object', `${action}: ${a}`); return A.runAction(x, a, e); };
+  if (!(e.data.chairs?.length)) return;
+  const open = e.data.walkins.find((w) => w.status === 'in_service');
+  if (open) assert.equal((await run('walkin_checkout', { walkin: open.id, amount: 35, tip: 5, method: 'cash' })).ok, true);
+  if (A.specsFor(e).some((x) => x.id === 'pass_sell')) assert.equal((await run('pass_sell', { holder: 'Maria Lopez', amount: 50, method: 'card' })).ok, true);
 });

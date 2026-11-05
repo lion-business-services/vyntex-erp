@@ -109,14 +109,7 @@ export function execute(p: Proposal, env: Env): Outcome {
         break;
       }
       case 'invoice': return { ok: false, text: t('asst.state.failed', { why: t('asst.failed.generic') }) }; // made by executeAsync
-      case 'action': {
-        const x = SPEC_BY_ID.get(p.action); if (!x) break;
-        const r = runAction(x, p.args, env);
-        out = r.ok
-          ? { ok: true, text: t('asst.action.done', { what: env.lang === 'es' ? x.es : x.en }), ...(r.link ? { link: { label: t('asst.open.record'), to: r.link } } : {}) }
-          : { ok: false, text: t('asst.state.failed', { why: r.why ?? t('asst.failed.generic') }) };
-        break;
-      }
+      case 'action': return failed; // made by executeAsync
     }
   } catch {
     return failed;
@@ -135,6 +128,16 @@ export function execute(p: Proposal, env: Env): Outcome {
  * invoices). Everything else is carried out by execute().
  */
 export async function executeAsync(p: Proposal, env: Env): Promise<Outcome> {
+  if (p.kind === 'action') {
+    // 0097: any entry of the catalog; some go to the server (invoices, e-sign, files)
+    const { t } = env;
+    const blocked = check(p, env);
+    if (blocked) return { ok: false, text: t('asst.state.failed', { why: blocked }) };
+    const x = SPEC_BY_ID.get(p.action); if (!x) return { ok: false, text: t('asst.state.failed', { why: t('asst.failed.generic') }) };
+    const r = await runAction(x, p.args, env);
+    const link = r.link ? { link: { label: t('asst.open.record'), to: r.link } } : {};
+    return r.ok ? { ok: true, text: t('asst.action.done', { what: env.lang === 'es' ? x.es : x.en }), ...link } : { ok: false, text: t('asst.state.failed', { why: r.why ?? t('asst.failed.generic') }), ...link };
+  }
   if (p.kind !== 'invoice') return execute(p, env);
   const { t } = env;
   const blocked = check(p, env);

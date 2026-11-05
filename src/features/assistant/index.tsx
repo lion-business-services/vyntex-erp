@@ -10,8 +10,9 @@ import type { PageProps } from '@/app/routes';
 import { DemoTag, PlanBadge, CanWrite } from '@/app/shared';
 import { Badge, Button, Card, Dot, PageHeader, cx } from '@/ui';
 import { needsConfirm, describe, examples, interpret, isNo, isYes, suggestions, type Block, type Card as ProposalCard, type Choice, type Env, type Proposal } from './engine';
-import { execute, executeAsync, type Outcome } from './run';
+import { executeAsync, type Outcome } from './run';
 import { askModel, checkAbilities, deleteChat, getChat, listChats, saveChat, transcribeVoice, type Abilities, type ChatSummary, type KeptMessage, type Turn } from './remote';
+import { setTurnFiles } from './actions';
 import { ACCEPT, MAX_FILES, browserDictation, canRecord, readAttachment, startRecording, withFileText, type Attachment, type Recorder } from './media';
 import { SuccessCheck } from '@/features/documents/success';
 import { getSnapshot, mutate } from '@/store/store';
@@ -103,9 +104,12 @@ function Conversation(_: PageProps) {
   const settle = (id: number, patch: Partial<BotMsg>) => setMsgs((list) => list.map((m) => (m.id === id && m.from === 'bot' ? { ...m, ...patch } : m)));
   const open = msgs.find((m): m is BotMsg => m.from === 'bot' && (m.state === 'pending' || m.state === 'asking'));
 
-  const confirm = (m: BotMsg) => {
-    if (!m.proposal || m.state !== 'pending') return;
-    const outcome = execute(m.proposal, env);
+  const confirm = async (m: BotMsg) => {
+    if (!m.proposal || m.state !== 'pending' || busy) return;
+    // some confirmed actions go to the server (sending an invoice, a signature request): the card waits for the answer
+    setBusy(true);
+    const outcome = await executeAsync(m.proposal, { ...env, data: scopedData(getSnapshot().data, app.user, app.perms) });
+    setBusy(false);
     settle(m.id, { state: outcome.ok ? 'done' : 'failed', outcome });
     focus();
   };
@@ -120,6 +124,8 @@ function Conversation(_: PageProps) {
   const send = async (raw: string) => {
     const q = raw.trim() || (files.length ? t('asst.file.about') : ''); if (!q || busy) return;
     const attached = files; setFiles([]);
+    // the files stay at hand for this page, so VYNTEX AI can save one as a document when asked
+    setTurnFiles(attached.map((f) => (f.kind === 'text' ? { name: f.name, mime: 'text/plain', text: f.text } : { name: f.name, mime: f.kind === 'pdf' ? 'application/pdf' : 'image/jpeg', dataUrl: f.dataUrl })));
     setDraft(''); focus();
     // what the person typed is shown back with anything shaped like a tax ID masked, and is never kept otherwise
     const user: UserMsg = { id: ++seq.current, from: 'user', text: maskTaxIds(q), ...(attached.length ? { files: attached.map((f) => f.name) } : {}) };

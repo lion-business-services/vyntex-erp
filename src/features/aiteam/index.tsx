@@ -13,6 +13,8 @@ import { useApp } from '@/app/hooks';
 import { A } from '@/app/router';
 import { Badge, Button, Card, Empty, Field, Modal, Note, PageHeader, Seg, Tabs, confirmDialog, toast, type Tone } from '@/ui';
 import { botApi, SECTIONS, type Access, type Activity, type Approval, type Bot, type Level, type Section } from './api';
+import { MAX_LOGO_BYTES, readLogo } from '@/features/settings/helpers';
+import { storeImage, useStoredImage } from '@/features/settings/image';
 import './aiteam.css';
 
 type Tab = 'approvals' | 'team' | 'activity' | 'connect';
@@ -177,7 +179,7 @@ function Team({ bots, owner, reload }: { bots: Bot[] | null; owner: boolean; rel
             {bots.map((b) => (
               <section className={'ai-bot' + (b.status === 'paused' ? ' paused' : '')} key={b.id} data-bot={b.slug}>
                 <header className="row tight wrap">
-                  <span className="ai-avatar" aria-hidden="true">{b.name.slice(0, 1)}</span>
+                  <BotPhoto bot={b} onDone={reload} />
                   <div className="grow"><div className="t">{b.name}</div><div className="small muted">{b.title}</div></div>
                   <Badge tone={b.status === 'active' ? 'ok' : 'warn'}>{t('ai.bot.status.' + b.status)}</Badge>
                   {b.pending > 0 && <Badge tone="warn">{t('ai.bot.pending', { n: b.pending })}</Badge>}
@@ -276,6 +278,30 @@ function PushStatus({ bot, onDone }: { bot: Bot; onDone: () => Promise<void> | v
   );
 }
 
+/** 0094: an AI employee's photo; any team member may change it (the bot can also set its own with profile_photo_set). */
+function BotPhoto({ bot, onDone }: { bot: Bot; onDone: () => Promise<void> | void }) {
+  const { t } = useApp();
+  const src = useStoredImage(bot.photo || undefined);
+  const [busy, setBusy] = useState(false);
+  const change = async (file: File) => {
+    let pic: string;
+    try { pic = await readLogo(file); } catch { toast(t('ai.photo.bad', { max: Math.round(MAX_LOGO_BYTES / 1024 / 1024) }), true); return; }
+    setBusy(true);
+    const path = await storeImage(pic, true, 'profiles');
+    const r = path ? await botApi.setPhoto(bot.id, path) : null;
+    setBusy(false);
+    if (!r || !r.ok) { toast(t('ai.photo.failed'), true); return; }
+    toast(t('ai.photo.saved', { name: bot.name })); await onDone();
+  };
+  return (
+    <label className={'ai-avatar ai-photo-edit' + (src ? ' pic' : '') + (busy ? ' busy' : '')} title={t('ai.photo.change', { name: bot.name })}>
+      {src ? <img src={src} alt="" /> : <span aria-hidden="true">{bot.name.slice(0, 1)}</span>}
+      <span className="sr-only">{t('ai.photo.change', { name: bot.name })}</span>
+      <input type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} data-testid="ai-photo" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void change(f); }} />
+    </label>
+  );
+}
+
 function HookForm({ bot, onClose, onDone }: { bot: Bot; onClose: () => void; onDone: (secret: string | null) => Promise<void> }) {
   const { t } = useApp();
   const [url, setUrl] = useState(bot.webhookUrl ?? '');
@@ -295,9 +321,9 @@ function HookForm({ bot, onClose, onDone }: { bot: Bot; onClose: () => void; onD
       footer={<>{bot.webhookUrl && <Button variant="ghost" disabled={busy} onClick={() => void save('')}>{t('ai.hook.clear')}</Button>}
         <Button variant="primary" disabled={busy || !url.trim()} onClick={() => void save(url.trim())} data-testid="ai-hook-save">{t('ai.form.save')}</Button></>}>
       <p className="small">{t('ai.hook.lead', { name: bot.name })}</p>
-      <Field label={t('ai.hook.url')} htmlFor="ai-hook-url" hint={t('ai.hook.hint')}><input id="ai-hook-url" className="input" type="url" placeholder="https://" value={url} maxLength={500} onChange={(e) => setUrl(e.target.value)} data-testid="ai-hook-url" /></Field>
+      <Field label={t('ai.hook.url')} htmlFor="ai-hook-url" hint={t('ai.hook.hint')}><input id="ai-hook-url" name="vx-bot-webhook-url" className="input" type="url" inputMode="url" autoComplete="off" data-1p-ignore data-lpignore="true" data-form-type="other" spellCheck={false} placeholder="https://" value={url} maxLength={500} onChange={(e) => setUrl(e.target.value)} data-testid="ai-hook-url" /></Field>
       <Field label={t('ai.hook.auth')} htmlFor="ai-hook-auth" hint={bot.webhookAuth ? t('ai.hook.authSaved', { hint: bot.webhookAuthHint ?? '' }) : t('ai.hook.authHint')}>
-        <input id="ai-hook-auth" className="input" type="password" autoComplete="off" spellCheck={false} placeholder={bot.webhookAuth ? '••••••••' : 'Bearer …'} value={auth} maxLength={2000}
+        <input id="ai-hook-auth" name="vx-bot-webhook-authorization" className="input ai-secret" type="text" autoComplete="off" autoCorrect="off" autoCapitalize="off" data-1p-ignore data-lpignore="true" data-form-type="other" spellCheck={false} placeholder={bot.webhookAuth ? '••••••••' : 'Bearer …'} value={auth} maxLength={2000}
           onChange={(e) => { setAuth(e.target.value); setDropAuth(false); }} data-testid="ai-hook-auth" />
       </Field>
       {bot.webhookAuth && !auth && <label className="row tight small"><input type="checkbox" checked={dropAuth} onChange={(e) => setDropAuth(e.target.checked)} data-testid="ai-hook-auth-drop" />{t('ai.hook.authDrop')}</label>}

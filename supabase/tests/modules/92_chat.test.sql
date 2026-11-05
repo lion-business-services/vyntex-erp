@@ -52,6 +52,19 @@ select pg_temp.j('ch_owner', format('select public.chat_send(%L, %L, %L)', test.
 select test.ok((:'sent3'::jsonb -> 'bots') ? test.id('ch.parker')::text, 'every message of a direct chat with Parker is meant for Parker') \g /dev/null
 select test.ok(pg_temp.j('ch_owner', format('select public.chat_send(%L, %L, %L)', test.id('ch'), :'grp', '   ')) ->> 'error' = '22023', 'an empty message is refused') \g /dev/null
 select test.ok(pg_temp.j('ch_manager', format('select public.chat_send(%L, %L, %L)', test.id('ch'), :'grp', 'hi')) ->> 'error' = '42501', 'a person outside the room cannot write in it') \g /dev/null
+-- 0094: photos. Any member of a group may change its photo; any team member an AI employee's; the bot its own
+select test.ok(pg_temp.j('ch_staff', format('select to_jsonb(public.chat_room_photo_set(%L, %L, %L))', test.id('ch'), :'grp', test.id('ch') || '/chat/group-photo.png'))::text = 'true',
+  'a member who is not the admin changes the group photo') \g /dev/null
+select test.is((select photo from public.chat_rooms where id = :'grp'::uuid), test.id('ch') || '/chat/group-photo.png', 'stored') \g /dev/null
+select test.ok(pg_temp.j('ch_manager', format('select public.chat_room_photo_set(%L, %L, %L)', test.id('ch'), :'grp', test.id('ch') || '/chat/x1234.png')) ->> 'error' = '42501', 'not a person outside the group') \g /dev/null
+select test.ok(pg_temp.j('ch_staff', format('select public.chat_room_photo_set(%L, %L, %L)', test.id('ch'), :'grp', test.id('cx') || '/chat/x1234.png')) ->> 'error' = '22023', 'not a file of another company') \g /dev/null
+select test.ok(pg_temp.j('ch_staff', format('select public.chat_room_photo_set(%L, %L, %L)', test.id('ch'), :'grp', 'https://example.com/a.png')) ->> 'error' = '22023', 'not a web address') \g /dev/null
+select test.ok(pg_temp.j('ch_staff', format('select to_jsonb(public.bot_photo_set(%L, %L, %L))', test.id('ch'), test.id('ch.parker'), test.id('ch') || '/profiles/parker-1.png'))::text = 'true', 'a teammate changes an AI employee''s photo') \g /dev/null
+select test.ok(pg_temp.j('cx_owner', format('select public.bot_photo_set(%L, %L, %L)', test.id('ch'), test.id('ch.parker'), test.id('ch') || '/profiles/parker-2.png')) ->> 'error' = '42501', 'another company cannot') \g /dev/null
+select test.ok((public.bot_call(test.id('ch.parker'), 'profile.photo_set', jsonb_build_object('path', test.id('ch') || '/profiles/parker-own.png')) ->> 'photo') is not null, 'the AI employee sets its own') \g /dev/null
+select test.is((select photo from app.bots where id = test.id('ch.parker')), test.id('ch') || '/profiles/parker-own.png', 'stored on the AI employee') \g /dev/null
+select test.ok(public.bot_call(test.id('ch.parker'), 'profile.photo_set', jsonb_build_object('path', test.id('cx') || '/profiles/x1234.png')) ->> 'error' = 'invalid_arguments', 'never a file of another company') \g /dev/null
+select test.is((pg_temp.j('ch_staff', format('select public.chat_sync(%L)', test.id('ch'))) -> 'bots' -> 0 ->> 'photo'), test.id('ch') || '/profiles/parker-own.png', 'Team chat shows it') \g /dev/null
 select test.ok(pg_temp.j('ch_owner', format('select public.chat_send(%L, %L, %L, null, %L::jsonb, %L::jsonb)', test.id('ch'), :'grp', 'file', '[]',
   jsonb_build_array(jsonb_build_object('path', test.id('cx')::text || '/chat/abcdefgh.pdf', 'name', 'x.pdf')))) ->> 'error' = '22023', 'a file of another company is refused') \g /dev/null
 select test.ok(pg_temp.j('ch_owner', format('select public.chat_send(%L, %L, %L, null, %L::jsonb, %L::jsonb)', test.id('ch'), :'grp', '', '[]',

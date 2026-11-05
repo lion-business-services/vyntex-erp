@@ -167,6 +167,14 @@ test('team chat: a direct chat with Parker reaches Parker signed, Parker answers
   hookStatus = 200;
   assert.deepEqual(await deliverToBot({ payload: { bot, message: later.json.result.message.id } }), { delivered: true });
 
+  // 0094: Parker sets its own photo (PNG, JPEG or WebP, checked by its first bytes, stored in the company's folder)
+  const png = 'iVBORw0KGGoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  const ph = await botMcp(key, 'profile_photo_set', { image: 'data:image/png;base64,' + png });
+  assert.match(String(ph.photo), new RegExp('^' + hq.tenantId + '/profiles/[0-9a-f-]{36}\\.png$'), JSON.stringify(ph));
+  assert.equal((await rpc(hq, 'bot_list', {})).json.result.find((x) => x.id === bot).photo, ph.photo, 'the card shows it');
+  assert.equal((await botMcp(key, 'profile_photo_set', { image: Buffer.from('<svg/>').toString('base64') })).error, 'photo_type', 'only PNG, JPEG or WebP');
+  assert.equal((await botMcp(key, 'profile_photo_set', {})).error, 'photo_required');
+
   // Parker reads its inbox and answers in the chat (0088: wait holds the call until the messages are a second old)
   await new Promise((r) => setTimeout(r, 1200)); // both messages over a second old
   const inbox = await botMcp(key, 'chat_inbox', { wait: 5 });

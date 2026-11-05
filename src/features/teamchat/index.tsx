@@ -5,7 +5,7 @@
 //               its answer arrives in the same chat
 // The screen asks the server for what changed every few seconds while it is open (chat_sync). Every action goes through
 // the database functions with the person's own session: the database checks the room membership each time.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuBellOff, LuBot, LuCheck, LuCheckCheck, LuCornerUpLeft, LuLanguages, LuLogOut, LuPaperclip, LuPencil, LuPlus, LuSearch, LuSend, LuSettings, LuSmilePlus, LuTrash2, LuUsers, LuX } from 'react-icons/lu';
 import type { PageProps } from '@/app/modules';
 import { useApp } from '@/app/hooks';
@@ -13,16 +13,20 @@ import { Badge, Button, Field, IconButton, Modal, Note, confirmDialog, cx, toast
 import { rpc } from '@/platform/live/ops';
 import { gateway } from '@/platform/gateway';
 import { storeFile } from '@/features/documents/upload';
+import { MAX_LOGO_BYTES, readLogo } from '@/features/settings/helpers';
+import { storeImage, useStoredImage } from '@/features/settings/image';
 import './teamchat.css';
 
-type Who = { type: 'member' | 'bot'; id: string; name: string; title?: string | null; role?: string; lastReadAt?: string; live?: boolean };
-interface Room { id: string; kind: 'group' | 'direct'; name: string; topic: string; lastAt: string; role: 'admin' | 'member'; muted: boolean; lastReadAt: string; unread: number; mentioned: boolean;
+type Who = { type: 'member' | 'bot'; id: string; name: string; title?: string | null; role?: string; lastReadAt?: string; live?: boolean; photo?: string | null };
+interface Room { id: string; kind: 'group' | 'direct'; name: string; topic: string; photo?: string | null; lastAt: string; role: 'admin' | 'member'; muted: boolean; lastReadAt: string; unread: number; mentioned: boolean;
   last: { body: string; files: number; name: string; at: string } | null; members: Who[] }
 interface ChatFile { name: string; size: number; mime: string; path: string }
 interface Msg { id: string; roomId: string; at: string; author: { type: 'member' | 'bot'; id: string; name: string; title?: string }; body: string; deleted: boolean; editedAt: string | null;
   replyTo: { id: string; body: string; name: string } | null; mentions: { type: string; id: string }[]; files: ChatFile[]; translations: Record<string, string>;
   reactions: { emoji: string; n: number; who: string[]; ids: string[] }[] }
-interface Sync { me: string; now: string; rooms: Room[]; people: Who[]; bots: Who[]; messages: Msg[] }
+interface Sync { me: string; mePhoto?: string | null; now: string; rooms: Room[]; people: Who[]; bots: Who[]; messages: Msg[] }
+// 0094: every photo the screen knows, by person or AI employee id
+const Photos = createContext<Map<string, string>>(new Map());
 const EMOJI = ['👍', '❤️', '😂', '🎉', '🙏', '👀', '✅', '🔥'];
 
 async function call<T>(name: string, args: Record<string, unknown>): Promise<{ ok: true; data: T } | { ok: false; reason: string }> {
@@ -76,7 +80,15 @@ export default function TeamChatPage(_: PageProps) {
     if (r.ok) setOpen(r.data); else toast(t('tc.reason.generic'), true);
   };
 
+  const photos = useMemo(() => {
+    const m = new Map<string, string>();
+    const add = (w: Who) => { if (w.photo) m.set(w.id, w.photo); };
+    if (sync) { sync.people.forEach(add); sync.bots.forEach(add); sync.rooms.forEach((r) => r.members.forEach(add)); if (sync.mePhoto) m.set(sync.me, sync.mePhoto); }
+    return m;
+  }, [sync]);
+
   return (
+    <Photos.Provider value={photos}>
     <div className={cx('page tc', open && 'tc-has-room')} data-testid="teamchat">
       {failed && <Note tone="warn">{t('tc.error')}</Note>}
       <div className="tc-shell">
@@ -93,7 +105,7 @@ export default function TeamChatPage(_: PageProps) {
                 return (
                   <li key={r.id}>
                     <button type="button" className={cx('tc-room', r.id === open && 'on', r.unread > 0 && 'unread')} onClick={() => setOpen(r.id)} data-room={titleOf(r)}>
-                      <Avatar name={titleOf(r)} id={r.kind === 'group' ? r.id : other?.id ?? r.id} bot={bot} group={r.kind === 'group'} />
+                      <Avatar name={titleOf(r)} id={r.kind === 'group' ? r.id : other?.id ?? r.id} bot={bot} group={r.kind === 'group'} photo={r.kind === 'group' ? r.photo : undefined} />
                       <span className="grow tc-room-main">
                         <span className="row tight"><b className="tc-room-name">{titleOf(r)}</b>{bot && <Badge tone="violet">{t('tc.aiBadge')}</Badge>}{r.muted && <LuBellOff aria-hidden="true" className="dim" />}</span>
                         <span className="tc-room-last">{r.last ? `${r.last.name}: ${r.last.body || (r.last.files ? '📎' : '')}` : r.topic}</span>
@@ -124,6 +136,7 @@ export default function TeamChatPage(_: PageProps) {
         }} />}
       {settings && room && sync && <GroupSettings room={room} sync={sync} onClose={() => setSettings(false)} onDone={async (left) => { setSettings(false); if (left) setOpen(null); await pull(); }} />}
     </div>
+    </Photos.Provider>
   );
 }
 
@@ -135,10 +148,12 @@ function stamp(at: string, lang: string, t: (k: string) => string) {
   return d.toLocaleDateString(lang === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric' });
 }
 
-function Avatar({ name, id, bot, group, small }: { name: string; id: string; bot?: boolean; group?: boolean; small?: boolean }) {
+function Avatar({ name, id, bot, group, small, photo }: { name: string; id: string; bot?: boolean; group?: boolean; small?: boolean; photo?: string | null }) {
+  const known = useContext(Photos);
+  const src = useStoredImage((group ? photo : photo ?? known.get(id)) || undefined);
   return (
-    <span className={cx('tc-av', small && 'sm', bot && 'bot')} style={bot ? undefined : { background: `hsl(${hue(id)} 45% 28%)` }} aria-hidden="true">
-      {bot ? <LuBot /> : group ? <LuUsers /> : initials(name)}
+    <span className={cx('tc-av', small && 'sm', bot && 'bot', src && 'pic')} style={bot || src ? undefined : { background: `hsl(${hue(id)} 45% 28%)` }} aria-hidden="true">
+      {src ? <img src={src} alt="" /> : bot ? <LuBot /> : group ? <LuUsers /> : initials(name)}
     </span>
   );
 }
@@ -226,12 +241,26 @@ function Conversation({ room, me, title, other, msgs, setMsgs, merge, pull, onBa
     return body.split(re).map((part, i) => (re.test(part) && part.startsWith('@') ? <span key={i} className="tc-at">{part}</span> : part));
   };
 
+  // 0094: any member of a group may change its photo
+  const changeGroupPhoto = async (file: File) => {
+    let pic: string;
+    try { pic = await readLogo(file); } catch { toast(t('tc.photo.bad', { max: Math.round(MAX_LOGO_BYTES / 1024 / 1024) }), true); return; }
+    const path = await storeImage(pic, true, 'chat');
+    if (!path) { toast(t('tc.photo.failed'), true); return; }
+    const r = await call('chat_room_photo_set', { p_room: room.id, p_photo: path });
+    if (!r.ok) { toast(t('tc.photo.failed'), true); return; }
+    toast(t('tc.photo.saved')); await pull();
+  };
+
   let lastDay = '';
   return (
     <div className="tc-conv">
       <header className="tc-head">
         <IconButton label={t('tc.cancel')} className="tc-back" onClick={onBack}><LuCornerUpLeft /></IconButton>
-        <Avatar name={title} id={room.kind === 'group' ? room.id : other?.id ?? room.id} bot={bot} group={room.kind === 'group'} />
+        {room.kind === 'group'
+          ? <label className="tc-photo-edit" title={t('tc.photo.change')}><Avatar name={title} id={room.id} group photo={room.photo} /><span className="sr-only">{t('tc.photo.change')}</span>
+              <input type="file" accept="image/png,image/jpeg,image/webp" data-testid="tc-group-photo" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void changeGroupPhoto(f); }} /></label>
+          : <Avatar name={title} id={other?.id ?? room.id} bot={bot} />}
         <div className="grow">
           <div className="row tight"><b>{title}</b>{bot && <Badge tone="violet">{t('tc.aiBadge')}</Badge>}</div>
           <div className="xs dim">{room.kind === 'group' ? (room.topic || t('tc.members', { n: room.members.length })) : (other?.title ?? '')}

@@ -86,6 +86,13 @@ async function run(bot, tool, args) {
     const s = parseWait(wait);
     if (s) await waitForChat(bot, s);
   }
+  // 0094: the bot's own photo. The server stores the picture; only its path goes to the database
+  if (tool === 'profile_photo_set') {
+    const { storeBotPhoto } = await import('../bots/photo.js');
+    const st = await storeBotPhoto(bot.tenant, args || {});
+    if (st.error) return { error: st.error };
+    args = { path: st.path };
+  }
   const r = await serviceRpc('bot_call', { p_bot: bot.bot, p_tool: dbName(tool), p_args: args || {} });
   if (!r.ok) throw new HttpError(503, 'upstream_unavailable');
   // a bot's chat message that @mentions another AI employee reaches that one too
@@ -140,7 +147,7 @@ async function mcpOne(bot, msg) {
 
 async function mcp(request, bot) {
   let body;
-  try { body = await readJson(request, 64 * 1024); } catch (e) { if (e instanceof HttpError && e.status === 413) throw e; return answer(400, rpcError(null, -32700, 'Parse error')); }
+  try { body = await readJson(request, 1600 * 1024); } catch (e) { if (e instanceof HttpError && e.status === 413) throw e; return answer(400, rpcError(null, -32700, 'Parse error')); }
   if (Array.isArray(body)) {
     if (!body.length || body.length > 20) return answer(400, rpcError(null, -32600, 'Invalid request'));
     const out = [];
@@ -160,7 +167,7 @@ export async function botRoute(request, action) {
   const bot = await authenticate(request);
   if (bot instanceof Response) return bot;
   if (action === 'mcp') return mcp(request, bot);
-  const b = await readJson(request, 64 * 1024);
+  const b = await readJson(request, 1600 * 1024);
   const data = await run(bot, b.tool, b.args);
   return answer(isError(data) ? (data.error === 'not_allowed' || data.error === 'needs_approval' ? 403 : 400) : 200, isError(data) ? { ok: false, ...data } : { ok: true, result: data });
 }

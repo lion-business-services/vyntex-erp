@@ -4,7 +4,7 @@ import type { Dict } from '@/i18n';
 export const dict: Dict = {
   en: {
     'nav.teamchat': 'Chat',
-    'tc.search': 'Search chats', 'tc.newChat': 'New chat', 'tc.newGroup': 'New group', 'tc.none': 'No chats yet. Start one with a teammate or an AI employee.',
+    'tc.photo.change': 'Change the group photo', 'tc.photo.saved': 'Group photo changed', 'tc.photo.failed': 'The photo could not be saved. Please try again.', 'tc.photo.bad': 'Use a PNG, JPEG or WebP picture of up to {max} MB.', 'tc.search': 'Search chats', 'tc.newChat': 'New chat', 'tc.newGroup': 'New group', 'tc.none': 'No chats yet. Start one with a teammate or an AI employee.',
     'tc.pick': 'Pick a chat on the left, or start a new one.', 'tc.loading': 'Loading…', 'tc.error': 'Chat could not be loaded. Trying again.',
     'tc.people': 'People', 'tc.ai': 'AI employees', 'tc.aiBadge': 'AI', 'tc.you': 'You', 'tc.members': '{n} members',
     'tc.write': 'Write a message', 'tc.writeTo': 'Message {name}', 'tc.send': 'Send', 'tc.attach': 'Attach a file', 'tc.replyTo': 'Replying to {name}', 'tc.cancelReply': 'Cancel reply',
@@ -24,7 +24,7 @@ export const dict: Dict = {
   },
   es: {
     'nav.teamchat': 'Chat',
-    'tc.search': 'Buscar chats', 'tc.newChat': 'Nuevo chat', 'tc.newGroup': 'Nuevo grupo', 'tc.none': 'Todavía no hay chats. Inicie uno con un compañero o un empleado de IA.',
+    'tc.photo.change': 'Cambiar la foto del grupo', 'tc.photo.saved': 'Foto del grupo cambiada', 'tc.photo.failed': 'No se pudo guardar la foto. Inténtelo de nuevo.', 'tc.photo.bad': 'Use una imagen PNG, JPEG o WebP de hasta {max} MB.', 'tc.search': 'Buscar chats', 'tc.newChat': 'Nuevo chat', 'tc.newGroup': 'Nuevo grupo', 'tc.none': 'Todavía no hay chats. Inicie uno con un compañero o un empleado de IA.',
     'tc.pick': 'Elija un chat a la izquierda o inicie uno nuevo.', 'tc.loading': 'Cargando…', 'tc.error': 'No se pudo cargar el chat. Reintentando.',
     'tc.people': 'Personas', 'tc.ai': 'Empleados de IA', 'tc.aiBadge': 'IA', 'tc.you': 'Usted', 'tc.members': '{n} miembros',
     'tc.write': 'Escriba un mensaje', 'tc.writeTo': 'Mensaje para {name}', 'tc.send': 'Enviar', 'tc.attach': 'Adjuntar un archivo', 'tc.replyTo': 'Respondiendo a {name}', 'tc.cancelReply': 'Cancelar respuesta',

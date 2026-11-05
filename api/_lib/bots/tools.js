@@ -71,6 +71,8 @@ export const TOOLS = {
   chat_send: { section: null, description: 'Reply in a team chat room you are a member of (a direct chat or a group). Use replyTo to answer one message. @mention people or AI employees by passing mentions. This is internal team chat, never a message to a client.',
     input: obj({ roomId: id, body: { type: 'string', minLength: 1, maxLength: 8000 }, replyTo: id, mentions: { type: 'array', maxItems: 30, items: obj({ type: { enum: ['member', 'bot'] }, id }, ['type', 'id']) } }, ['roomId', 'body']) },
   chat_rooms: { section: null, description: 'The team chat rooms you are a member of, with who is in each.', input: obj() },
+  profile_photo_set: { section: null, description: 'Set your own profile photo in VYNTEX ERP (shown on your AI employee card and in Team chat). Pass image as base64 (or a data: address), or url as an https address of the picture. PNG, JPEG or WebP, 1 MB at most. A square picture looks best.',
+    input: obj({ image: { type: 'string', maxLength: 1500000 }, url: { type: 'string', maxLength: 1000 } }) },
   approvals_list: { section: null, description: 'Your own approval requests and how each was decided.', input: obj({ status: { enum: ['pending', 'approved', 'rejected', 'done', 'cancelled'] }, limit: lim }) },
 };
 

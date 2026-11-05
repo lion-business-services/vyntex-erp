@@ -41,3 +41,12 @@
   .ai-facts{grid-template-columns:1fr}
   .ai-bots{grid-template-columns:1fr}
 }
+
+/* 0094: the AI employee's photo, changed by clicking it */
+.ai-photo-edit{position:relative;cursor:pointer;overflow:hidden}
+.ai-photo-edit input{display:none}
+.ai-photo-edit img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.ai-photo-edit:hover,.ai-photo-edit:focus-within{box-shadow:0 0 0 2px var(--accent)}
+.ai-photo-edit.busy{opacity:.6}
+/* the header value: shown as dots without being a password field, so the browser never fills a saved password in */
+.ai-secret{-webkit-text-security:disc;font-family:var(--mono, monospace)}

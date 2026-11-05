@@ -2,12 +2,12 @@
 //   VYNTEX   /, /pricing, /request-demo (sales pages), /demo/* (sample workspace), /<company-slug>/* (live workspace)
 //   LBS      / (sign-in), /app/* (live workspace), /preview/* (sample workspace, review builds only)
 //   both     /signin, /invite/<token>, /reset-password, /mfa, /sign/<token>, /review/<token>
-import { Suspense, lazy, useEffect, useState, useSyncExternalStore } from 'react';
+import { Suspense, lazy, useDeferredValue, useEffect, useState, useSyncExternalStore } from 'react';
 import { useRoute, A, workspaceOf } from './router';
 import { useApp } from './hooks';
 import { Shell } from './Shell';
 import { PAGES } from './routes';
-import { moduleExists, sectionOf, type ModuleDef } from './modules';
+import { moduleExists, prefetchSections, sectionOf, type ModuleDef } from './modules';
 import { NoAccess } from './shared';
 import { Empty, Overlays, Button } from '@/ui';
 import { hasSample, loadSample, setPrefs, useStore } from '@/store/store';
@@ -42,7 +42,14 @@ const DAY_SKY = !(typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs
 const NotFound = lazy(() => import('@/features/public').then((m) => ({ default: m.NotFound })));
 
 /** Shown for the instant a page is being fetched. Quiet on purpose. */
-function Loading() { return <div className="page-loading" role="status" aria-live="polite"><span className="sr">Loading</span></div>; }
+function Loading() {
+  return (
+    <div className="page-loading" role="status" aria-live="polite"><span className="sr">Loading</span>
+      <div className="sk sk-title" /><div className="sk-row"><div className="sk sk-card" /><div className="sk sk-card" /><div className="sk sk-card" /></div>
+      <div className="sk sk-line" /><div className="sk sk-line" /><div className="sk sk-line short" />
+    </div>
+  );
+}
 
 /** Makes sure the sample business is in memory before a page that shows it is drawn (someone can arrive from the sign-in page). */
 function useSample(): boolean {
@@ -55,7 +62,12 @@ function useSample(): boolean {
 function Workspace() {
   const app = useApp();
   const { t, can, isWorker, prefs, pack } = app;
-  const route = useRoute();
+  const live = useRoute();
+  // the page that is on screen stays there while the next section's code is fetched (React keeps the old one until the
+  // new one is ready), with a thin bar at the top; every section's code is also fetched ahead of time once idle
+  const route = useDeferredValue(live);
+  const switching = route !== live;
+  useEffect(() => { prefetchSections(); }, []);
   const [tour, setTour] = useState(false);
   const [, section = '', id, ...rest] = route.parts;
   const tourParam = !!Tour && route.query.get('tour') === '1';
@@ -77,6 +89,7 @@ function Workspace() {
   }
   return (
     <Shell onTour={() => setTour(true)}>
+      {switching && <div className="route-bar" role="progressbar" aria-label="Loading" />}
       <Suspense fallback={<Loading />}>{body}</Suspense>
       {tour && Tour && <Suspense fallback={null}><Tour onClose={closeTour} /></Suspense>}
     </Shell>

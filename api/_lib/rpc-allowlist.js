@@ -38,6 +38,8 @@ export const RPCS = {
   // invoices (0086). Sending is the office operation invoice_send (api/_lib/public/office.js)
   invoice_list: { stepUp: false, read: true }, invoice_save: { stepUp: false }, invoice_discard: { stepUp: false }, invoice_void: { stepUp: true },
   invoice_send: { stepUp: false, special: 'office' },
+  // an invoice paid outside Stripe (0097)
+  invoice_record_payment: { stepUp: false },
   // team chat (0087). Sending, translating and a bot's chat address are office operations (api/_lib/chat)
   chat_sync: { stepUp: false, read: true }, chat_history: { stepUp: false, read: true }, chat_room_open: { stepUp: false }, chat_room_update: { stepUp: false },
   chat_edit: { stepUp: false }, chat_delete: { stepUp: false }, chat_react: { stepUp: false }, chat_read: { stepUp: false }, chat_mute: { stepUp: false },

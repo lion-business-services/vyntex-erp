@@ -19,6 +19,11 @@
 .tc-unread.at{background:var(--warn, #f5b400)}
 .tc-av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#fff;flex:none}
 .tc-av.sm{width:28px;height:28px;font-size:11px}
+.tc-av.pic{background:var(--surface);overflow:hidden}
+.tc-av img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.tc-photo-edit{position:relative;cursor:pointer;border-radius:50%;flex:none}
+.tc-photo-edit input{display:none}
+.tc-photo-edit:hover .tc-av,.tc-photo-edit:focus-within .tc-av{box-shadow:0 0 0 2px var(--accent)}
 .tc-av.bot{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent-line)}
 .tc-room-pane{display:flex;flex-direction:column;min-height:0;min-width:0}
 .tc-empty{flex:1;display:grid;place-items:center;align-content:center;gap:8px;opacity:.6;text-align:center;padding:24px}

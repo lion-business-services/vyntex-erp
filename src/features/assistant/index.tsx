@@ -108,7 +108,8 @@ function Conversation(_: PageProps) {
     // VYNTEX AI (0095): the safe actions are carried out at once, one after the other, each checked by the business rules
     // against the records as they are after the one before; anything that reaches a client or records money waits for Confirm
     const doing = reply.actions.filter((a) => a.proposal);
-    push(bot([{ type: 'text', text: reply.text || (doing.length ? t('asst.working') : t('asst.confirmAsk')) }], { model: true }));
+    // no promise of a confirm when nothing can be done: then only the reason is shown
+    if (reply.text || doing.length || !reply.actions.length) push(bot([{ type: 'text', text: reply.text || (doing.length ? t('asst.working') : t('asst.confirmAsk')) }], { model: true }));
     let waiting = false;
     for (const a of reply.actions) {
       if (!a.proposal) { push(bot([{ type: 'text', text: a.problem, soft: true }], { model: true })); continue; }

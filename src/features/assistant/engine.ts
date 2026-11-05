@@ -27,7 +27,8 @@ export type Proposal =
   | { kind: 'note'; ref: Ref; text: string }
   | { kind: 'taskDone'; taskId: string }
   | { kind: 'jobStatus'; jobId: string; status: JobStatus }
-  | { kind: 'payment'; jobId: string; amount: number; method: PayMethod; date: ISODate }
+  // approve: the project is still an estimate, so confirming also marks it as a signed contract (the payment form needs that)
+  | { kind: 'payment'; jobId: string; amount: number; method: PayMethod; date: ISODate; approve?: boolean }
   | { kind: 'visit'; leadId: string; date: ISODate; time?: string }
   | { kind: 'appointment'; clientId?: string; leadId?: string; typeId: string; date: ISODate; time: string; staffId: string }
   | { kind: 'review'; clientId: string; jobId?: string; channel: MessageChannel }
@@ -178,8 +179,9 @@ export function describe(p: Proposal, env: Env): Card {
       const job = byId(data.jobs, p.jobId); const owes = job ? jobMoney(data, job).clientOwes : 0;
       return {
         title: t('asst.card.payment'),
-        rows: [[t('asst.kind.job'), job ? jobLabel(data, job) : t('asst.gone')], [t('common.amount'), money2(p.amount)], [t('common.date'), date(p.date)], [t('common.method'), t('m_' + p.method)], [t('asst.row.balanceAfter'), money2(Math.max(0, owes - p.amount))]],
-        note: ruleOn('payment-posted') ? t('asst.card.payNote') : undefined,
+        rows: [[t('asst.kind.job'), job ? jobLabel(data, job) : t('asst.gone')], [t('common.amount'), money2(p.amount)], [t('common.date'), date(p.date)], [t('common.method'), t('m_' + p.method)], [t('asst.row.balanceAfter'), money2(Math.max(0, owes - p.amount))],
+          ...(p.approve && job?.status === 'estimate' ? [[t('asst.row.status'), `${t('st_estimate')} → ${t('st_contract')}`] as [string, string]] : [])],
+        note: [p.approve && job?.status === 'estimate' ? t('asst.pay.approveNote', { name: job.name, status: t('st_contract') }) : '', ruleOn('payment-posted') ? t('asst.card.payNote') : ''].filter(Boolean).join(' ') || undefined,
       };
     }
     case 'visit': {
@@ -241,7 +243,8 @@ export function check(p: Proposal, env: Env): string | null {
     }
     case 'payment': {
       // same rules as the payment form: a real amount, never more than the balance, and not on an estimate
-      const job = byId(data.jobs, p.jobId); if (!job || job.status === 'estimate') return t('asst.pay.noJob');
+      const job = byId(data.jobs, p.jobId); if (!job) return t('asst.goneRecord');
+      if (job.status === 'estimate' && !(p.approve && env.can(PERM.jobStatus))) return t('asst.pay.estimate', { name: job.name, status: t('st_contract') });
       if (!(p.amount > 0)) return t('form.pay.positive');
       const owes = jobMoney(data, job).clientOwes;
       return p.amount > owes + 0.005 ? t('form.pay.tooMuch', { amount: money2(Math.max(0, owes)) }) : null;
@@ -620,12 +623,12 @@ function parsePayment(input: string, env: Env): Reply {
   const example: Block[] = owing[0] ? [{ type: 'examples', items: [t('asst.ex.payment', { amount: money(Math.min(500, Math.floor(jobMoney(data, owing[0]).clientOwes)) || 1), name: owing[0].name })] }] : [];
   if (amount === null || !(amount > 0)) return say(text(t('asst.need.amount')), ...example);
   const query = w.rest(NAME_LEAD, NAME_TRAIL);
-  const forJob = (j: Job): Choice => ({ label: jobLabel(data, j), sub: t('form.pay.owes', { amount: money2(Math.max(0, jobMoney(data, j).clientOwes)) }), proposal: { kind: 'payment', jobId: j.id, amount, method, date } });
+  const forJob = (j: Job): Choice => ({ label: jobLabel(data, j), sub: t('form.pay.owes', { amount: money2(Math.max(0, jobMoney(data, j).clientOwes)) }), proposal: { kind: 'payment', jobId: j.id, amount, method, date, ...(j.status === 'estimate' ? { approve: true } : {}) } });
   if (!words(query, industryWords(env)).length) return owing.length ? which(env, 'asst.which.payJob', owing.slice(0, 5).map(forJob)) : say(text(t('asst.pay.nothingOwed')));
-  const pick = best(rank(query, jobCands(env, open), industryWords(env)));
+  const pick = best(rank(query, jobCands(env, data.jobs), industryWords(env)));
   if (pick.many) return which(env, 'asst.which.job', pick.many.map(forJob));
   if (!pick.one) return say(text(t('asst.notFound.job', { q: tidy(query) })));
-  return offer({ kind: 'payment', jobId: pick.one.id, amount, method, date }, env);
+  return offer({ kind: 'payment', jobId: pick.one.id, amount, method, date, ...(pick.one.status === 'estimate' ? { approve: true } : {}) }, env);
 }
 
 function parseVisit(input: string, env: Env): Reply {

@@ -21,18 +21,28 @@ import { log } from '../respond.js';
 
 export const DEFAULT_MODELS = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
 export const DEFAULT_GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash'];
+// a question with pictures goes to models that see images: Groq's vision model, then Gemini (every Gemini model sees images)
+export const DEFAULT_GROQ_VISION = ['meta-llama/llama-4-scout-17b-16e-instruct'];
 const listOf = (name, fallback) => {
   const own = String(env(name) || '').split(',').map((s) => s.trim()).filter((s) => /^[A-Za-z0-9._:/@-]{1,100}$/.test(s));
   return own.length ? own.slice(0, 5) : fallback;
 };
 /** The providers that have a key, in the order they are tried. */
 export const providers = () => [
-  { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: 'GROQ_API_KEY', models: listOf('GROQ_MODELS', DEFAULT_MODELS), parallel: true },
-  { id: 'gemini', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', key: 'GEMINI_API_KEY', models: listOf('GEMINI_MODELS', DEFAULT_GEMINI_MODELS), parallel: false },
+  { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: 'GROQ_API_KEY', models: listOf('GROQ_MODELS', DEFAULT_MODELS), vision: listOf('GROQ_VISION_MODELS', DEFAULT_GROQ_VISION), parallel: true },
+  { id: 'gemini', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', key: 'GEMINI_API_KEY', models: listOf('GEMINI_MODELS', DEFAULT_GEMINI_MODELS), vision: listOf('GEMINI_MODELS', DEFAULT_GEMINI_MODELS), parallel: false },
 ].filter((p) => has(p.key));
 const TIMEOUT_MS = 25_000;
 const MAX_MESSAGES = 16;
 const MAX_MESSAGE_CHARS = 2_000;
+// the question being asked may carry the text of attached files (read in the browser), up to this much
+const MAX_LAST_CHARS = 10_000;
+const MAX_IMAGES = 3;
+const MAX_IMAGE_CHARS = 1_400_000; // one picture as a data: address, about 1 MB
+const IMAGE_OK = /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/;
+const MAX_PDFS = 2;
+const MAX_PDF_CHARS = 2_800_000; // one PDF as a data: address, about 2 MB
+const PDF_OK = /^data:application\/pdf;base64,[A-Za-z0-9+/=]+$/;
 const MAX_CONTEXT_CHARS = 24_000;
 const MAX_REPLY_CHARS = 4_000;
 const MAX_ACTIONS = 5;
@@ -91,18 +101,41 @@ export function validate(args) {
   const { messages, context, lang } = args || {};
   if (!Array.isArray(messages) || messages.length < 1 || messages.length > MAX_MESSAGES) return { error: 'messages' };
   const clean = [];
-  for (const m of messages) {
-    if (!m || (m.role !== 'user' && m.role !== 'assistant') || typeof m.content !== 'string' || !m.content.trim()) return { error: 'messages' };
-    clean.push({ role: m.role, content: maskTaxIds(m.content.slice(0, MAX_MESSAGE_CHARS)) });
+  messages.forEach((m, i) => {
+    if (!m || (m.role !== 'user' && m.role !== 'assistant') || typeof m.content !== 'string' || !m.content.trim()) { clean.length = 0; clean.push(null); return; }
+    const max = i === messages.length - 1 ? MAX_LAST_CHARS : MAX_MESSAGE_CHARS;
+    clean.push({ role: m.role, content: maskTaxIds(m.content.slice(0, max)) });
+  });
+  if (clean.includes(null) || clean[clean.length - 1].role !== 'user') return { error: 'messages' };
+  // pictures attached to the question (0096): read by a model that sees images
+  const images = [];
+  if (args.images !== undefined) {
+    if (!Array.isArray(args.images) || args.images.length > MAX_IMAGES) return { error: 'images' };
+    for (const im of args.images) {
+      if (typeof im !== 'string' || im.length > MAX_IMAGE_CHARS || !IMAGE_OK.test(im)) return { error: 'images' };
+      images.push(im);
+    }
   }
-  if (clean[clean.length - 1].role !== 'user') return { error: 'messages' };
+  // PDFs attached to the question (0096): only Gemini reads a PDF itself, so a question with one goes to Gemini
+  const pdfs = [];
+  if (args.pdfs !== undefined) {
+    if (!Array.isArray(args.pdfs) || args.pdfs.length > MAX_PDFS) return { error: 'pdfs' };
+    for (const f of args.pdfs) {
+      if (typeof f !== 'string' || f.length > MAX_PDF_CHARS || !PDF_OK.test(f)) return { error: 'pdfs' };
+      pdfs.push(f.slice(f.indexOf(',') + 1));
+    }
+  }
+  if (images.length) {
+    const last = clean[clean.length - 1];
+    last.content = [{ type: 'text', text: last.content }, ...images.map((url) => ({ type: 'image_url', image_url: { url } }))];
+  }
   let data = '{}';
   if (context !== undefined) {
     if (!context || typeof context !== 'object' || Array.isArray(context)) return { error: 'context' };
     data = maskTaxIds(JSON.stringify(context));
     if (data.length > MAX_CONTEXT_CHARS) return { error: 'context_size' };
   }
-  return { messages: clean, lang: lang === 'es' ? 'es' : 'en', data: data.replace(/</g, '\\u003c') };
+  return { messages: clean, images: images.length, pdfs, imageUrls: images, lang: lang === 'es' ? 'es' : 'en', data: data.replace(/</g, '\\u003c') };
 }
 
 /** The model's tool calls, as { tool, input } (at most 5, known tools, parsed arguments). */
@@ -125,7 +158,7 @@ export async function askModels(input, company, fetcher = globalThis.fetch) {
   const body = (p, model) => JSON.stringify({ model, temperature: 0.2, max_tokens: 900, tool_choice: 'auto', ...(p.parallel ? { parallel_tool_calls: true } : {}), tools: TOOLS,
     messages: [{ role: 'system', content: systemPrompt(input.lang, input.data, company) }, ...input.messages] });
   let last = 'upstream_error';
-  for (const p of providers()) for (const model of p.models) {
+  for (const p of providers()) for (const model of (input.images ? p.vision : p.models)) {
     let res;
     try {
       res = await fetcher(p.url, { method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env(p.key) }, body: body(p, model) });
@@ -144,14 +177,98 @@ export async function askModels(input, company, fetcher = globalThis.fetch) {
   }
   return { error: last };
 }
+// Gemini's own API, for a question with a PDF (its OpenAI-compatible door takes pictures, not PDFs)
+const geminiSchema = (v) => {
+  if (Array.isArray(v)) return v.map(geminiSchema);
+  if (!v || typeof v !== 'object') return v;
+  const out = {};
+  for (const [k, x] of Object.entries(v)) if (k !== 'additionalProperties') out[k] = geminiSchema(x);
+  return out;
+};
+export async function askGeminiWithFiles(input, company, fetcher = globalThis.fetch) {
+  if (!has('GEMINI_API_KEY')) return { error: 'pdf_needs_gemini' };
+  const contents = input.messages.map((m, i) => {
+    const text = typeof m.content === 'string' ? m.content : m.content.filter((c) => c.type === 'text').map((c) => c.text).join('\n');
+    const parts = [{ text }];
+    if (i === input.messages.length - 1) {
+      for (const d of input.pdfs) parts.push({ inline_data: { mime_type: 'application/pdf', data: d } });
+      for (const u of input.imageUrls || []) { const c = u.indexOf(','); parts.push({ inline_data: { mime_type: u.slice(5, u.indexOf(';')), data: u.slice(c + 1) } }); }
+    }
+    return { role: m.role === 'assistant' ? 'model' : 'user', parts };
+  });
+  const body = JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt(input.lang, input.data, company) }] }, contents,
+    tools: [{ functionDeclarations: TOOLS.map((t) => ({ name: t.function.name, description: t.function.description, parameters: geminiSchema(t.function.parameters) })) }],
+    generationConfig: { temperature: 0.2, maxOutputTokens: 900 } });
+  let last = 'upstream_error';
+  for (const model of listOf('GEMINI_MODELS', DEFAULT_GEMINI_MODELS)) {
+    let res;
+    try { res = await fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, { method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { 'content-type': 'application/json', 'x-goog-api-key': env('GEMINI_API_KEY') }, body }); }
+    catch { last = 'upstream_unreachable'; continue; }
+    if (res.status === 429 || res.status >= 500 || res.status === 400 || res.status === 404) { last = res.status === 429 ? 'busy' : 'upstream_error'; log('assistant', 'model_status', { provider: 'gemini-files', model, status: res.status }); continue; }
+    if (!res.ok) { log('assistant', 'model_status', { provider: 'gemini-files', model, status: res.status }); return { error: 'upstream_error' }; }
+    let j; try { j = await res.json(); } catch { continue; }
+    const parts = j?.candidates?.[0]?.content?.parts || [];
+    const text = parts.filter((x) => typeof x.text === 'string').map((x) => x.text).join('\n').trim().slice(0, MAX_REPLY_CHARS);
+    const actions = readActions({ tool_calls: parts.filter((x) => x.functionCall).map((x) => ({ function: { name: x.functionCall.name, arguments: JSON.stringify(x.functionCall.args || {}) } })) });
+    if (!text && !actions.length) { last = 'upstream_error'; continue; }
+    return { text, actions, model, provider: 'gemini' };
+  }
+  return { error: last };
+}
+
 /** The older name, kept for callers of 0095. */
 export const askGroq = askModels;
+
+// ---- voice: what the person said, written down (0096). Groq's Whisper (free, very accurate in English and Spanish,
+// the language is found by itself). Groq does not keep the audio. The page falls back to the browser's own dictation.
+const AUDIO_OK = /^data:audio\/(webm|ogg|mp4|mpeg|wav|x-m4a|aac)(;codecs=[A-Za-z0-9.,"-]+)?;base64,([A-Za-z0-9+/=]+)$/;
+const MAX_AUDIO_CHARS = 3_400_000; // about 2.5 MB of audio: a few minutes of speech
+export const TRANSCRIBE_MODELS = ['whisper-large-v3-turbo', 'whisper-large-v3'];
+
+export async function transcribe(dataUrl, lang, fetcher = globalThis.fetch) {
+  if (!has('GROQ_API_KEY')) return { error: 'not_configured' };
+  const m = typeof dataUrl === 'string' && dataUrl.length <= MAX_AUDIO_CHARS ? AUDIO_OK.exec(dataUrl) : null;
+  if (!m) return { error: 'invalid_audio' };
+  const bytes = Buffer.from(m[3], 'base64');
+  if (bytes.length < 200) return { error: 'too_short' };
+  const ext = m[1] === 'mpeg' ? 'mp3' : m[1] === 'x-m4a' ? 'm4a' : m[1];
+  let last = 'upstream_error';
+  for (const model of TRANSCRIBE_MODELS) {
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type: 'audio/' + m[1] }), 'speech.' + ext);
+    form.append('model', model);
+    form.append('response_format', 'verbose_json');
+    form.append('temperature', '0');
+    // a hint, not a rule: the words of a business ERP, in the person's language; Whisper still finds the language itself
+    form.append('prompt', lang === 'es' ? 'Cliente, prospecto, proyecto, factura, tarea, cita, pago, presupuesto.' : 'Client, lead, project, invoice, task, appointment, payment, estimate.');
+    let res;
+    try { res = await fetcher('https://api.groq.com/openai/v1/audio/transcriptions', { method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { authorization: 'Bearer ' + env('GROQ_API_KEY') }, body: form }); }
+    catch { last = 'upstream_unreachable'; continue; }
+    if (res.status === 429 || res.status >= 500 || res.status === 404) { last = res.status === 429 ? 'busy' : 'upstream_error'; log('assistant', 'transcribe_status', { model, status: res.status }); continue; }
+    if (!res.ok) { log('assistant', 'transcribe_status', { model, status: res.status }); return { error: 'upstream_error' }; }
+    let j; try { j = await res.json(); } catch { last = 'upstream_error'; continue; }
+    const text = String(j?.text || '').trim().slice(0, 4000);
+    return { text: maskTaxIds(text), language: typeof j?.language === 'string' ? j.language.slice(0, 20) : null };
+  }
+  return { error: last };
+}
+
+/** The office operation `assistant_transcribe` ({ audio, lang }). */
+export async function assistantTranscribe({ session, tenant, args }, upstreamError) {
+  const a = await userRpc(session.at, 'assistant_access', { p_tenant: tenant });
+  if (!a.ok) throw upstreamError(a);
+  if (!a.data?.allowed) return { status: 403, error: 'plan_required' };
+  await limit('assistant.voice', keyHash('uid', session.uid), 20, 60);
+  const r = await transcribe(args.audio, args.lang === 'es' ? 'es' : 'en');
+  if (r.error) return { status: r.error === 'invalid_audio' || r.error === 'too_short' ? 400 : r.error === 'busy' ? 429 : r.error === 'not_configured' ? 503 : 502, error: r.error };
+  return { status: 200, result: r };
+}
 
 /** The office operation `assistant_status`: is VYNTEX AI on for this person in this company. */
 export async function assistantStatus({ session, tenant }, upstreamError) {
   const a = await userRpc(session.at, 'assistant_access', { p_tenant: tenant });
   if (!a.ok) throw upstreamError(a);
-  return { status: 200, result: { configured: configured(), allowed: !!a.data?.allowed, plan: a.data?.plan ?? null } };
+  return { status: 200, result: { configured: configured(), allowed: !!a.data?.allowed, plan: a.data?.plan ?? null, voice: has('GROQ_API_KEY'), images: providers().some((p) => p.vision.length), pdfs: has('GEMINI_API_KEY') } };
 }
 
 /** The office operation `assistant_ask` ({ messages, context, lang }). */
@@ -164,7 +281,8 @@ export async function assistantAsk({ session, tenant, args }, upstreamError) {
   await limit('assistant.tenant', keyHash('tenant', tenant), 60, 86400);
   const input = validate(args);
   if (input.error) return { status: 400, error: 'invalid_args' };
-  const r = await askModels(input, String(args.company || '').slice(0, 120));
-  if (r.error) return { status: r.error === 'busy' ? 429 : 502, error: r.error };
+  const company = String(args.company || '').slice(0, 120);
+  const r = input.pdfs.length ? await askGeminiWithFiles(input, company) : await askModels(input, company);
+  if (r.error) return { status: r.error === 'busy' ? 429 : r.error === 'pdf_needs_gemini' ? 409 : 502, error: r.error };
   return { status: 200, result: { text: maskTaxIds(r.text), actions: r.actions } };
 }

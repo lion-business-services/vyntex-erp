@@ -41,7 +41,8 @@ export const RPCS = {
   // team chat (0087). Sending, translating and a bot's chat address are office operations (api/_lib/chat)
   chat_sync: { stepUp: false, read: true }, chat_history: { stepUp: false, read: true }, chat_room_open: { stepUp: false }, chat_room_update: { stepUp: false },
   chat_edit: { stepUp: false }, chat_delete: { stepUp: false }, chat_react: { stepUp: false }, chat_read: { stepUp: false }, chat_mute: { stepUp: false },
-  chat_send: { stepUp: false, special: 'office' }, chat_translate: { stepUp: false, special: 'office' }, bot_webhook_set: { stepUp: true, special: 'office' }, bot_webhook_test: { stepUp: false, special: 'office' }, assistant_ask: { stepUp: false, special: 'office' }, assistant_status: { stepUp: false, special: 'office' },
+  chat_send: { stepUp: false, special: 'office' }, chat_translate: { stepUp: false, special: 'office' }, bot_webhook_set: { stepUp: true, special: 'office' }, bot_webhook_test: { stepUp: false, special: 'office' }, assistant_ask: { stepUp: false, special: 'office' }, assistant_status: { stepUp: false, special: 'office' }, assistant_transcribe: { stepUp: false, special: 'office' },
+  assistant_chat_save: { stepUp: false }, assistant_chat_list: { stepUp: false, read: true }, assistant_chat_get: { stepUp: false, read: true }, assistant_chat_delete: { stepUp: false },
   // exports
   export_request: { stepUp: true }, export_1099_data: { stepUp: true },
   // worker tax IDs and consent (migrations 0005 to 0007; these functions take no company argument)

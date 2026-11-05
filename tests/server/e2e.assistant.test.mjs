@@ -35,7 +35,7 @@ let groqFake = () => reply({ content: 'Adding Brian as a client and creating his
   { id: '3', type: 'function', function: { name: 'drop_database', arguments: '{}' } }] });
 
 async function startStack() {
-  setTestEnv({ GROQ_API_KEY: 'gsk_test_' + 'c'.repeat(24), GEMINI_API_KEY: 'AIza' + 'd'.repeat(35), STRIPE_SECRET_KEY: 'sk_test_' + 'a'.repeat(24), STRIPE_WEBHOOK_SECRET: 'whsec_' + 'b'.repeat(24), RESEND_API_KEY: 're_test_' + randomBytes(16).toString('hex'), SYSTEM_EMAIL_FROM: 'VYNTEX ERP <system@mail.example.com>' });
+  setTestEnv({ ASSISTANT_ORDER: 'groq,gemini', GROQ_API_KEY: 'gsk_test_' + 'c'.repeat(24), GEMINI_API_KEY: 'AIza' + 'd'.repeat(35), STRIPE_SECRET_KEY: 'sk_test_' + 'a'.repeat(24), STRIPE_WEBHOOK_SECRET: 'whsec_' + 'b'.repeat(24), RESEND_API_KEY: 're_test_' + randomBytes(16).toString('hex'), SYSTEM_EMAIL_FROM: 'VYNTEX ERP <system@mail.example.com>' });
   if (process.env.VX_PG_PUBLIC_READY !== '1') {
     const r = spawnSync('bash', [path.join(root, 'tests/server/pg_local.sh'), 'start'], { env: pgEnv, encoding: 'utf8' });
     if (r.status !== 0) throw new Error('the local PostgreSQL did not start:\n' + r.stdout + r.stderr);
@@ -119,7 +119,7 @@ test('VYNTEX AI: Master Builder (and VYNTEX USA itself) only; Groq answers with 
   groqFake = (b) => (b.model === 'openai/gpt-oss-120b' ? new Response('{"error":"rate limit"}', { status: 429 }) : reply({ content: 'Here is what is due today.' }));
   const r2 = await ask(pro, question);
   assert.equal(r2.status, 200, r2.text); assert.equal(r2.json.result.text, 'Here is what is due today.');
-  assert.deepEqual(groq.slice(before).map((x) => x.body.model), ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile']);
+  assert.deepEqual(groq.slice(before).map((x) => x.body.model), ['openai/gpt-oss-120b', 'openai/gpt-oss-20b']);
   // every Groq model used up: Gemini answers (its key in its own header; no parallel_tool_calls, which it does not take)
   groqFake = () => new Response('{}', { status: 429 });
   const g0 = groq.length;
@@ -243,4 +243,20 @@ test('VYNTEX AI reaches every section: the action index goes to the model, do_ac
   assert.equal((await ask(pro, { ...question, actions: 'x'.repeat(12_001) })).status, 400);
   assert.equal((await ask(pro, { ...question, actions: { a: 1 } })).status, 400);
   assert.equal(groq.length, n);
+});
+
+test('VYNTEX AI asks Gemini first by default, gives thinking models room, and an empty answer makes way for the next model', async () => {
+  const pro = await S.company('master_builder');
+  const saved = process.env.ASSISTANT_ORDER; delete process.env.ASSISTANT_ORDER;
+  try {
+    let n = 0;
+    geminiFake = (b) => { n += 1; return n === 1 ? new Response(JSON.stringify({ choices: [{ message: { content: '' }, finish_reason: 'length' }] }), { status: 200 }) : reply({ content: 'Five tasks for Brian\'s project.' }); };
+    const g0 = groq.length;
+    const r = await ask(pro, question);
+    assert.equal(r.status, 200, r.text); assert.equal(r.json.result.text, "Five tasks for Brian's project.");
+    const sent = groq.slice(g0);
+    assert.deepEqual(sent.map((x) => x.at), ['gemini', 'gemini'], 'Gemini first; an empty answer goes to the next Gemini model');
+    assert.equal(sent[0].body.max_tokens, 4096); assert.equal(sent[0].body.reasoning_effort, 'low');
+    assert.match(sent[0].body.messages[0].content, /experienced operations manager/);
+  } finally { process.env.ASSISTANT_ORDER = saved; }
 });

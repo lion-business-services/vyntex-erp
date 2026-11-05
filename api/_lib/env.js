@@ -37,6 +37,7 @@ export const VARIABLES = {
   GEMINI_API_KEY: { need: 'feature', secret: true, about: 'VYNTEX AI: Google Gemini free tier, the backup after Groq.' },
   GEMINI_MODELS: { need: 'optional', secret: false, about: 'VYNTEX AI: Gemini models to try in order, comma separated.' },
   GROQ_VISION_MODELS: { need: 'optional', secret: false, about: 'VYNTEX AI: Groq models that read attached pictures, comma separated.' },
+  ASSISTANT_ORDER: { need: 'optional', secret: false, about: 'VYNTEX AI: which provider is tried first, e.g. gemini,groq (the default) or groq,gemini.' },
   ASSISTANT_MODEL: { need: 'optional', secret: false, about: 'Model id for the assistant.' },
   AI_TIMEOUT_MS: { need: 'optional', secret: false, about: 'Time limit of one model call in milliseconds. Default 25000.' },
   // Providers. `provider` names the adapter in api/_lib/integrations/providers that reads the setting. None of these

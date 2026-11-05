@@ -51,6 +51,8 @@ const BREAKS = [
   ['frame header weakened', withHeader('X-Frame-Options', () => 'SAMEORIGIN'), 'frame-options'],
   ['full addresses sent to other sites', withHeader('Referrer-Policy', () => 'unsafe-url'), 'referrer'],
   ['camera allowed', withHeader('Permissions-Policy', (v) => v.replace('camera=()', 'camera=(self)')), 'permissions'],
+  ['microphone for every site', withHeader('Permissions-Policy', (v) => v.replace(/microphone=\([^)]*\)/, 'microphone=*')), 'permissions'],
+  ['microphone for another site', withHeader('Permissions-Policy', (v) => v.replace(/microphone=\([^)]*\)/, 'microphone=(self "https://evil.example")')), 'permissions'],
 ];
 for (const [name, config, id] of BREAKS) {
   test(`notices: ${name}`, () => {

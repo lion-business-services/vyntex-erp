@@ -136,8 +136,12 @@ function Conversation(_: PageProps) {
     if (mode !== 'connected') { push(user, fromRules(q)); return; }
     push(user); setBusy(true);
     const turns: Turn[] = [...msgs.map((m): Turn => (m.from === 'user' ? { role: 'user', content: m.text + (m.files?.length ? ` [${m.files.join(', ')}]` : '') } : { role: 'assistant', content: [...m.blocks.filter((b) => b.type === 'text').map((b) => (b.type === 'text' ? b.text : '')), m.outcome?.text ?? ''].filter(Boolean).join('\n') || '…' })), { role: 'user', content: withFileText(q, attached) }];
-    const reply = await askModel(turns, env, { images: attached.flatMap((f) => (f.kind === 'image' ? [f.dataUrl] : [])), pdfs: attached.flatMap((f) => (f.kind === 'pdf' ? [f.dataUrl] : [])) });
-    if (!reply) { setBusy(false); push(fromRules(q, t('asst.fallback'))); return; }
+    const media = { images: attached.flatMap((f) => (f.kind === 'image' ? [f.dataUrl] : [])), pdfs: attached.flatMap((f) => (f.kind === 'pdf' ? [f.dataUrl] : [])) };
+    // a free model that is busy for a moment is asked once more; the request is never handed to the built-in assistant,
+    // which understands only a fixed list of phrases and would answer something else
+    let reply = await askModel(turns, env, media);
+    if (!reply) { await new Promise((r) => setTimeout(r, 1800)); reply = await askModel(turns, env, media); }
+    if (!reply) { setBusy(false); push(bot([{ type: 'text', text: t('asst.fallback') }], { model: true })); return; }
     // VYNTEX AI (0095): the safe actions are carried out at once, one after the other, each checked by the business rules
     // against the records as they are after the one before; anything that reaches a client or records money waits for Confirm
     const doing = reply.actions.filter((a) => a.proposal);

@@ -19,7 +19,8 @@ import { env, has } from '../env.js';
 import { limit, keyHash } from '../ratelimit.js';
 import { log } from '../respond.js';
 
-export const DEFAULT_MODELS = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+// llama-3.3-70b-versatile and llama-3.1-8b-instant answer 404 on Groq since November 2026: no longer offered
+export const DEFAULT_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'meta-llama/llama-4-scout-17b-16e-instruct'];
 export const DEFAULT_GEMINI_MODELS = ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash'];
 // a question with pictures goes to models that see images: Groq's vision model, then Gemini (every Gemini model sees images)
 export const DEFAULT_GROQ_VISION = ['meta-llama/llama-4-scout-17b-16e-instruct'];
@@ -28,10 +29,20 @@ const listOf = (name, fallback) => {
   return own.length ? own.slice(0, 5) : fallback;
 };
 /** The providers that have a key, in the order they are tried. */
-export const providers = () => [
-  { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: 'GROQ_API_KEY', models: listOf('GROQ_MODELS', DEFAULT_MODELS), vision: listOf('GROQ_VISION_MODELS', DEFAULT_GROQ_VISION), parallel: true },
+// Gemini first since November 6, 2026: a question carries the business summary, the tools and the index of actions
+// (about 7,000 tokens), and Groq's free models take 8,000 tokens a minute, so two questions in a minute were refused
+// there. Gemini's free tier takes far more. ASSISTANT_ORDER=groq,gemini puts Groq first again.
+const ALL_PROVIDERS = () => [
   { id: 'gemini', url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', key: 'GEMINI_API_KEY', models: listOf('GEMINI_MODELS', DEFAULT_GEMINI_MODELS), vision: listOf('GEMINI_MODELS', DEFAULT_GEMINI_MODELS), parallel: false },
-].filter((p) => has(p.key));
+  { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: 'GROQ_API_KEY', models: listOf('GROQ_MODELS', DEFAULT_MODELS), vision: listOf('GROQ_VISION_MODELS', DEFAULT_GROQ_VISION), parallel: true },
+];
+export const providers = () => {
+  const order = String(env('ASSISTANT_ORDER') || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const list = ALL_PROVIDERS().filter((p) => has(p.key));
+  return order.length ? [...list].sort((a, b) => (order.indexOf(a.id) + 1 || 99) - (order.indexOf(b.id) + 1 || 99)) : list;
+};
+/** Models that think before answering: their thinking counts toward the reply's length, so it is kept short and the room larger. */
+const thinks = (p, model) => p.id === 'gemini' || /gpt-oss/.test(model);
 const TIMEOUT_MS = 25_000;
 const MAX_MESSAGES = 16;
 const MAX_MESSAGE_CHARS = 2_000;
@@ -93,6 +104,7 @@ export function systemPrompt(lang, data, company, actions = '') {
     '6. Money only when the data has a "money" section; otherwise the person\'s role does not include it.',
     '9. Besides the named tools, <actions> lists everything else the person may do in every section; call do_action with its id. Prefer a named tool when one fits.',
     '10. When the record you need is not in the business data, call find_records first (alone, without other tools in that answer); its results come back to you. Invoices are found by find_records with collection "invoices" and used by their number (INV-0003).',
+    '13. When asked to plan work (for example the tasks to start a project), think like an experienced operations manager for this industry: create the concrete tasks yourself (up to 5 per answer, each with a clear title and a due date from today, linked to the project with job_id), then list what else you suggest. Ask only if it is unclear which project is meant.',
     '12. Files the person attached to this chat can be saved as documents with document_save_attachment, by their file name.',
     '11. Never touch security, roles, people\'s access, tax IDs, bank details or automation rules: say these are done on their own screens by the owner.',
     '7. Use the company\'s words in "words" (for example its word for projects and clients). Keep replies short, plain and friendly: no headings, no tables.',
@@ -170,7 +182,7 @@ export function readActions(message) {
 
 /** One question, to Groq first and Gemini after, trying the next free model whenever one is busy or used up. */
 export async function askModels(input, company, fetcher = globalThis.fetch) {
-  const body = (p, model) => JSON.stringify({ model, temperature: 0.2, max_tokens: 900, tool_choice: 'auto', ...(p.parallel ? { parallel_tool_calls: true } : {}), tools: TOOLS,
+  const body = (p, model) => JSON.stringify({ model, temperature: 0.2, max_tokens: thinks(p, model) ? 4096 : 1500, ...(thinks(p, model) ? { reasoning_effort: 'low' } : {}), tool_choice: 'auto', ...(p.parallel ? { parallel_tool_calls: true } : {}), tools: TOOLS,
     messages: [{ role: 'system', content: systemPrompt(input.lang, input.data, company, input.actions) }, ...input.messages] });
   let last = 'upstream_error';
   for (const p of providers()) for (const model of (input.images ? p.vision : p.models)) {
@@ -187,7 +199,8 @@ export async function askModels(input, company, fetcher = globalThis.fetch) {
     const msg = j?.choices?.[0]?.message || {};
     const text = String(msg.content || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim().slice(0, MAX_REPLY_CHARS);
     const actions = readActions(msg);
-    if (!text && !actions.length) { last = 'upstream_error'; continue; }
+    // an empty answer (its room used up by thinking, a tool call it could not write) is logged, and the next model tries
+    if (!text && !actions.length) { last = 'upstream_error'; log('assistant', 'model_empty', { provider: p.id, model, finish: String(j?.choices?.[0]?.finish_reason || '').slice(0, 40), calls: Array.isArray(msg.tool_calls) ? msg.tool_calls.length : 0 }); continue; }
     return { text, actions, model, provider: p.id };
   }
   return { error: last };
@@ -213,7 +226,7 @@ export async function askGeminiWithFiles(input, company, fetcher = globalThis.fe
   });
   const body = JSON.stringify({ systemInstruction: { parts: [{ text: systemPrompt(input.lang, input.data, company, input.actions) }] }, contents,
     tools: [{ functionDeclarations: TOOLS.map((t) => ({ name: t.function.name, description: t.function.description, parameters: geminiSchema(t.function.parameters) })) }],
-    generationConfig: { temperature: 0.2, maxOutputTokens: 900 } });
+    generationConfig: { temperature: 0.2, maxOutputTokens: 4096 } });
   let last = 'upstream_error';
   for (const model of listOf('GEMINI_MODELS', DEFAULT_GEMINI_MODELS)) {
     let res;

@@ -32,6 +32,8 @@ export const VARIABLES = {
   FORMSUBMIT_EMAIL: { need: 'feature', secret: false, about: 'Inbox that FormSubmit notifies on every demo request (vyntex only). Default info@vyntexusa.com. FormSubmit asks that inbox to confirm once before the first notification arrives.' },
   FORMSUBMIT_ENABLED: { need: 'feature', secret: false, about: 'Set to false to stop the FormSubmit demo request notification. On by default on the vyntex deployment; off on lbs unless set to true.' },
   ANTHROPIC_API_KEY: { need: 'feature', secret: true, about: 'Assistant, connected mode.' },
+  GROQ_API_KEY: { need: 'feature', secret: true, about: 'VYNTEX AI (Master Builder): the free Groq model behind the assistant.' },
+  GROQ_MODELS: { need: 'optional', secret: false, about: 'VYNTEX AI: Groq models to try in order, comma separated.' },
   ASSISTANT_MODEL: { need: 'optional', secret: false, about: 'Model id for the assistant.' },
   AI_TIMEOUT_MS: { need: 'optional', secret: false, about: 'Time limit of one model call in milliseconds. Default 25000.' },
   // Providers. `provider` names the adapter in api/_lib/integrations/providers that reads the setting. None of these

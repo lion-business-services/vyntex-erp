@@ -6,7 +6,7 @@ import type { IndustryPack } from '@/packs/types';
 import { makeT, type TFn } from '@/i18n';
 import type { Permission } from '@/domain/permissions';
 import { assigneeName, byId, calendarEvents, clientMoney, insuranceState, isDueToday, isOpenLead, isOverdue, jobMoney, jobsOfClient, kpiValues, workerMoney } from '@/domain/selectors';
-import { moduleOn, openStages, stageByRole, stageRole } from '@/domain/config';
+import { moduleOn, openStages, stageByRole, stageRole, stagesOf } from '@/domain/config';
 import { asksForTaxId, parseAppointment, parseReview, reviewProblem, routeQuestion } from './records';
 import { addDays, monthLabel, today } from '@/lib/dates';
 import { money, money2, sum } from '@/lib/money';
@@ -30,7 +30,16 @@ export type Proposal =
   | { kind: 'payment'; jobId: string; amount: number; method: PayMethod; date: ISODate }
   | { kind: 'visit'; leadId: string; date: ISODate; time?: string }
   | { kind: 'appointment'; clientId?: string; leadId?: string; typeId: string; date: ISODate; time: string; staffId: string }
-  | { kind: 'review'; clientId: string; jobId?: string; channel: MessageChannel };
+  | { kind: 'review'; clientId: string; jobId?: string; channel: MessageChannel }
+  // VYNTEX AI (0095): more of what the owner asks for
+  | { kind: 'client'; name: string; phone?: string; email?: string }
+  | { kind: 'job'; clientId?: string; clientName?: string; name: string; start?: ISODate; price?: number }
+  | { kind: 'leadUpdate'; leadId: string; stage?: string; value?: number; followUp?: ISODate }
+  | { kind: 'taskUpdate'; taskId: string; title?: string; due?: ISODate; assignee?: string }
+  | { kind: 'invoice'; jobId: string; due?: ISODate; lines: { description: string; qty: number; price: number }[] };
+
+/** What VYNTEX AI asks the person to confirm before doing: anything that reaches a client or records money. */
+export const RISKY: ReadonlySet<Proposal['kind']> = new Set<Proposal['kind']>(['payment', 'review']);
 
 export interface Item { title: string; sub?: string; right?: string; tone?: 'bad' | 'warn' | 'ok'; to?: string }
 export type Block =
@@ -131,7 +140,14 @@ function takeAssignee(w: Work, env: Env): Person[] | null {
 
 /* ---------- what a proposal will change, in words ---------- */
 export interface Card { title: string; rows: [string, string][]; note?: string }
-export const PERM: Record<Proposal['kind'], Permission> = { task: 'tasks', lead: 'leads', note: 'clients', taskDone: 'tasks', jobStatus: 'jobs', payment: 'money', visit: 'leads', appointment: 'appointments', review: 'reviews' };
+export const PERM: Record<Proposal['kind'], Permission> = { task: 'tasks', lead: 'leads', note: 'clients', taskDone: 'tasks', jobStatus: 'jobs', payment: 'money', visit: 'leads', appointment: 'appointments', review: 'reviews',
+  client: 'clients', job: 'jobs', leadUpdate: 'leads', taskUpdate: 'tasks', invoice: 'money' };
+/** The client a new project is for: by id, or by name for a client made in the same answer. */
+export function projectClient(p: Extract<Proposal, { kind: 'job' }>, data: DemoState): Client | undefined {
+  if (p.clientId) return byId(data.clients, p.clientId);
+  const n = fold(p.clientName ?? '');
+  return n ? data.clients.find((c) => fold(c.name) === n) : undefined;
+}
 
 export function describe(p: Proposal, env: Env): Card {
   const { data, t, date, time } = env;
@@ -182,6 +198,24 @@ export function describe(p: Proposal, env: Env): Card {
         note: type?.prepay && type.fee > 0 ? t('asst.card.apptPrepay') : t('asst.card.apptNote'),
       };
     }
+    case 'client':
+      return { title: t('asst.card.client'), rows: [[t('common.name'), p.name], ...(p.phone ? [[t('common.phone'), p.phone] as [string, string]] : []), ...(p.email ? [['Email', p.email] as [string, string]] : [])] };
+    case 'job': {
+      const c = projectClient(p, data);
+      return { title: t('asst.card.job'), rows: [[t('asst.kind.job'), p.name], [t('asst.kind.client'), c?.name ?? p.clientName ?? t('asst.gone')], ...(p.start ? [[t('asst.row.start'), date(p.start)] as [string, string]] : []), ...(p.price ? [[t('common.amount'), money2(p.price)] as [string, string]] : [])] };
+    }
+    case 'leadUpdate': {
+      const lead = byId(data.leads, p.leadId);
+      return { title: t('asst.card.leadUpdate'), rows: [[t('asst.kind.lead'), lead?.name ?? t('asst.gone')], ...(p.stage ? [[t('common.status'), t('ls_' + p.stage)] as [string, string]] : []), ...(p.value !== undefined ? [[t('asst.row.value'), money2(p.value)] as [string, string]] : []), ...(p.followUp ? [[t('asst.row.followUp'), date(p.followUp)] as [string, string]] : [])] };
+    }
+    case 'taskUpdate': {
+      const task = byId(data.tasks, p.taskId);
+      return { title: t('asst.card.taskUpdate'), rows: [[t('asst.row.task'), p.title ?? task?.title ?? t('asst.gone')], ...(p.due ? [[t('common.due'), date(p.due)] as [string, string]] : []), ...(p.assignee ? [[t('common.assignedTo'), assigneeName(data, p.assignee) || t('common.unassigned')] as [string, string]] : [])] };
+    }
+    case 'invoice': {
+      const job = byId(data.jobs, p.jobId); const total = p.lines.reduce((a, l) => a + l.qty * l.price, 0);
+      return { title: t('asst.card.invoice'), rows: [[t('asst.kind.job'), job ? jobLabel(data, job) : t('asst.gone')], [t('asst.row.lines'), String(p.lines.length)], [t('common.amount'), money2(total)], ...(p.due ? [[t('common.due'), date(p.due)] as [string, string]] : [])], note: t('asst.card.invoiceNote') };
+    }
     case 'review': {
       const job = byId(data.jobs, p.jobId);
       return { title: t('asst.card.review'), rows: [[t('asst.kind.client'), byId(data.clients, p.clientId)?.name ?? t('asst.gone')], [t('asst.row.about'), job ? job.name : t('reviews.noJob')], [t('asst.row.channel'), t('auto.ch.' + p.channel)]], note: t('asst.card.reviewNote') };
@@ -219,6 +253,23 @@ export function check(p: Proposal, env: Env): string | null {
       return !who || !byId(data.users, p.staffId) ? t('asst.goneRecord') : !type ? t('asst.appt.unknown_type') : p.date < today() ? t('asst.appt.past') : null;
     }
     case 'review': return !byId(data.clients, p.clientId) ? t('asst.goneRecord') : reviewProblem(p, env);
+    case 'client': return p.name.trim().length < 2 ? t('asst.need.clientName') : null;
+    case 'job': return !p.name.trim() ? t('asst.need.jobName') : !projectClient(p, data) ? t('asst.need.jobClient') : p.price !== undefined && !(p.price >= 0) ? t('form.pay.positive') : null;
+    case 'leadUpdate': {
+      const lead = byId(data.leads, p.leadId); if (!lead) return t('asst.goneRecord');
+      if (p.stage && !stagesOf(data, env.pack).some((x) => x.id === p.stage)) return t('asst.goneRecord');
+      return p.stage === undefined && p.value === undefined && !p.followUp ? t('asst.need.change') : null;
+    }
+    case 'taskUpdate': {
+      const task = byId(data.tasks, p.taskId); if (!task) return t('asst.goneRecord');
+      if (p.assignee && !assigneeName(data, p.assignee)) return t('asst.goneRecord');
+      return !p.title && !p.due && !p.assignee ? t('asst.need.change') : null;
+    }
+    case 'invoice': {
+      const job = byId(data.jobs, p.jobId); if (!job) return t('asst.goneRecord');
+      if (!p.lines.length || p.lines.some((l) => !l.description.trim() || !(l.qty > 0) || !(l.price >= 0))) return t('asst.need.invoiceLines');
+      return null;
+    }
   }
 }
 

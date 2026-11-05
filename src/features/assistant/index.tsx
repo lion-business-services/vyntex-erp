@@ -340,7 +340,7 @@ function Conversation(_: PageProps) {
         {can2.history && (
           <Card title={<><LuHistory aria-hidden="true" /> {t('asst.chats.title')}</>} className="asst-chats" data-testid="asst-chats">
             <Button size="sm" icon={<LuPlus aria-hidden="true" />} onClick={newChat} disabled={busy}>{t('asst.chats.new')}</Button>
-            {chats === null ? <p className="xs muted">{t('asst.waiting')}…</p> : !chats.length ? <p className="xs muted">{t('asst.chats.none')}</p> : (
+            {chats === null ? <p className="xs muted">{t('asst.chats.loading')}…</p> : !chats.length ? <p className="xs muted">{t('asst.chats.none')}</p> : (
               <ul className="asst-chat-list">
                 {chats.map((c) => (
                   <li key={c.id} className={c.id === chatId ? 'on' : undefined}>

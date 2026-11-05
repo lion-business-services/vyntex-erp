@@ -24,13 +24,14 @@ const stripeCalls = [];
 let stripeFake = async () => new Response('{}', { status: 500 });
 let startedPg = false;
 const reply = (message) => new Response(JSON.stringify({ choices: [{ message }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+let geminiFake = () => reply({ content: 'Gemini here: two tasks are due today.' });
 let groqFake = () => reply({ content: 'Adding Brian as a client and creating his project.', tool_calls: [
   { id: '1', type: 'function', function: { name: 'create_client', arguments: JSON.stringify({ name: 'Brian Corales', phone: '6095550100' }) } },
   { id: '2', type: 'function', function: { name: 'create_project', arguments: JSON.stringify({ client_name: 'Brian Corales', name: 'Double Oak website', price: 2300 }) } },
   { id: '3', type: 'function', function: { name: 'drop_database', arguments: '{}' } }] });
 
 async function startStack() {
-  setTestEnv({ GROQ_API_KEY: 'gsk_test_' + 'c'.repeat(24), STRIPE_SECRET_KEY: 'sk_test_' + 'a'.repeat(24), STRIPE_WEBHOOK_SECRET: 'whsec_' + 'b'.repeat(24), RESEND_API_KEY: 're_test_' + randomBytes(16).toString('hex'), SYSTEM_EMAIL_FROM: 'VYNTEX ERP <system@mail.example.com>' });
+  setTestEnv({ GROQ_API_KEY: 'gsk_test_' + 'c'.repeat(24), GEMINI_API_KEY: 'AIza' + 'd'.repeat(35), STRIPE_SECRET_KEY: 'sk_test_' + 'a'.repeat(24), STRIPE_WEBHOOK_SECRET: 'whsec_' + 'b'.repeat(24), RESEND_API_KEY: 're_test_' + randomBytes(16).toString('hex'), SYSTEM_EMAIL_FROM: 'VYNTEX ERP <system@mail.example.com>' });
   if (process.env.VX_PG_PUBLIC_READY !== '1') {
     const r = spawnSync('bash', [path.join(root, 'tests/server/pg_local.sh'), 'start'], { env: pgEnv, encoding: 'utf8' });
     if (r.status !== 0) throw new Error('the local PostgreSQL did not start:\n' + r.stdout + r.stderr);
@@ -39,7 +40,7 @@ async function startStack() {
   const { startDevSupabase } = await import('../../scripts/dev-supabase.mjs');
   const sb = await startDevSupabase({ port: PORT, host: PG + '/sock' });
   Object.assign(process.env, { SUPABASE_URL: sb.url, SUPABASE_ANON_KEY: sb.anonKey, SUPABASE_SERVICE_ROLE_KEY: sb.serviceKey });
-  for (const k of ['GROQ_API_KEY', 'SESSION_SECRET', 'TOKEN_ENC_KEY', 'IP_HASH_SALT', 'CRON_SECRET', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY']) secrets.add(process.env[k]);
+  for (const k of ['GROQ_API_KEY', 'GEMINI_API_KEY', 'SESSION_SECRET', 'TOKEN_ENC_KEY', 'IP_HASH_SALT', 'CRON_SECRET', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY']) secrets.add(process.env[k]);
   secrets.add(sb.jwtSecret);
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (url, init = {}) => {
@@ -47,7 +48,8 @@ async function startStack() {
     if (u.startsWith('https://api.resend.com/emails')) { mails.push(JSON.parse(init.body)); return new Response(JSON.stringify({ id: 'email_' + randomBytes(6).toString('hex') }), { status: 200 }); }
     if (u.startsWith('https://api.stripe.com/')) return stripeFake(u, init);
     if (u.startsWith('https://bots.example.com/')) { hooks.push({ url: u, headers: init.headers, body: init.body }); return new Response(hookBody, { status: hookStatus }); }
-    if (u.startsWith('https://api.groq.com/')) { const b = JSON.parse(init.body); groq.push({ body: b, auth: init.headers.authorization }); return groqFake(b); }
+    if (u.startsWith('https://api.groq.com/')) { const b = JSON.parse(init.body); groq.push({ body: b, auth: init.headers.authorization, at: 'groq' }); return groqFake(b); }
+    if (u.startsWith('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions')) { const b = JSON.parse(init.body); groq.push({ body: b, auth: init.headers.authorization, at: 'gemini' }); return geminiFake(b); }
     if (u.startsWith('https://api.anthropic.com/')) { ai.push(JSON.parse(init.body)); return new Response(JSON.stringify({ content: [{ type: 'text', text: 'Buenos días, @Parker. ¿Puede revisar el pipeline?' }], usage: {} }), { status: 200, headers: { 'content-type': 'application/json' } }); }
     if (!u.startsWith(sb.url)) throw new Error('a test tried to reach an outside address: ' + u.slice(0, 60));
     return realFetch(url, init);
@@ -112,8 +114,21 @@ test('VYNTEX AI: Master Builder (and VYNTEX USA itself) only; Groq answers with 
   const r2 = await ask(pro, question);
   assert.equal(r2.status, 200, r2.text); assert.equal(r2.json.result.text, 'Here is what is due today.');
   assert.deepEqual(groq.slice(before).map((x) => x.body.model), ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile']);
-  // every free model used up: busy, and the page answers with the built-in assistant
+  // every Groq model used up: Gemini answers (its key in its own header; no parallel_tool_calls, which it does not take)
   groqFake = () => new Response('{}', { status: 429 });
+  const g0 = groq.length;
+  const rg = await ask(pro, question);
+  assert.equal(rg.status, 200, rg.text); assert.equal(rg.json.result.text, 'Gemini here: two tasks are due today.');
+  const gem = groq.slice(g0).filter((x) => x.at === 'gemini');
+  assert.equal(gem.length, 1); assert.equal(gem[0].auth, 'Bearer ' + process.env.GEMINI_API_KEY); assert.equal(gem[0].body.model, 'gemini-3.6-flash');
+  assert.equal(gem[0].body.parallel_tool_calls, undefined); assert.ok(gem[0].body.tools.length > 5);
+  assert.ok(!JSON.stringify(gem[0].body).includes('123-45-6789'), 'a tax ID never reaches Gemini either');
+  assert.deepEqual(groq.slice(g0).map((x) => x.at), ['groq', 'groq', 'groq', 'gemini'], 'Groq first, Gemini only after');
+  // a Gemini model this key cannot use is skipped
+  geminiFake = (b) => (b.model === 'gemini-3.6-flash' ? new Response('{"error":{"code":404}}', { status: 404 }) : reply({ content: 'Lite model here.' }));
+  assert.equal((await ask(pro, question)).json.result.text, 'Lite model here.');
+  // every free model used up: busy, and the page answers with the built-in assistant
+  geminiFake = () => new Response('{}', { status: 429 });
   const r3 = await ask(pro, question);
   assert.equal(r3.status, 429); assert.equal(r3.json.error, 'busy');
   // input that is not a conversation is refused before the model

@@ -34,6 +34,8 @@ export const VARIABLES = {
   ANTHROPIC_API_KEY: { need: 'feature', secret: true, about: 'Assistant, connected mode.' },
   GROQ_API_KEY: { need: 'feature', secret: true, about: 'VYNTEX AI (Master Builder): the free Groq model behind the assistant.' },
   GROQ_MODELS: { need: 'optional', secret: false, about: 'VYNTEX AI: Groq models to try in order, comma separated.' },
+  GEMINI_API_KEY: { need: 'feature', secret: true, about: 'VYNTEX AI: Google Gemini free tier, the backup after Groq.' },
+  GEMINI_MODELS: { need: 'optional', secret: false, about: 'VYNTEX AI: Gemini models to try in order, comma separated.' },
   ASSISTANT_MODEL: { need: 'optional', secret: false, about: 'Model id for the assistant.' },
   AI_TIMEOUT_MS: { need: 'optional', secret: false, about: 'Time limit of one model call in milliseconds. Default 25000.' },
   // Providers. `provider` names the adapter in api/_lib/integrations/providers that reads the setting. None of these

@@ -444,7 +444,19 @@ table.tbl{width:100%;border-collapse:collapse;font-size:14px}
 @media print{body{background:#fff}body::before{display:none}.no-print,aside.side,.topbar,.demobar,.toasts,.overlay{display:none!important}.shell{display:block}.content{padding:0;max-width:none}.paper{box-shadow:none;padding:0}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 
-.page-loading{min-height:40vh}
+.page-loading{min-height:40vh;display:flex;flex-direction:column;gap:14px;padding:4px 0}
+/* a calm skeleton instead of a blank page while a screen is drawn for the first time */
+.sk{border-radius:10px;background:linear-gradient(90deg,var(--line) 0%,var(--accent-soft) 50%,var(--line) 100%);background-size:200% 100%;animation:sk 1.2s ease-in-out infinite;opacity:.55}
+.sk-title{height:28px;width:min(320px,60%)}
+.sk-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.sk-card{height:92px}
+.sk-line{height:14px}.sk-line.short{width:55%}
+@keyframes sk{0%{background-position:100% 0}100%{background-position:-100% 0}}
+/* the thin bar shown while the next section is fetched; the current page stays on screen */
+.route-bar{position:fixed;top:0;left:0;right:0;height:3px;z-index:1000;overflow:hidden;pointer-events:none}
+.route-bar::after{content:'';position:absolute;inset:0;width:40%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:route-bar 1s ease-in-out infinite}
+@keyframes route-bar{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+@media (prefers-reduced-motion:reduce){.sk,.route-bar::after{animation:none}}
 
 /* The readable copy of a public page that the server sends for readers without scripts (scripts/prerender.mjs).
    Hidden whenever scripts run (public/theme-init.js); the app replaces it as soon as it starts. */

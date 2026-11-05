@@ -7,6 +7,7 @@ import { makeT, type TFn } from '@/i18n';
 import type { Permission } from '@/domain/permissions';
 import { assigneeName, byId, calendarEvents, clientMoney, insuranceState, isDueToday, isOpenLead, isOverdue, jobMoney, jobsOfClient, kpiValues, workerMoney } from '@/domain/selectors';
 import { moduleOn, openStages, stageByRole, stageRole, stagesOf } from '@/domain/config';
+import { SPEC_BY_ID, actionRows, cleanArgs, isRiskyAction, type Args } from './actions';
 import { asksForTaxId, parseAppointment, parseReview, reviewProblem, routeQuestion } from './records';
 import { addDays, monthLabel, today } from '@/lib/dates';
 import { money, money2, sum } from '@/lib/money';
@@ -37,10 +38,17 @@ export type Proposal =
   | { kind: 'job'; clientId?: string; clientName?: string; name: string; start?: ISODate; price?: number }
   | { kind: 'leadUpdate'; leadId: string; stage?: string; value?: number; followUp?: ISODate }
   | { kind: 'taskUpdate'; taskId: string; title?: string; due?: ISODate; assignee?: string }
-  | { kind: 'invoice'; jobId: string; due?: ISODate; lines: { description: string; qty: number; price: number }[] };
+  | { kind: 'invoice'; jobId: string; due?: ISODate; lines: { description: string; qty: number; price: number }[] }
+  // 0097: any other entry of the catalog in actions.ts, by its id, with checked arguments
+  | { kind: 'action'; action: string; args: Args };
 
 /** What VYNTEX AI asks the person to confirm before doing: anything that reaches a client or records money. */
 export const RISKY: ReadonlySet<Proposal['kind']> = new Set<Proposal['kind']>(['payment', 'review']);
+/** Whether a proposal waits for Confirm: the two above, and every catalog entry that reaches a client, moves money, changes a price, deletes or publishes. */
+export function needsConfirm(p: Proposal): boolean {
+  if (p.kind !== 'action') return RISKY.has(p.kind);
+  const x = SPEC_BY_ID.get(p.action); return !x || isRiskyAction(x, p.args);
+}
 
 export interface Item { title: string; sub?: string; right?: string; tone?: 'bad' | 'warn' | 'ok'; to?: string }
 export type Block =
@@ -142,7 +150,7 @@ function takeAssignee(w: Work, env: Env): Person[] | null {
 /* ---------- what a proposal will change, in words ---------- */
 export interface Card { title: string; rows: [string, string][]; note?: string }
 export const PERM: Record<Proposal['kind'], Permission> = { task: 'tasks', lead: 'leads', note: 'clients', taskDone: 'tasks', jobStatus: 'jobs', payment: 'money', visit: 'leads', appointment: 'appointments', review: 'reviews',
-  client: 'clients', job: 'jobs', leadUpdate: 'leads', taskUpdate: 'tasks', invoice: 'money' };
+  client: 'clients', job: 'jobs', leadUpdate: 'leads', taskUpdate: 'tasks', invoice: 'money', action: 'assistant' };
 /** The client a new project is for: by id, or by name for a client made in the same answer. */
 export function projectClient(p: Extract<Proposal, { kind: 'job' }>, data: DemoState): Client | undefined {
   if (p.clientId) return byId(data.clients, p.clientId);
@@ -152,6 +160,10 @@ export function projectClient(p: Extract<Proposal, { kind: 'job' }>, data: DemoS
 
 export function describe(p: Proposal, env: Env): Card {
   const { data, t, date, time } = env;
+  if (p.kind === 'action') {
+    const x = SPEC_BY_ID.get(p.action);
+    return x ? { title: env.lang === 'es' ? x.es : x.en, rows: actionRows(x, p.args, env), note: isRiskyAction(x, p.args) ? t('asst.action.confirmNote') : undefined } : { title: p.action, rows: [] };
+  }
   const ruleOn = (id: string) => data.automation.enabled[id] !== false;
   switch (p.kind) {
     case 'task':
@@ -228,6 +240,12 @@ export function describe(p: Proposal, env: Env): Card {
 /** Why a proposal cannot be carried out right now (the record is gone, the role lacks access, the amount is too high), or null when it can. */
 export function check(p: Proposal, env: Env): string | null {
   const { data, t } = env;
+  if (p.kind === 'action') {
+    // the entry's own permission, then its arguments again against the records as they are now
+    const x = SPEC_BY_ID.get(p.action); if (!x) return t('asst.model.badAction');
+    if (!env.can(x.perm)) return t(x.perm === 'money' ? 'asst.noMoney' : 'asst.noAccess');
+    const a = cleanArgs(x, p.args, env); return typeof a === 'string' ? a : null;
+  }
   if (!env.can(PERM[p.kind])) return t(p.kind === 'payment' ? 'asst.noMoney' : 'asst.noAccess');
   switch (p.kind) {
     case 'task': return !p.title.trim() ? t('asst.need.taskTitle') : p.assignee && !assigneeName(data, p.assignee) ? t('asst.goneRecord') : null;

@@ -9,6 +9,9 @@ import { money2 } from '@/lib/money';
 import { effectiveRules, shippedRules } from '@/domain/rules/engine';
 import { runRuleName } from '@/features/automations/format';
 import { check, projectClient, type Env, type Proposal } from './engine';
+import { SPEC_BY_ID, bindStore, runAction } from './actions';
+
+bindStore(act, () => getSnapshot().data);
 
 export interface Outcome { ok: boolean; text: string; link?: { label: string; to: string }; /** Names of the automation rules that ran because of the change. */ rules?: string[] }
 
@@ -106,6 +109,14 @@ export function execute(p: Proposal, env: Env): Outcome {
         break;
       }
       case 'invoice': return { ok: false, text: t('asst.state.failed', { why: t('asst.failed.generic') }) }; // made by executeAsync
+      case 'action': {
+        const x = SPEC_BY_ID.get(p.action); if (!x) break;
+        const r = runAction(x, p.args, env);
+        out = r.ok
+          ? { ok: true, text: t('asst.action.done', { what: env.lang === 'es' ? x.es : x.en }), ...(r.link ? { link: { label: t('asst.open.record'), to: r.link } } : {}) }
+          : { ok: false, text: t('asst.state.failed', { why: r.why ?? t('asst.failed.generic') }) };
+        break;
+      }
     }
   } catch {
     return failed;

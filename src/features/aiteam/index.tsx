@@ -196,6 +196,7 @@ function Team({ bots, owner, reload }: { bots: Bot[] | null; owner: boolean; rel
                   <LuMessagesSquare aria-hidden="true" />
                   <span>{b.webhookUrl ? t('ai.hook.on', { hint: b.webhookHint ?? '' }) + (b.webhookAuth ? ' · ' + t('ai.hook.authOn') : '') : t('ai.hook.off')}</span>
                 </div>
+                {b.webhookUrl && <PushStatus bot={b} onDone={reload} />}
                 <div className="row tight wrap">
                   <Button size="sm" variant="ghost" icon={b.status === 'active' ? <LuPause /> : <LuPlay />} disabled={busy === b.id} onClick={() => void toggle(b)}>{t(b.status === 'active' ? 'ai.bot.pause' : 'ai.bot.resume')}</Button>
                   {owner && <Button size="sm" variant="ghost" icon={<LuKeyRound />} disabled={busy === b.id} onClick={() => void issue(b)} data-testid="ai-issue">{t(b.hasKey ? 'ai.bot.replace' : 'ai.bot.issue')}</Button>}
@@ -250,6 +251,28 @@ function BotForm({ bot, onClose, onSaved }: { bot: Partial<Bot>; onClose: () => 
       <p className="xs dim">{t('ai.never')}</p>
       {err && <Note tone="bad">{err}</Note>}
     </Modal>
+  );
+}
+
+/** 0093: the last push to this bot's webhook, and a test push that shows the answer it gets. */
+function PushStatus({ bot, onDone }: { bot: Bot; onDone: () => Promise<void> | void }) {
+  const { t, dateTime } = useApp();
+  const [busy, setBusy] = useState(false);
+  const d = bot.lastDelivery;
+  const good = !!d && d.status !== null && d.status >= 200 && d.status < 300;
+  const test = async () => {
+    setBusy(true); const r = await botApi.testPush(bot.id); setBusy(false);
+    if (!r.ok) { toast(t('ai.reason.generic'), true); return; }
+    const x = r.data;
+    toast(x.ok ? t('ai.push.testOk', { name: bot.name, code: x.status ?? '' }) : t('ai.push.testBad', { name: bot.name, code: x.status ?? '-', error: x.error ?? '' }), !x.ok);
+    await onDone();
+  };
+  return (
+    <div className="xs row tight wrap ai-push" data-testid="ai-push">
+      {d ? <Badge tone={good ? 'ok' : 'bad'}>{d.status ?? '-'}</Badge> : <Badge tone="neutral">{t('ai.push.none')}</Badge>}
+      {d && <span className="dim">{t(d.kind === 'test' ? 'ai.push.lastTest' : 'ai.push.last', { when: dateTime(d.at), n: d.attempts })}{!good && d.error ? ': ' + d.error : ''}</span>}
+      <Button size="sm" variant="ghost" icon={<LuSend />} disabled={busy} onClick={() => void test()} data-testid="ai-push-test">{t('ai.push.test')}</Button>
+    </div>
   );
 }
 

@@ -24,20 +24,100 @@ const AUTH_OK = /^[\x21-\x7e][\x20-\x7e]{0,1998}[\x21-\x7e]$/;
 
 export const sign = (secret, body, t = Math.floor(Date.now() / 1000)) => `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${body}`).digest('hex')}`;
 
+// 0093: pushes are tried at once, then again after 2, 10 and 30 seconds on any non-2xx answer or timeout, and every
+// push is logged (app.bot_webhook_deliveries, shown on the AI employee card). The retries keep running after the chat
+// message was answered (Vercel's waitUntil); where that is not available the job runner takes over.
+export const RETRY_WAITS = [2000, 10000, 30000];
+const ATTEMPT_MS = 4000;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const requestContext = () => globalThis[Symbol.for('@vercel/request-context')]?.get?.();
+/** True when work can go on after the response was sent (Vercel's waitUntil). */
+export const canKeepRunning = () => typeof requestContext()?.waitUntil === 'function';
+/** Keeps a promise running after the response was sent (Vercel), or returns false when that is not available here. */
+export function keepRunning(promise) {
+  const ctx = globalThis[Symbol.for('@vercel/request-context')]?.get?.();
+  if (ctx && typeof ctx.waitUntil === 'function') { ctx.waitUntil(promise); return true; }
+  return false;
+}
+// the start of a routine's answer, for the log: one line, no more than 200 characters
+const snippet = (t) => String(t || '').replace(/[\r\n\t]+/g, ' ').replace(/[^\x20-\x7e]/g, '').trim().slice(0, 200);
+
+/** What a push needs for this bot and message: address, sealed secret and header, the room and the message. */
+async function target(bot, message) {
+  const d = await serviceRpc('chat_bot_delivery', { p_bot: bot, p_message: message });
+  if (!d.ok) return { error: 'store_unavailable' };
+  return d.data ? { x: d.data } : { error: 'not_for_this_bot' };
+}
+
+/** The body of a push: the full message at the top (what a routine reads first), then the nested form of 0087. */
+export function chatBody(x, bot, message) {
+  const m = x.message || {};
+  return JSON.stringify({ type: 'chat.message', id: `${message}:${bot}`, at: new Date().toISOString(),
+    roomId: x.room.id, roomKind: x.room.kind, roomName: x.room.name, messageId: m.id, sentAt: m.at,
+    sender: m.author ? { type: m.author.type, id: m.author.id, name: m.author.name } : null, body: m.body || '',
+    mentions: m.mentions || [], replyToMessage: m.replyTo || null, files: m.files || [],
+    to: x.bot, bot: x.bot, room: x.room, message: m,
+    reply: { tool: 'chat_send', args: { roomId: x.room.id, replyTo: m.id } } });
+}
+
+/** One POST to the bot's address. Answers { status, error, ok } and never throws. */
+export async function postOnce(x, body, { event = 'chat.message', timeoutMs = ATTEMPT_MS } = {}) {
+  if (!x || !x.url) return { ok: false, status: null, error: 'no_address', final: true };
+  if (!URL_OK.test(x.url)) return { ok: false, status: null, error: 'address_invalid', final: true };
+  const secret = x.sealed ? openToken(x.sealed, AAD + ':' + x.bot.id) : null;
+  if (!secret) return { ok: false, status: null, error: 'secret_unreadable', final: true };
+  const auth = x.auth ? openToken(x.auth, AUTH_AAD + ':' + x.bot.id) : null;
+  if (x.auth && !auth) return { ok: false, status: null, error: 'auth_unreadable', final: true };
+  const headers = { 'content-type': 'application/json', 'user-agent': 'VYNTEX-ERP-Chat/1', 'x-vx-signature': sign(secret, body), 'x-vx-event': event };
+  if (auth) headers.authorization = auth;
+  let res;
+  try { res = await fetch(x.url, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeoutMs), headers, body }); }
+  catch (e) { return { ok: false, status: null, error: e && e.name === 'TimeoutError' ? 'timeout' : 'unreachable' }; }
+  let text = ''; try { text = await res.text(); } catch { /* no body */ }
+  if (res.status >= 200 && res.status < 300) return { ok: true, status: res.status, error: null };
+  return { ok: false, status: res.status, error: snippet(text) || 'status_' + res.status };
+}
+
+/** Pushes one message to one bot: at once, then after 2, 10 and 30 seconds while it fails. Logs every attempt. */
+export async function pushWithRetries(tenant, bot, message, { waits = RETRY_WAITS } = {}) {
+  const t = await target(bot, message);
+  if (t.error) { log('chat', 'push_skipped', { code: t.error }); return { ok: false, error: t.error }; }
+  if (!t.x.url) return { ok: false, error: 'no_address' };
+  const body = chatBody(t.x, bot, message);
+  let id = null; let out;
+  for (let attempt = 1; attempt <= waits.length + 1; attempt += 1) {
+    out = await postOnce(t.x, body);
+    const lg = await serviceRpc('bot_delivery_log', { p_id: id, p_tenant: tenant, p_bot: bot, p_message: message, p_kind: 'chat', p_status: out.status, p_error: out.error, p_attempts: attempt });
+    if (lg.ok && lg.data) id = lg.data;
+    if (out.ok) return { ok: true, status: out.status, attempts: attempt };
+    log('chat', 'push_failed', { status: out.status ?? 0, attempt, code: String(out.error || '').slice(0, 60) });
+    if (out.final || attempt > waits.length) break;
+    await sleep(waits[attempt - 1]);
+  }
+  return { ok: false, status: out.status, error: out.error };
+}
+
 /**
- * Sends a message to each AI employee it is meant for, at once (a few seconds at most, in parallel). A delivery that
- * does not go through now is queued and tried again by the job runner with a growing wait.
+ * Pushes a message to each AI employee it is meant for, in parallel, the moment it was saved. The chat message is
+ * answered at once; the pushes and their retries go on in the background. Answers how many bots were pushed to.
  */
 export async function queueBots(tenant, messageId, bots) {
-  const list = (Array.isArray(bots) ? bots : []).filter((b) => UUID.test(String(b))).slice(0, 10);
+  const list = [...new Set((Array.isArray(bots) ? bots : []).filter((b) => UUID.test(String(b))))].slice(0, 10);
   if (!UUID.test(String(messageId)) || !list.length) return 0;
-  const done = await Promise.all(list.map(async (bot) => {
-    try { await deliverToBot({ payload: { bot, message: messageId } }, { timeoutMs: 4000 }); return true; } catch (e) {
-      if (e instanceof JobError && e.permanent) { log('chat', 'delivery_refused', { code: e.code }); return true; }
-      return !!(await enqueue('chat.bot_deliver', { bot, message: messageId }, { tenant, idem: `chat:${messageId}:${bot}`, maxAttempts: 6 }));
-    }
-  }));
-  return done.filter(Boolean).length;
+  if (!canKeepRunning()) {
+    // no background time here: the first attempt is made now and what failed goes to the job runner
+    const first = await Promise.all(list.map(async (bot) => {
+      const t = await target(bot, messageId);
+      if (t.error || !t.x.url) return true;
+      const r = await postOnce(t.x, chatBody(t.x, bot, messageId));
+      await serviceRpc('bot_delivery_log', { p_id: null, p_tenant: tenant, p_bot: bot, p_message: messageId, p_kind: 'chat', p_status: r.status, p_error: r.error, p_attempts: 1 });
+      if (!r.ok && !r.final) await enqueue('chat.bot_deliver', { bot, message: messageId }, { tenant, idem: `chat:${messageId}:${bot}`, maxAttempts: 4 });
+      return true;
+    }));
+    return first.length;
+  }
+  keepRunning(Promise.all(list.map((bot) => pushWithRetries(tenant, bot, messageId).catch(() => ({ ok: false })))));
+  return list.length;
 }
 
 /** The office operation `chat_send` ({ p_room, p_body, p_reply_to?, p_mentions?, p_files? }). */
@@ -52,39 +132,45 @@ export async function chatSend({ session, tenant, args }, upstreamError) {
   return { status: 200, result: { message: out.message, botsNotified: queued } };
 }
 
-/** The job `chat.bot_deliver` ({ bot, message }). */
+/** The job `chat.bot_deliver` ({ bot, message }): one more attempt by the job runner. */
 export async function deliverToBot(job, { timeoutMs = 8000 } = {}) {
   const { bot, message } = job.payload || {};
   if (!UUID.test(String(bot)) || !UUID.test(String(message))) throw new JobError('payload_invalid', { permanent: true });
-  const d = await serviceRpc('chat_bot_delivery', { p_bot: bot, p_message: message });
-  if (!d.ok) throw new JobError('store_unavailable');
+  const t = await target(bot, message);
+  if (t.error === 'store_unavailable') throw new JobError('store_unavailable');
+  if (t.error || !t.x.url) return { skipped: t.error || 'no_address' };
+  const r = await postOnce(t.x, chatBody(t.x, bot, message), { timeoutMs });
+  await serviceRpc('bot_delivery_log', { p_id: null, p_tenant: t.x.tenant, p_bot: bot, p_message: message, p_kind: 'chat', p_status: r.status, p_error: r.error, p_attempts: (job.attempts || 0) + 1 });
+  if (r.ok) return { delivered: true };
+  if (r.final) throw new JobError(r.error, { permanent: true });
+  throw new JobError(r.status ? 'status_' + r.status : String(r.error));
+}
+
+/** A sample push to one bot, sent once (the AI employee card's "Send test push", and the job `bot.webhook_test`). */
+export async function testPush(bot) {
+  if (!UUID.test(String(bot))) return { ok: false, status: null, error: 'not_found' };
+  const d = await serviceRpc('bot_webhook_target', { p_bot: bot });
+  if (!d.ok || !d.data) return { ok: false, status: null, error: 'not_found' };
   const x = d.data;
-  // no address set: the bot reads its inbox with chat_inbox instead; nothing to retry
-  if (!x || !x.url) return { skipped: 'no_address' };
-  if (!URL_OK.test(x.url)) throw new JobError('address_invalid', { permanent: true });
-  const secret = x.sealed ? openToken(x.sealed, AAD + ':' + x.bot.id) : null;
-  if (!secret) throw new JobError('secret_unreadable', { permanent: true });
-  // 0091: the Authorization header the bot's routine expects, kept sealed
-  const auth = x.auth ? openToken(x.auth, AUTH_AAD + ':' + x.bot.id) : null;
-  if (x.auth && !auth) throw new JobError('auth_unreadable', { permanent: true });
-  const m = x.message || {};
-  // the full message at the top (what a routine reads first), then the same in the nested form of 0087
-  const body = JSON.stringify({ type: 'chat.message', id: `${message}:${bot}`, at: new Date().toISOString(),
-    roomId: x.room.id, roomKind: x.room.kind, roomName: x.room.name, messageId: m.id, sentAt: m.at,
-    sender: m.author ? { type: m.author.type, id: m.author.id, name: m.author.name } : null, body: m.body || '',
-    mentions: m.mentions || [], replyToMessage: m.replyTo || null, files: m.files || [],
-    to: x.bot, bot: x.bot, room: x.room, message: m,
-    reply: { tool: 'chat_send', args: { roomId: x.room.id, replyTo: m.id } } });
-  const headers = { 'content-type': 'application/json', 'user-agent': 'VYNTEX-ERP-Chat/1', 'x-vx-signature': sign(secret, body), 'x-vx-event': 'chat.message' };
-  if (auth) headers.authorization = auth;
-  let res;
-  try {
-    res = await fetch(x.url, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeoutMs), headers, body });
-  } catch { throw new JobError('unreachable'); }
-  if (res.status >= 200 && res.status < 300) return { delivered: true };
-  // a refusal that will not change (wrong address, not allowed) is not tried again
-  if ([400, 401, 403, 404, 410, 422].includes(res.status)) throw new JobError('refused_' + res.status, { permanent: true });
-  throw new JobError('status_' + res.status);
+  if (!x.url) return { ok: false, status: null, error: 'no_address' };
+  const now = new Date().toISOString();
+  const body = JSON.stringify({ type: 'chat.test', test: true, id: `test:${bot}:${Date.now()}`, at: now,
+    roomId: null, roomKind: 'direct', roomName: '', messageId: null, sentAt: now,
+    sender: { type: 'system', id: null, name: 'VYNTEX ERP' }, body: `Test push to ${x.bot.name} from VYNTEX ERP. No reply is needed.`,
+    mentions: [], replyToMessage: null, files: [], to: x.bot, bot: x.bot });
+  const started = Date.now();
+  const r = await postOnce(x, body, { event: 'chat.test', timeoutMs: 8000 });
+  await serviceRpc('bot_delivery_log', { p_id: null, p_tenant: x.tenant, p_bot: bot, p_message: null, p_kind: 'test', p_status: r.status, p_error: r.error, p_attempts: 1 });
+  return { ok: r.ok, status: r.status, error: r.error, ms: Date.now() - started };
+}
+
+/** The office operation `bot_webhook_test` ({ p_bot }): owner or manager. */
+export async function botWebhookTest({ session, tenant, args }, upstreamError) {
+  if (!UUID.test(String(args.p_bot || ''))) return { status: 400, error: 'invalid_args' };
+  const c = await userRpc(session.at, 'bot_webhook_test_check', { p_tenant: tenant, p_bot: args.p_bot });
+  if (!c.ok) throw upstreamError(c);
+  if (c.data !== true) return { status: 404, error: 'not_found' };
+  return { status: 200, result: await testPush(args.p_bot.toLowerCase()) };
 }
 
 /**

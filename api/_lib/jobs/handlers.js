@@ -198,6 +198,8 @@ hooks.daily.push(async ({ enqueue: q }) => {
 });
 /** A team chat message meant for an AI employee, sent to its own address (0087, api/_lib/chat). */
 register('chat.bot_deliver', async (job) => (await import('../chat/index.js')).deliverToBot(job));
+// a test push to one AI employee's webhook, queued by an operator (0093); the answer is in app.bot_webhook_deliveries
+register('bot.webhook_test', async (job) => (await import('../chat/index.js')).testPush(String(job.payload?.bot || '')));
 /** Invoice reminders due today (0086): 3 days before the due date, on it, then 7 and 14 days after. */
 register('invoices.remind', async () => {
   const r = await serviceRpc('invoice_reminders_due', {});

@@ -16,7 +16,7 @@ import { envelopeSend, envelopeRemind, envelopeLink } from '../esign/send.js';
 import { reviewSend } from './reviews.js';
 import { newBotKey } from './bot.js';
 import { invoiceSend } from '../invoices.js';
-import { chatSend, chatTranslate, botWebhookSet } from '../chat/index.js';
+import { chatSend, chatTranslate, botWebhookSet, botWebhookTest } from '../chat/index.js';
 
 /** name -> { run, stepUp }. The signature every special has: ({ request, session, cookies, tenant, args, idem }) => Response. */
 /** A database function of this range called with the person's own token: the database decides, as for any allow-list entry. */
@@ -43,6 +43,8 @@ export const SPECIALS = {
   chat_send: { run: wrapped(chatSend), stepUp: false },
   chat_translate: { run: wrapped(chatTranslate), stepUp: false },
   bot_webhook_set: { run: wrapped(botWebhookSet), stepUp: true },
+  // a sample push to one AI employee's webhook, with the answer it gave (0093)
+  bot_webhook_test: { run: wrapped(botWebhookTest), stepUp: false },
 };
 
 /** An operation that answers { status, result | error }, or throws the database's refusal. */

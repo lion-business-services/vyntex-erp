@@ -15,16 +15,29 @@ export { buildContext, toProposal } from './context';
 
 const ENDPOINT = '/api/assistant';
 
-/** Asks once, on page load, whether an AI model is connected for this person. Any failure means "no": the page stays on the built-in assistant. */
-export async function checkConfigured(): Promise<boolean> {
-  if (PREVIEW) return false; // an embedded preview has no server behind it
+/** What VYNTEX AI can do here: answer with a model, write the voice down, read pictures and PDFs, keep chats. */
+export interface Abilities { on: boolean; voice: boolean; images: boolean; pdfs: boolean; history: boolean }
+const NONE: Abilities = { on: false, voice: false, images: false, pdfs: false, history: false };
+
+/** Asks once, on page load, what is set up for this person. Any failure means "no": the page stays on the built-in assistant. */
+export async function checkAbilities(): Promise<Abilities> {
+  if (PREVIEW) return NONE; // an embedded preview has no server behind it
   if (isLive()) {
     try {
       const { rpc } = await import('@/platform/live/ops');
-      const a = await rpc<{ configured: boolean; allowed: boolean }>('assistant_status', {});
-      return a.ok && a.data.result?.configured === true && a.data.result?.allowed === true;
-    } catch { return false; }
+      const a = await rpc<{ configured: boolean; allowed: boolean; voice?: boolean; images?: boolean; pdfs?: boolean }>('assistant_status', {});
+      const r = a.ok ? a.data.result : null;
+      const on = !!r && r.configured === true && r.allowed === true;
+      return { on, voice: on && !!r?.voice, images: on && !!r?.images, pdfs: on && !!r?.pdfs, history: on };
+    } catch { return NONE; }
   }
+  return { ...NONE, on: await checkConfigured() };
+}
+
+/** Asks once, on page load, whether an AI model is connected (the older one-answer server function). */
+export async function checkConfigured(): Promise<boolean> {
+  if (PREVIEW) return false;
+  if (isLive()) return (await checkAbilities()).on;
   try {
     const res = await fetch(ENDPOINT, { method: 'GET', headers: { accept: 'application/json' }, cache: 'no-store' });
     if (!res.ok || !(res.headers.get('content-type') || '').includes('application/json')) return false;
@@ -47,17 +60,22 @@ const toActions = (raw: unknown, env: Env): ModelAction[] => (Array.isArray(raw)
 });
 
 /** One round trip. Returns null when the model could not answer, so the caller can fall back to the built-in assistant. */
-export async function askModel(turns: Turn[], env: Env): Promise<ModelReply | null> {
+export interface Files { images?: string[]; pdfs?: string[] }
+export async function askModel(turns: Turn[], env: Env, files: Files = {}): Promise<ModelReply | null> {
   try {
     // a tax ID someone typed into the conversation is masked before the conversation leaves the browser
-    const messages = turns.slice(-12).map((m) => ({ role: m.role, content: maskTaxIds(m.content).slice(0, 1900) }));
+    // earlier turns are cut to 1,900 characters; the question being asked may carry the text of attached files
+    const recent = turns.slice(-12);
+    const messages = recent.map((m, i) => ({ role: m.role, content: maskTaxIds(m.content).slice(0, i === recent.length - 1 ? 9500 : 1900) }));
     while (messages.length && messages[0].role !== 'user') messages.shift();
     if (!messages.length) return null;
     const lang = env.lang === 'es' ? 'es' : 'en';
     let text: string; let rawActions: unknown;
     if (isLive()) {
       const { rpc } = await import('@/platform/live/ops');
-      const a = await rpc<{ text: string; actions: unknown }>('assistant_ask', { lang, messages, context: buildContext(env), company: env.data.company.name });
+      const a = await rpc<{ text: string; actions: unknown }>('assistant_ask', { lang, messages, context: buildContext(env), company: env.data.company.name,
+        ...(files.images?.length ? { images: files.images } : {}), ...(files.pdfs?.length ? { pdfs: files.pdfs } : {}) });
+      if (!a.ok && a.code === 'pdf_needs_gemini') return { text: env.t('asst.file.pdfOff'), actions: [] };
       if (!a.ok || typeof a.data.result?.text !== 'string') return null;
       text = a.data.result.text; rawActions = a.data.result.actions;
     } else {
@@ -73,3 +91,25 @@ export async function askModel(turns: Turn[], env: Env): Promise<ModelReply | nu
     return { text: maskTaxIds(text), actions, proposal: first?.proposal, problem: first?.problem };
   } catch { return null; }
 }
+
+/** What the person said, written down by the server (Groq's Whisper), or null so the page can use the browser's dictation. */
+export async function transcribeVoice(audio: string, lang: 'en' | 'es'): Promise<string | null> {
+  if (!isLive()) return null;
+  try {
+    const { rpc } = await import('@/platform/live/ops');
+    const a = await rpc<{ text: string }>('assistant_transcribe', { audio, lang });
+    return a.ok && typeof a.data.result?.text === 'string' ? a.data.result.text : null;
+  } catch { return null; }
+}
+
+/* ---------- kept conversations (0096): each person's own, in a live workspace ---------- */
+export interface ChatSummary { id: string; title: string; updatedAt: string; count: number }
+export interface KeptMessage { role: 'user' | 'assistant'; text: string; at?: string; files?: string[] }
+async function call<T>(name: string, args: Record<string, unknown>): Promise<T | null> {
+  if (!isLive()) return null;
+  try { const { rpc } = await import('@/platform/live/ops'); const a = await rpc<T>(name, args); return a.ok ? (a.data.result as T) : null; } catch { return null; }
+}
+export const listChats = () => call<ChatSummary[]>('assistant_chat_list', {});
+export const getChat = (id: string) => call<{ id: string; title: string; messages: KeptMessage[] }>('assistant_chat_get', { p_id: id });
+export const saveChat = (id: string | null, title: string, messages: KeptMessage[]) => call<string>('assistant_chat_save', { p_id: id, p_title: title, p_messages: messages.map((m) => ({ ...m, text: maskTaxIds(m.text) })) });
+export const deleteChat = (id: string) => call<boolean>('assistant_chat_delete', { p_id: id });

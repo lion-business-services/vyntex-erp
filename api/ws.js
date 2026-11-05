@@ -23,6 +23,7 @@ import { sendSystemEmail, inviteEmail } from './_lib/mail.js';
 import { RPCS } from './_lib/rpc-allowlist.js';
 
 const MAX_APPLY_BYTES = 1024 * 1024;
+const BIG_RPCS = new Set(['assistant_ask', 'assistant_transcribe']);
 const MAX_OPS = 500;
 const MAX_FILE_BYTES = 4 * 1024 * 1024;   // a Vercel function accepts a body of about 4.5 MB
 const BUCKET = 'workspace-files';
@@ -75,7 +76,8 @@ async function rpc(request, name) {
   // A name that is not on the list does not exist, whether or not the database has a function called that.
   if (!spec) return fail(404, 'unknown_operation');
   const { session, cookies } = await guard(request, { stepUp: spec.stepUp });
-  const body = await readJson(request, 256 * 1024);
+  // a question with pictures, and voice to be written down (0096), may be larger than any other call
+  const body = await readJson(request, BIG_RPCS.has(name) ? 4 * 1024 * 1024 : 256 * 1024);
   const tenant = tenantOf(body.tenant);
   const args = body.args === undefined ? {} : body.args;
   if (!isPlainObject(args) || Object.keys(args).length > 30) return fail(400, 'invalid_args', {}, { cookies });

@@ -19,6 +19,10 @@ const mails = [];
 const hooks = [];
 const ai = [];
 const groq = [];
+const voice = [];
+const files = [];
+let voiceFake = () => new Response(JSON.stringify({ text: 'Create an invoice for Brian, SSN 123-45-6789, for twenty three hundred dollars.', language: 'english' }), { status: 200, headers: { 'content-type': 'application/json' } });
+let filesFake = () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'The PDF is a signed contract for $2,300.' }, { functionCall: { name: 'create_task', args: { title: 'File the Double Oak contract' } } }] } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
 let hookStatus = 200; let hookBody = '{}';
 const stripeCalls = [];
 let stripeFake = async () => new Response('{}', { status: 500 });
@@ -48,6 +52,8 @@ async function startStack() {
     if (u.startsWith('https://api.resend.com/emails')) { mails.push(JSON.parse(init.body)); return new Response(JSON.stringify({ id: 'email_' + randomBytes(6).toString('hex') }), { status: 200 }); }
     if (u.startsWith('https://api.stripe.com/')) return stripeFake(u, init);
     if (u.startsWith('https://bots.example.com/')) { hooks.push({ url: u, headers: init.headers, body: init.body }); return new Response(hookBody, { status: hookStatus }); }
+    if (u.startsWith('https://api.groq.com/openai/v1/audio/transcriptions')) { const f = init.body; voice.push({ auth: init.headers.authorization, model: f.get('model'), lang: f.get('language'), prompt: f.get('prompt'), size: f.get('file')?.size, fmt: f.get('response_format') }); return voiceFake(f); }
+    if (u.includes(':generateContent')) { const b = JSON.parse(init.body); files.push({ url: u, key: init.headers['x-goog-api-key'], body: b }); return filesFake(b); }
     if (u.startsWith('https://api.groq.com/')) { const b = JSON.parse(init.body); groq.push({ body: b, auth: init.headers.authorization, at: 'groq' }); return groqFake(b); }
     if (u.startsWith('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions')) { const b = JSON.parse(init.body); groq.push({ body: b, auth: init.headers.authorization, at: 'gemini' }); return geminiFake(b); }
     if (u.startsWith('https://api.anthropic.com/')) { ai.push(JSON.parse(init.body)); return new Response(JSON.stringify({ content: [{ type: 'text', text: 'Buenos días, @Parker. ¿Puede revisar el pipeline?' }], usage: {} }), { status: 200, headers: { 'content-type': 'application/json' } }); }
@@ -89,7 +95,7 @@ test('VYNTEX AI: Master Builder (and VYNTEX USA itself) only; Groq answers with 
   const basic = await S.company('builder');
   // who has it
   const st = await pro.owner.post('/api/ws/rpc/assistant_status', { tenant: pro.tenantId, args: {} });
-  assert.equal(st.status, 200, st.text); assert.deepEqual(st.json.result, { configured: true, allowed: true, plan: 'master_builder' });
+  assert.equal(st.status, 200, st.text); assert.deepEqual(st.json.result, { configured: true, allowed: true, plan: 'master_builder', voice: true, images: true, pdfs: true });
   assert.equal((await own.owner.post('/api/ws/rpc/assistant_status', { tenant: own.tenantId, args: {} })).json.result.allowed, true, 'VYNTEX USA itself');
   assert.equal((await basic.owner.post('/api/ws/rpc/assistant_status', { tenant: basic.tenantId, args: {} })).json.result.allowed, false, 'not on Builder');
   const refused = await ask(basic, question);
@@ -141,4 +147,75 @@ test('VYNTEX AI: Master Builder (and VYNTEX USA itself) only; Groq answers with 
   assert.equal((await pro.owner.post('/api/ws/rpc/assistant_status', { tenant: pro.tenantId, args: {} })).json.result.allowed, false);
   // nothing secret in any answer
   for (const x of [st, r, r2, r3]) for (const s of secrets) if (s && s.length > 8) assert.ok(!x.text.includes(s), 'no secret in the answer');
+});
+
+const PNG = 'data:image/png;base64,' + 'iVBORw0KGgo'.padEnd(400, 'A');
+const PDF = 'data:application/pdf;base64,' + Buffer.from('%PDF-1.4 sample contract').toString('base64');
+const AUDIO = 'data:audio/webm;base64,' + Buffer.alloc(4000, 7).toString('base64');
+const rpc = (co, name, args) => co.owner.post('/api/ws/rpc/' + name, { tenant: co.tenantId, args });
+
+test('VYNTEX AI: pictures go to a vision model, PDFs to Gemini, voice to Whisper; conversations are kept for their owner only', async () => {
+  groqFake = () => reply({ content: 'I can see a receipt for $45.' });
+  geminiFake = () => reply({ content: 'Gemini here.' });
+  const pro = await S.company('master_builder');
+  const basic = await S.company('builder');
+  // a picture: the vision model, the picture as an image part of the last message
+  const g0 = groq.length;
+  const ri = await ask(pro, { ...question, images: [PNG] });
+  assert.equal(ri.status, 200, ri.text); assert.equal(ri.json.result.text, 'I can see a receipt for $45.');
+  const vis = groq[g0];
+  assert.equal(vis.body.model, 'meta-llama/llama-4-scout-17b-16e-instruct');
+  const last = vis.body.messages.at(-1);
+  assert.ok(Array.isArray(last.content) && last.content.some((c) => c.type === 'image_url' && c.image_url.url === PNG));
+  assert.ok(!JSON.stringify(vis.body).includes('123-45-6789'));
+  // what is not a picture, or too many, is refused before any model
+  const n0 = groq.length;
+  assert.equal((await ask(pro, { ...question, images: ['data:text/html;base64,PGI+'] })).status, 400);
+  assert.equal((await ask(pro, { ...question, images: [PNG, PNG, PNG, PNG] })).status, 400);
+  assert.equal((await ask(pro, { ...question, pdfs: ['data:application/zip;base64,UEs='] })).status, 400);
+  assert.equal(groq.length, n0); assert.equal(files.length, 0);
+  // a PDF: Gemini's own API with the file inline, its key in its own header, the tools as function declarations
+  const rp = await ask(pro, { ...question, pdfs: [PDF] });
+  assert.equal(rp.status, 200, rp.text);
+  assert.equal(rp.json.result.text, 'The PDF is a signed contract for $2,300.');
+  assert.deepEqual(rp.json.result.actions.map((a) => a.tool), ['create_task']);
+  const f = files.at(-1);
+  assert.equal(f.key, process.env.GEMINI_API_KEY); assert.ok(!f.url.includes(process.env.GEMINI_API_KEY), 'the key is never in the address');
+  assert.ok(JSON.stringify(f.body.contents).includes('"mime_type":"application/pdf"'));
+  assert.ok(f.body.tools[0].functionDeclarations.some((d) => d.name === 'create_invoice'));
+  assert.ok(!JSON.stringify(f.body).includes('additionalProperties'));
+  assert.ok(!JSON.stringify(f.body).includes('123-45-6789'));
+  // the voice: Whisper with the language and the company's words, the text masked
+  const rv = await rpc(pro, 'assistant_transcribe', { audio: AUDIO, lang: 'es' });
+  assert.equal(rv.status, 200, rv.text);
+  assert.match(rv.json.result.text, /Create an invoice for Brian/); assert.ok(!rv.json.result.text.includes('123-45-6789'), 'a tax ID said aloud is masked');
+  const v = voice.at(-1);
+  assert.equal(v.auth, 'Bearer ' + process.env.GROQ_API_KEY); assert.equal(v.model, 'whisper-large-v3-turbo'); assert.equal(v.lang, null, 'the language is found by Whisper, for people who mix English and Spanish'); assert.equal(v.fmt, 'verbose_json');
+  assert.ok(v.size > 1000); assert.match(v.prompt, /factura/, 'the Spanish words of the ERP as a hint');
+  // the fast model used up: the full one writes it down
+  voiceFake = (form) => (form.get('model') === 'whisper-large-v3-turbo' ? new Response('{}', { status: 429 }) : new Response(JSON.stringify({ text: 'Second model.' }), { status: 200 }));
+  assert.equal((await rpc(pro, 'assistant_transcribe', { audio: AUDIO, lang: 'en' })).json.result.text, 'Second model.');
+  // not audio, or nothing, is refused; a company without the plan never reaches Whisper
+  const v0 = voice.length;
+  assert.equal((await rpc(pro, 'assistant_transcribe', { audio: 'data:text/plain;base64,aGk=', lang: 'en' })).status, 400);
+  assert.equal((await rpc(pro, 'assistant_transcribe', { audio: 'data:audio/webm;base64,AAAA', lang: 'en' })).status, 400);
+  assert.equal((await rpc(basic, 'assistant_transcribe', { audio: AUDIO, lang: 'en' })).status, 403);
+  assert.equal(voice.length, v0);
+  // kept conversations: saved, listed, opened and deleted by their owner, masked again in the database
+  const saved = await rpc(pro, 'assistant_chat_save', { p_id: null, p_title: 'Brian invoice', p_messages: [{ role: 'user', text: 'Invoice Brian, SSN 123-45-6789', files: ['contract.pdf'] }, { role: 'assistant', text: 'Done.' }] });
+  assert.equal(saved.status, 200, saved.text);
+  const id = saved.json.result ?? saved.json;
+  const list = await rpc(pro, 'assistant_chat_list', {});
+  assert.equal(list.status, 200, list.text);
+  const rows = list.json.result ?? list.json;
+  assert.equal(rows.length, 1); assert.equal(rows[0].title, 'Brian invoice'); assert.equal(rows[0].count, 2);
+  const got = await rpc(pro, 'assistant_chat_get', { p_id: id });
+  const chat = got.json.result ?? got.json;
+  assert.equal(chat.messages[0].text, 'Invoice Brian, SSN ***-**-****'); assert.deepEqual(chat.messages[0].files, ['contract.pdf']);
+  // another company cannot see it
+  const other = await basic.owner.post('/api/ws/rpc/assistant_chat_get', { tenant: pro.tenantId, args: { p_id: id } });
+  assert.ok(other.status >= 400 || (other.json.result ?? null) === null, other.text);
+  assert.equal((await rpc(pro, 'assistant_chat_delete', { p_id: id })).status, 200);
+  assert.equal(((await rpc(pro, 'assistant_chat_list', {})).json.result ?? []).length, 0);
+  for (const x of [ri, rp, rv, saved, list, got]) for (const s of secrets) if (s && s.length > 8) assert.ok(!x.text.includes(s), 'no secret in the answer');
 });

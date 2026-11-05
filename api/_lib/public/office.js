@@ -17,7 +17,7 @@ import { reviewSend } from './reviews.js';
 import { newBotKey } from './bot.js';
 import { invoiceSend } from '../invoices.js';
 import { chatSend, chatTranslate, botWebhookSet, botWebhookTest } from '../chat/index.js';
-import { assistantAsk, assistantStatus } from '../assistant/ask.js';
+import { assistantAsk, assistantStatus, assistantTranscribe } from '../assistant/ask.js';
 
 /** name -> { run, stepUp }. The signature every special has: ({ request, session, cookies, tenant, args, idem }) => Response. */
 /** A database function of this range called with the person's own token: the database decides, as for any allow-list entry. */
@@ -49,6 +49,8 @@ export const SPECIALS = {
   // VYNTEX AI (0095): a question, and whether it is on for this person (Master Builder)
   assistant_ask: { run: wrapped(assistantAsk), stepUp: false },
   assistant_status: { run: wrapped(assistantStatus), stepUp: false },
+  // VYNTEX AI's voice input and its kept conversations (0096)
+  assistant_transcribe: { run: wrapped(assistantTranscribe), stepUp: false },
 };
 
 /** An operation that answers { status, result | error }, or throws the database's refusal. */

@@ -9,7 +9,7 @@ import { A, useRoute } from '@/app/router';
 import type { PageProps } from '@/app/routes';
 import { DemoTag, PlanBadge, CanWrite } from '@/app/shared';
 import { Badge, Button, Card, Dot, PageHeader, cx } from '@/ui';
-import { RISKY, describe, examples, interpret, isNo, isYes, suggestions, type Block, type Card as ProposalCard, type Choice, type Env, type Proposal } from './engine';
+import { needsConfirm, describe, examples, interpret, isNo, isYes, suggestions, type Block, type Card as ProposalCard, type Choice, type Env, type Proposal } from './engine';
 import { execute, executeAsync, type Outcome } from './run';
 import { askModel, checkAbilities, deleteChat, getChat, listChats, saveChat, transcribeVoice, type Abilities, type ChatSummary, type KeptMessage, type Turn } from './remote';
 import { ACCEPT, MAX_FILES, browserDictation, canRecord, readAttachment, startRecording, withFileText, type Attachment, type Recorder } from './media';
@@ -141,7 +141,7 @@ function Conversation(_: PageProps) {
     for (const a of reply.actions) {
       if (!a.proposal) { push(bot([{ type: 'text', text: a.problem, soft: true }], { model: true })); continue; }
       const now: Env = { ...env, data: scopedData(getSnapshot().data, app.user, app.perms) };
-      if (RISKY.has(a.proposal.kind)) {
+      if (needsConfirm(a.proposal)) {
         if (waiting) { push(bot([{ type: 'text', text: t('asst.oneAtATime'), soft: true }], { model: true })); continue; }
         waiting = true;
         push(bot([], { model: true, proposal: a.proposal, card: describe(a.proposal, now), state: 'pending' }));

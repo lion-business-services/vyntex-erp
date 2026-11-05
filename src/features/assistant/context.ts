@@ -8,6 +8,7 @@ import { moduleOn, stagesOf } from '@/domain/config';
 import { reviewStats } from '@/domain/actions/reviews';
 import { check, type Env, type Proposal } from './engine';
 import { maskTaxIds } from './records';
+import { SPEC_BY_ID, cleanArgs, specsFor } from './actions';
 
 // kept small: the free model's daily allowance is counted in tokens, and every question carries this summary
 const CAP = 25;
@@ -89,6 +90,15 @@ export function toProposal(tool: string, input: Record<string, unknown>, env: En
       const jobId = str(input.job_id, 60);
       // a payment on a project that is still an estimate: the confirm also marks it as a signed contract
       p = { kind: 'payment', jobId, amount, method, date: isoDate(input.date) ?? today(), ...(byId(env.data.jobs, jobId)?.status === 'estimate' ? { approve: true } : {}) }; break;
+    }
+    case 'do_action': {
+      // 0097: any other entry of the catalog; its arguments come as a JSON object string (or an object)
+      const x = SPEC_BY_ID.get(str(input.action, 40));
+      if (!x || !specsFor(env).includes(x)) return env.lang === 'es' ? 'Esa acción no está disponible aquí.' : 'That action is not available here.';
+      let raw: unknown = input.arguments ?? input.args ?? {};
+      if (typeof raw === 'string') { try { raw = raw.trim() ? JSON.parse(raw) : {}; } catch { return env.t('asst.model.badAction'); } }
+      const a = cleanArgs(x, raw, env); if (typeof a === 'string') return a;
+      p = { kind: 'action', action: x.id, args: a }; break;
     }
     case 'book_appointment': {
       const date = isoDate(input.date); const time = typeof input.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(input.time) ? input.time : undefined;

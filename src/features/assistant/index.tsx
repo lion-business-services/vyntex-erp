@@ -9,11 +9,11 @@ import { A, useRoute } from '@/app/router';
 import type { PageProps } from '@/app/routes';
 import { DemoTag, PlanBadge, CanWrite } from '@/app/shared';
 import { Badge, Button, Card, Dot, PageHeader, cx } from '@/ui';
-import { describe, examples, interpret, isNo, isYes, suggestions, type Block, type Card as ProposalCard, type Choice, type Env, type Proposal } from './engine';
-import { execute, type Outcome } from './run';
+import { RISKY, describe, examples, interpret, isNo, isYes, suggestions, type Block, type Card as ProposalCard, type Choice, type Env, type Proposal } from './engine';
+import { execute, executeAsync, type Outcome } from './run';
 import { askModel, checkConfigured, type Turn } from './remote';
 import { SuccessCheck } from '@/features/documents/success';
-import { mutate } from '@/store/store';
+import { getSnapshot, mutate } from '@/store/store';
 import { Empty, toast } from '@/ui';
 import { assistantOn, setAssistant } from './deploy';
 import { maskTaxIds } from './records';
@@ -104,9 +104,26 @@ function Conversation(_: PageProps) {
     push(user); setBusy(true);
     const turns: Turn[] = [...msgs.map((m): Turn => (m.from === 'user' ? { role: 'user', content: m.text } : { role: 'assistant', content: [...m.blocks.filter((b) => b.type === 'text').map((b) => (b.type === 'text' ? b.text : '')), m.outcome?.text ?? ''].filter(Boolean).join('\n') || '…' })), { role: 'user', content: q }];
     const reply = await askModel(turns, env);
+    if (!reply) { setBusy(false); push(fromRules(q, t('asst.fallback'))); return; }
+    // VYNTEX AI (0095): the safe actions are carried out at once, one after the other, each checked by the business rules
+    // against the records as they are after the one before; anything that reaches a client or records money waits for Confirm
+    const doing = reply.actions.filter((a) => a.proposal);
+    push(bot([{ type: 'text', text: reply.text || (doing.length ? t('asst.working') : t('asst.confirmAsk')) }], { model: true }));
+    let waiting = false;
+    for (const a of reply.actions) {
+      if (!a.proposal) { push(bot([{ type: 'text', text: a.problem, soft: true }], { model: true })); continue; }
+      const now: Env = { ...env, data: scopedData(getSnapshot().data, app.user, app.perms) };
+      if (RISKY.has(a.proposal.kind)) {
+        if (waiting) { push(bot([{ type: 'text', text: t('asst.oneAtATime'), soft: true }], { model: true })); continue; }
+        waiting = true;
+        push(bot([], { model: true, proposal: a.proposal, card: describe(a.proposal, now), state: 'pending' }));
+        continue;
+      }
+      const card = describe(a.proposal, now);
+      const outcome = await executeAsync(a.proposal, now);
+      push(bot([], { model: true, proposal: a.proposal, card, state: outcome.ok ? 'done' : 'failed', outcome }));
+    }
     setBusy(false);
-    if (!reply) { push(fromRules(q, t('asst.fallback'))); return; }
-    push(bot([{ type: 'text', text: reply.text || t('asst.confirmAsk') }], { model: true, proposal: reply.proposal, card: reply.proposal ? describe(reply.proposal, env) : undefined, state: reply.proposal ? 'pending' : undefined, remark: reply.problem }));
   };
 
   // a question handed over from the command palette (/assistant?q=...) is asked once on arrival

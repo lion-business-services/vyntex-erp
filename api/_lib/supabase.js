@@ -17,7 +17,7 @@ const base = () => need('SUPABASE_URL').replace(/\/+$/, '');
 
 /** Words a database function of this project raises on purpose. Only these are passed on as a reason. */
 const KNOWN_WORDS = new Set([
-  'already_member', 'invite_invalid', 'invalid_role', 'invalid_email', 'invalid_token', 'not_a_member',
+  'already_member', 'partner_account', 'invite_invalid', 'invalid_role', 'invalid_email', 'invalid_token', 'not_a_member',
   'mfa_required', 'stepup_required', 'session_revoked',
   // refusals of the module and provider functions (0030 to 0048): what was wrong, as one word and nothing more
   'not_found', 'expired', 'conflict', 'locked', 'needs_other_person', 'too_small', 'invalid',

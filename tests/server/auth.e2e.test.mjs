@@ -249,7 +249,7 @@ test('invitations: an address that already has an account must prove it with its
   assert.deepEqual(s.memberships.map((m) => m.role).sort(), ['manager', 'owner'], 'one account, two companies');
   // an active member cannot be invited again
   const dup = await other.owner.post('/api/ws/rpc/member_invite', { tenant: other.tenantId, args: { email: co.email, role: 'staff' } });
-  assert.deepEqual([dup.status, dup.json], [409, { ok: false, error: 'conflict', reason: 'already_member' }]);
+  assert.deepEqual([dup.status, dup.json], [409, { ok: false, error: 'already_member' }]);
 });
 
 test('invitations: when email is not set up, the inviter is handed the one-time link once, and only its hash is stored', async () => {

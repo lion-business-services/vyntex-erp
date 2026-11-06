@@ -67,6 +67,8 @@ export const liveProtected: ProtectedOperations = {
     const a = await rpc<never>('member_invite', { email, role: input.role, name: input.name.trim(), lang: getSnapshot().prefs.lang }, { idem: newKey() });
     // the plan's users are all taken (api/ws.js, from the pricing file): the screen explains how to upgrade
     if (!a.ok && a.code === 'seat_limit') return refuse('seat_limit');
+    // a Partner Portal account cannot join a company workspace; someone already on the team needs no invitation
+    if (!a.ok && (a.code === 'partner_account' || a.code === 'already_member')) return refuse(a.code);
     if (!a.ok) return no(a);
     const answer = a.data as unknown as { invitation?: { id: string; email: string; role: TeamUser['role']; expiresAt?: string }; delivery?: string; link?: string };
     const inv = answer.invitation;

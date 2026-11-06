@@ -159,6 +159,10 @@ async function invite(request, session, cookies, tenant, args, idem) {
   });
   if (!created.ok) {
     if (idemKey) await serviceRpc('idem_abort', { p_scope: 'invite', p_key: `${session.uid}:${idemKey}` });
+    // said as it is, so the Team screen explains it: a Partner Portal account cannot join a company workspace (0098),
+    // and someone already on the team needs no invitation
+    if (created.hint === 'partner_account' || created.word === 'partner_account') return fail(409, 'partner_account', {}, { cookies });
+    if (created.word === 'already_member') return fail(409, 'already_member', {}, { cookies });
     const e = upstreamError(created); e.extra = { cookies }; throw e;
   }
   const inv = created.data;

@@ -46,7 +46,7 @@ async function startStack() {
     return realFetch(url, init);
   };
   const api = { auth: await import('../../api/auth.js'), partners: await import('../../api/partners.js'), cron: await import('../../api/cron.js') };
-  const sql = (text, data = {}) => sb.db.run('supabase_admin', [text], data);
+  const sql = (text, data = {}) => sb.db.run('supabase_admin', [text], data).catch((e) => { throw new Error('psql failed: ' + String(e.stderr || '').slice(0, 400)); });
   const linkFor = (email) => {
     const m = [...mail.sent].reverse().find((x) => x.to.includes(email));
     if (!m) throw new Error('no email was sent to ' + email);
@@ -111,7 +111,7 @@ test('partners: created and invited by staff; the invitation is emailed and only
   people.b = await accept(tb, 'owner@beacon.example');
   // a used link is gone
   const again = S.browser(); await again.open();
-  assert.equal((await again.post('/api/auth/partner-invite/check', { token })).json.error, 'invite_invalid');
+  assert.equal((await again.post('/api/auth/partner-invite/check', { token })).json.error, 'invite_used', 'said as it is: accepted already (0098)');
   // a password alone is no longer enough
   const pw = S.browser(); await pw.open();
   const r = await pw.post('/api/auth/signin', { email: 'owner@atlas.example', password: PASSWORD });
@@ -138,6 +138,68 @@ test('a partner cannot reach staff functions; an ERP customer cannot reach the p
   const t = S.linkFor('customer@example.com').split('/').pop();
   const try2 = S.browser(); await try2.open();
   assert.equal((await try2.post('/api/auth/partner-invite/accept', { token: t, password: PASSWORD })).json.error, 'account_in_use');
+});
+
+test('invitations say exactly what is wrong (0098): a partner account is refused when invited, an older invitation to one says why, and used, expired, withdrawn and busy links are told apart', async () => {
+  const slug = 'invite-clarity-' + Date.now().toString(36);
+  const co = await S.sql(String.raw`with t as (insert into public.tenants (slug, name, industry_id, plan_id, status) values ((select v from _in where k = 's'), 'Clarity Co', 'build', 'builder', 'active') returning id)
+    select '@@R@@' || jsonb_build_object('id', (select id from t))::text;`, { s: slug });
+  const boot = (email) => S.sql(String.raw`select '@@R@@' || to_jsonb(public.invite_bootstrap((select v from _in where k = 'id')::uuid, (select v from _in where k = 'e')))::text;`, { id: co.id, e: email });
+  // later invitations of a company with an owner, as the Team screen makes them (a token whose hash only is stored)
+  const invite = async (tenant, email) => {
+    const token = randomBytes(32).toString('base64url');
+    await S.sql(String.raw`insert into app.invitations (tenant_id, email, role, token_hash, expires_at) values ((select v from _in where k = 'id')::uuid, (select v from _in where k = 'e'), 'staff', encode(sha256(convert_to((select v from _in where k = 't'), 'UTF8')), 'hex'), now() + interval '72 hours'); select '@@R@@' || '1';`, { id: tenant, e: email, t: token });
+    return token;
+  };
+  // 1. inviting a Partner Portal account is refused at once, with the word the Team screen explains
+  const refused = await S.sql(String.raw`create or replace function pg_temp.try_boot(t uuid, e text) returns text language plpgsql as $f$
+      declare h text; begin perform public.invite_bootstrap(t, e); return 'made'; exception when others then get stacked diagnostics h = pg_exception_hint; return sqlerrm || '/' || coalesce(h, ''); end $f$;
+    select '@@R@@' || to_jsonb(pg_temp.try_boot((select v from _in where k = 'id')::uuid, 'owner@atlas.example'))::text;`, { id: co.id });
+  assert.equal(refused, 'partner_account/partner_account');
+  assert.equal(await S.sql(String.raw`select '@@R@@' || (select count(*) from app.invitations where email = 'owner@atlas.example')::text;`), 0, 'nothing was made');
+  // 2. the owner's report: an invitation made before 0098 to a partner account said "does not work any more" seconds
+  //    after it was opened. Now it says why, and the invitation stays open (nothing was used up)
+  await S.sql(`alter table app.invitations disable trigger invitations_not_partner; select '@@R@@' || '1';`);
+  const legacy = await boot('owner@atlas.example');
+  await S.sql(`alter table app.invitations enable trigger invitations_not_partner; select '@@R@@' || '1';`);
+  const g = S.browser(); await g.open();
+  assert.equal((await g.post('/api/auth/invite/check', { token: legacy })).status, 200, 'the link opens');
+  const r1 = await g.post('/api/auth/invite/accept', { token: legacy, password: PASSWORD, existing: true });
+  assert.deepEqual([r1.status, r1.json], [409, { ok: false, error: 'partner_account' }]);
+  const r2 = await g.post('/api/auth/invite/accept', { token: legacy, password: PASSWORD, existing: true });
+  assert.equal(r2.json.error, 'partner_account', 'the same answer again, not "expired": the invitation was released');
+  assert.ok(Number(await S.sql(String.raw`select '@@R@@' || (select count(*) from app.security_events where kind = 'invite.accept_failed' and meta ->> 'reason' = 'partner_account')::text;`)) >= 2, 'logged with its reason');
+  // 3. "I already have an account": the existing password is checked as it is, never against the new-password rules
+  const t3 = await boot('member-' + Date.now().toString(36) + '@example.com');
+  const nb = S.browser(); await nb.open();
+  const made = await nb.post('/api/auth/invite/accept', { token: t3, password: PASSWORD, name: 'Mia' });
+  assert.equal(made.json.signedIn, true);
+  // the same account invited by a second company, with "I already have an account" and a wrong, then the right, password
+  const co2 = await S.sql(String.raw`with t as (insert into public.tenants (slug, name, industry_id, plan_id, status) values ((select v from _in where k = 's'), 'Second Co', 'build', 'builder', 'active') returning id)
+    select '@@R@@' || jsonb_build_object('id', (select id from t))::text;`, { s: slug + '-2' });
+  const email3 = await S.sql(String.raw`select '@@R@@' || to_jsonb((select email from app.invitations where used_at is not null order by used_at desc limit 1))::text;`);
+  const t4 = await invite(co2.id, email3);
+  const ex = S.browser(); await ex.open();
+  assert.deepEqual((await ex.post('/api/auth/invite/accept', { token: t4, password: 'short1', existing: true })).json, { ok: false, error: 'account_exists' }, 'a wrong password: asked again, not refused as weak');
+  const joined = await ex.post('/api/auth/invite/accept', { token: t4, password: PASSWORD, existing: true });
+  assert.equal(joined.status, 200, joined.text); assert.equal(joined.json.signedIn, true);
+  // 4. a used link says so (and the page offers to sign in); expired, withdrawn and busy are told apart
+  const again = S.browser(); await again.open();
+  assert.equal((await again.post('/api/auth/invite/check', { token: t4 })).json.error, 'invite_used');
+  assert.equal((await again.post('/api/auth/invite/accept', { token: t4, password: PASSWORD })).json.error, 'invite_used');
+  const t5 = await invite(co.id, 'late-' + Date.now().toString(36) + '@example.com');
+  await S.sql(String.raw`update app.invitations set created_at = now() - interval '4 days', expires_at = now() - interval '1 minute' where token_hash = encode(sha256(convert_to((select v from _in where k = 't'), 'UTF8')), 'hex'); select '@@R@@' || '1';`, { t: t5 });
+  assert.equal((await again.post('/api/auth/invite/check', { token: t5 })).json.error, 'invite_expired');
+  const t6 = await invite(co.id, 'gone-' + Date.now().toString(36) + '@example.com');
+  await S.sql(String.raw`update app.invitations set revoked_at = now() where token_hash = encode(sha256(convert_to((select v from _in where k = 't'), 'UTF8')), 'hex'); select '@@R@@' || '1';`, { t: t6 });
+  assert.equal((await again.post('/api/auth/invite/accept', { token: t6, password: PASSWORD, name: 'X' })).json.error, 'invite_revoked');
+  const t7 = await invite(co.id, 'busy-' + Date.now().toString(36) + '@example.com');
+  await S.sql(String.raw`update app.invitations set claimed_at = now() where token_hash = encode(sha256(convert_to((select v from _in where k = 't'), 'UTF8')), 'hex'); select '@@R@@' || '1';`, { t: t7 });
+  const busy = await again.post('/api/auth/invite/accept', { token: t7, password: PASSWORD, name: 'X' });
+  assert.deepEqual([busy.status, busy.json.error], [409, 'invite_busy'], 'a second click while the first finishes: try again, the invitation is fine');
+  const closed = await invite(co.id, 'closed-' + Date.now().toString(36) + '@example.com');
+  await S.sql(String.raw`update public.tenants set status = 'closed' where id = (select v from _in where k = 'id')::uuid; select '@@R@@' || '1';`, { id: co.id });
+  assert.equal((await again.post('/api/auth/invite/check', { token: closed })).json.error, 'invite_closed');
 });
 
 test('catalog: publishing needs a fresh identity check; the Client View is redacted on the server', async () => {

@@ -191,7 +191,8 @@ function InviteModal({ onClose }: { onClose: () => void }) {
     const res = await ops.memberInvite({ name: f.name, email: f.email, role: f.role, title: f.title || undefined, officeIds: offices.length ? offices : undefined, lang: f.lang });
     setBusy(false);
     if (!res.ok && res.reason === 'seat_limit') { setErr('seat_limit'); return; }
-    if (!res.ok) { setErr(res.reason === 'conflict' ? t('security.invite.taken') : reasonText(t, res.reason)); return; }
+    if (!res.ok && res.reason === 'partner_account') { setErr(t('security.invite.partner', { email: f.email.trim() })); return; }
+    if (!res.ok) { setErr(res.reason === 'conflict' || res.reason === 'already_member' ? t('security.invite.taken') : reasonText(t, res.reason)); return; }
     const handed = res.data as typeof res.data & { inviteLink?: string; inviteDelivery?: string };
     if (handed.inviteLink) { setLink({ url: handed.inviteLink, failed: handed.inviteDelivery === 'manual_failed', name: res.data.name, email: res.data.email }); return; }
     toast(t(res.sample ? 'security.invite.sentSample' : 'security.invite.sent', { name: res.data.name, email: res.data.email, hours: INVITE_HOURS }));

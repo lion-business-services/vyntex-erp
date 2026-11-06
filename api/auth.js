@@ -388,9 +388,24 @@ const TOKEN = /^[A-Za-z0-9_-]{20,200}$/;
 // A company invitation (app.invitations) and a Partner Portal invitation (partner.invitations, 0070) run the same steps
 // with different database functions. A partner invitation never creates a company membership.
 const INVITES = {
-  company: { peek: 'invite_peek', claim: 'invite_claim', release: 'invite_release', complete: 'invite_complete' },
-  partner: { peek: 'partner_invite_peek', claim: 'partner_invite_claim', release: 'partner_invite_release', complete: 'partner_invite_complete' },
+  company: { peek: 'invite_peek', claim: 'invite_claim', release: 'invite_release', complete: 'invite_complete', state: 'invite_state' },
+  partner: { peek: 'partner_invite_peek', claim: 'partner_invite_claim', release: 'partner_invite_release', complete: 'partner_invite_complete', state: 'partner_invite_state' },
 };
+
+/**
+ * Why an invitation cannot be taken right now, as a code the page says in words (0098). Only the holder of the link
+ * can ask, and only about that link. A database without 0098 answers the general code, as before.
+ *   invite_used     accepted already: the page offers to sign in      invite_expired  past its 72 hours
+ *   invite_revoked  withdrawn by the company                          invite_closed   the company's workspace is closed
+ *   invite_busy     another attempt is being finished right now (a second click, a second tab): try again in a moment
+ */
+async function inviteRefusal(kind, hash) {
+  const st = await serviceRpc(INVITES[kind].state, { p_token_hash: hash });
+  const state = st.ok && typeof st.data === 'string' ? st.data : '';
+  return { used: 'invite_used', expired: 'invite_expired', revoked: 'invite_revoked', closed: 'invite_closed', busy: 'invite_busy' }[state] || 'invite_invalid';
+}
+/** A refused acceptance is logged with its reason (no address, no password), so a report can be checked. */
+const acceptFailed = (request, kind, reason, tenant = null) => securityEvent({ tenant, kind: 'invite.accept_failed', outcome: 'failed', request, meta: { kind, reason } }).catch(() => {});
 
 async function inviteCheck(request, kind = 'company') {
   assertConfigured();
@@ -402,7 +417,7 @@ async function inviteCheck(request, kind = 'company') {
   const r = await serviceRpc(INVITES[kind].peek, { p_token_hash: sha256Hex(body.token) });
   if (!r.ok) throw upstreamError(r);
   // Unknown, used, revoked and expired all look the same from outside.
-  if (!r.data) return fail(400, 'invite_invalid');
+  if (!r.data) return fail(400, await inviteRefusal(kind, sha256Hex(body.token)));
   if (kind === 'partner') return ok({ partner: r.data.partner, staff: !!r.data.staff, emailHint: r.data.email_hint, expiresAt: r.data.expires_at });
   return ok({ company: r.data.company, emailHint: r.data.email_hint, expiresAt: r.data.expires_at });
 }
@@ -420,29 +435,48 @@ async function inviteAccept(request, kind = 'company') {
   const claimed = await serviceRpc(fns.claim, { p_token_hash: hash });
   if (!claimed.ok) throw upstreamError(claimed);
   const inv = claimed.data;
-  if (!inv) return fail(400, 'invite_invalid');
+  if (!inv) { const why = await inviteRefusal(kind, hash); await acceptFailed(request, kind, why); return fail(why === 'invite_busy' ? 409 : 400, why); }
   const release = () => serviceRpc(fns.release, { p_token_hash: hash });
+  const tenantOfInvite = kind === 'company' && typeof inv.tenant_id === 'string' ? inv.tenant_id : null;
 
   let createdUser = null;
   try {
-    // The password is judged before any account is made: a refused password leaves nothing behind.
-    const weak = passwordProblem(password, inv.email);
-    if (weak) { await release(); return fail(400, 'weak_password', { reason: weak }); }
     let userId;
-    const created = await admin.createUser(inv.email, password);
-    if (created.ok) {
-      userId = created.data.id;
-      createdUser = userId;
-    } else if (created.code === 'email_exists' || created.code === 'user_already_exists' || created.status === 422) {
-      // The address already has an account (a member of another company). The invitation must not become a way to
-      // set a new password on it: the person proves the account is theirs with its existing password.
+    // An account that already exists proves it is the person's with its own password. That password was chosen
+    // earlier, under other rules, so the rules for a NEW password are never applied to it.
+    const signInExisting = async () => {
       const existing = await auth.password(inv.email, password);
-      if (!existing.ok) { await release(); return fail(409, 'account_exists'); }
-      userId = existing.data.user.id;
+      if (!existing.ok) return null;
       await auth.logout(existing.data.access_token, 'local');
+      return existing.data.user.id;
+    };
+    if (body.existing === true) {
+      // the person said "I already have an account"
+      userId = password ? await signInExisting() : null;
+      if (!userId) { await release(); await acceptFailed(request, kind, 'account_password', tenantOfInvite); return fail(409, 'account_exists'); }
     } else {
-      await release();
-      return fail(created.status === 0 || created.status >= 500 ? 503 : 502, created.status === 0 || created.status >= 500 ? 'auth_unavailable' : 'upstream_error');
+      // The password is judged before any account is made: a refused password leaves nothing behind. A password that
+      // fails the rules may still be the one of an account that already exists for this address.
+      const weak = passwordProblem(password, inv.email);
+      if (weak) {
+        userId = password ? await signInExisting() : null;
+        if (!userId) { await release(); return fail(400, 'weak_password', { reason: weak }); }
+      } else {
+        const created = await admin.createUser(inv.email, password);
+        if (created.ok) {
+          userId = created.data.id;
+          createdUser = userId;
+        } else if (created.code === 'email_exists' || created.code === 'user_already_exists' || created.status === 422) {
+          // The address already has an account (a member of another company). The invitation must not become a way to
+          // set a new password on it: the person proves the account is theirs with its existing password.
+          userId = await signInExisting();
+          if (!userId) { await release(); await acceptFailed(request, kind, 'account_exists', tenantOfInvite); return fail(409, 'account_exists'); }
+        } else {
+          await release();
+          await acceptFailed(request, kind, 'auth_unavailable', tenantOfInvite);
+          return fail(created.status === 0 || created.status >= 500 ? 503 : 502, created.status === 0 || created.status >= 500 ? 'auth_unavailable' : 'upstream_error');
+        }
+      }
     }
 
     const done = await serviceRpc(fns.complete, { p_token_hash: hash, p_user: userId, p_name: typeof body.name === 'string' ? body.name.slice(0, 200) : null, p_ip_hash: ipHash(request) });
@@ -450,8 +484,12 @@ async function inviteAccept(request, kind = 'company') {
       if (createdUser) await admin.deleteUser(createdUser);
       await release();
       // the account already belongs to an ERP company or to VYNTEX staff: it cannot become a partner account
-      if (kind === 'partner' && done.hint === 'account_in_use') return fail(409, 'account_in_use');
-      return fail(400, 'invite_invalid');
+      if (kind === 'partner' && done.hint === 'account_in_use') { await acceptFailed(request, kind, 'account_in_use'); return fail(409, 'account_in_use'); }
+      // the account is a VYNTEX Partner Portal account: it cannot also join a company workspace (0070)
+      if (done.hint === 'partner_account') { await acceptFailed(request, kind, 'partner_account', tenantOfInvite); return fail(409, 'partner_account'); }
+      const why = await inviteRefusal(kind, hash);
+      await acceptFailed(request, kind, why === 'invite_invalid' ? 'complete_refused' : why, tenantOfInvite);
+      return fail(400, why);
     }
     if (kind === 'partner') {
       const grant = await auth.password(inv.email, password);

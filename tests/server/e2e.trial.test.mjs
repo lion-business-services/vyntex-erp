@@ -139,7 +139,7 @@ test('the owner opens the link and sets a password: the workspace waits for a ca
   assert.equal(await S.sql(String.raw`select '@@R@@' || to_jsonb(public.billing_trial_card((select v from _in where k = 't')::uuid, (select v from _in where k = 'c')))::text;`, { t: t.id, c: card }), 'same');
   // the link works once
   const again = visitor(); await again.open();
-  assert.equal((await again.post('/api/auth/invite/check', { token: first.token })).json.error, 'invite_invalid');
+  assert.equal((await again.post('/api/auth/invite/check', { token: first.token })).json.error, 'invite_used', 'a used link says so (0098)');
 });
 
 test('one trial per address, ever: a second request gets the same answer and no email', async () => {

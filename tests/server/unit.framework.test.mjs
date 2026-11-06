@@ -29,7 +29,7 @@ test('the provider list has every provider of the data model, in order, and ever
   assert.deepEqual(list.filter((p) => !p.built).map((p) => p.id), [], 'no placeholder is left');
   for (const n of ['GOOGLE_GMAIL_APPROVED', 'QUICKBOOKS_APPROVED', 'META_APPROVED', 'WHATSAPP_APPROVED', 'SMS_APPROVED']) assert.ok(P.providerEnvNames().includes(n), n + ': the approval settings of built adapters are listed too');
   for (const p of list) {
-    assert.ok(['oauth', 'key', 'platform'].includes(p.kind), p.id);
+    assert.ok(['oauth', 'key', 'platform', 'embedded'].includes(p.kind), p.id);
     assert.ok(Array.isArray(p.env) && p.env.length > 0 && p.env.every((n) => /^[A-Z][A-Z0-9_]+$/.test(n)), p.id + ' lists the settings it needs');
   }
 });

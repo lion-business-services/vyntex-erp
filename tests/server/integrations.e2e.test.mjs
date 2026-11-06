@@ -538,3 +538,63 @@ test('nothing sent to a browser in this file contains a provider token, a verifi
   assert.ok(secrets.size > 20);
   assertNoLeak(assert);
 });
+
+// ---------------------------------------------------------------------------------------------------------------------
+test('WhatsApp, one button for every company: Embedded Signup is finished on the server, each company keeps its own sealed token, and a message finds its company by its number', async () => {
+  const c1 = await st.company(); const c2 = await st.company();
+  const APP = '1234567890123'; const CONFIG = '9876543210987'; const SECRET = 'appsecret_' + randomBytes(12).toString('hex'); const VERIFY = 'v_' + randomBytes(8).toString('hex');
+  Object.assign(process.env, { META_APP_ID: APP, WHATSAPP_CONFIG_ID: CONFIG, META_APP_SECRET: SECRET, WHATSAPP_WEBHOOK_VERIFY_TOKEN: VERIFY, WHATSAPP_APPROVED: 'true' });
+  secrets.add(SECRET);
+  const numbers = { [c1.tenantId]: ['201111111111111', '301111111111111'], [c2.tenantId]: ['202222222222222', '302222222222222'] };
+  const codes = new Map(); const meta = [];
+  const answer = (b, status = 200) => new Response(JSON.stringify(b), { status });
+  st.outside = (u, init) => {
+    if (!u.startsWith('https://graph.facebook.com/')) return null;
+    const url = new URL(u); const path = url.pathname.replace(/^\/v\d+\.\d+/, ''); const auth = (init.headers || {}).authorization || '';
+    meta.push({ path, method: init.method || 'GET', auth });
+    if (path === '/oauth/access_token') { const t = codes.get(url.searchParams.get('code')); return t && url.searchParams.get('client_secret') === SECRET ? answer({ access_token: t.token }) : answer({ error: { code: 100 } }, 400); }
+    const owner = [...codes.values()].find((t) => 'Bearer ' + t.token === auth); if (!owner) return answer({ error: { code: 190 } }, 401);
+    const [phone, waba] = numbers[owner.tenant];
+    if (path === `/${waba}/phone_numbers`) return answer({ data: [{ id: phone }] });
+    if (path === `/${waba}/subscribed_apps`) return answer({ success: true });
+    if (path === `/${phone}/register`) return answer({ success: true });
+    if (path === `/${phone}`) return answer({ id: phone, display_phone_number: '1 555 555 0100', verified_name: 'Sample Co ' + owner.tenant.slice(0, 4) });
+    return answer({ error: { code: 100 } }, 400);
+  };
+  try {
+    for (const co of [c1, c2]) {
+      const token = 'EAAbiz_' + randomBytes(12).toString('hex'); secrets.add(token);
+      const code = 'AQD' + randomBytes(8).toString('hex'); codes.set(code, { token, tenant: co.tenantId });
+      await st.stepUp(co.owner, co.password);
+      // Connect answers with the public ids the page opens Meta's window with, and nothing secret
+      const start = await co.owner.post('/api/integrations/whatsapp/connect', { tenant: co.tenantId });
+      assert.equal(start.status, 200, start.text);
+      assert.deepEqual(start.json.embedded, { appId: APP, configId: CONFIG, version: 'v23.0' });
+      const [phone, waba] = numbers[co.tenantId];
+      // another company's member cannot finish it for this company
+      const other = co === c1 ? c2 : c1; await st.stepUp(other.owner, other.password);
+      assert.equal((await other.owner.post('/api/integrations/whatsapp/embedded', { tenant: co.tenantId, code, wabaId: waba, phoneId: phone, event: 'FINISH' })).status, 403);
+      const done = await co.owner.post('/api/integrations/whatsapp/embedded', { tenant: co.tenantId, code, wabaId: waba, phoneId: phone, event: 'FINISH' });
+      assert.equal(done.status, 200, done.text);
+      assert.equal(done.json.connection.state, 'connected');
+      assertNoLeak(assert);
+      const r = await row(co.tenantId, 'whatsapp');
+      assert.equal(r.account_ref, phone); assert.ok(r.token_enc && !String(r.token_enc).includes(token), 'the token is sealed');
+    }
+    assert.ok(meta.some((m) => m.path.endsWith('/register')) && meta.filter((m) => m.path.endsWith('/subscribed_apps')).length >= 2);
+    // an incoming message names its number: each number leads to its own company, and to no other
+    for (const co of [c1, c2]) {
+      const found = await st.sql(`select '@@R@@' || to_jsonb(coalesce((select public.conn_by_account('whatsapp', (select v from _in where k = 'n')) ->> 'tenant_id'), 'none'))::text;`, { n: numbers[co.tenantId][0] });
+      assert.equal(found, co.tenantId);
+    }
+    // disconnecting stops VYNTEX's app from receiving that company's messages and removes the sealed token
+    await st.stepUp(c1.owner, c1.password);
+    assert.equal((await c1.owner.post('/api/integrations/whatsapp/disconnect', { tenant: c1.tenantId })).status, 200);
+    assert.ok(meta.some((m) => m.method === 'DELETE' && m.path === `/${numbers[c1.tenantId][1]}/subscribed_apps`));
+    assert.equal(await row(c1.tenantId, 'whatsapp'), null);
+    assertNoLeak(assert);
+  } finally {
+    st.outside = null;
+    for (const k of ['META_APP_ID', 'WHATSAPP_CONFIG_ID', 'META_APP_SECRET', 'WHATSAPP_WEBHOOK_VERIFY_TOKEN', 'WHATSAPP_APPROVED']) delete process.env[k];
+  }
+});

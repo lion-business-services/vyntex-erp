@@ -7,14 +7,17 @@
 //   matching    for each new message the adapter returns the addresses to look up (matchInput). Finding the client
 //               or the lead is the caller's job: the adapter never reads workspace records.
 //
-// Scopes: gmail.send and gmail.readonly, plus openid and email to learn which account answered. gmail.readonly is one
-// of Google's restricted scopes, so the card stays "pending approval" until GOOGLE_GMAIL_APPROVED is true.
+// Scopes: gmail.send, plus openid and email to learn which account answered. gmail.send is a Google "sensitive" scope
+// (Google's normal app verification). gmail.readonly, which reading the inbox needs, is "restricted": it adds Google's
+// yearly security assessment (CASA). Until VYNTEX completes it, only the companies named in GOOGLE_GMAIL_READ_TENANTS
+// (VYNTEX USA's own workspace) are asked for it; every other company connects Gmail to send, with one button.
+// GOOGLE_GMAIL_READ_TENANTS=all asks every company once the assessment is done. (Owner decision, November 6, 2026.)
 // One mailbox per company: the framework keeps one connection per company and provider (see docs/integrations/google.md).
 //
 // Not exercised against Google: no client or account exists in this build. Tested with mocked provider responses.
 import { ProviderError } from '../oauth.js';
 import { parseJson } from '../webhook.js';
-import { GOOGLE_ENV, IDENTITY_SCOPES, SCOPE, googleAuthUrl, googleExchange, googleRefresh, googleRevoke, missingScopes, grantedScopes, domainAllowed, isEmail } from '../google/oauth.js';
+import { GOOGLE_ENV, GOOGLE_USERINFO, IDENTITY_SCOPES, SCOPE, googleAuthUrl, googleExchange, googleRefresh, googleRevoke, missingScopes, grantedScopes, domainAllowed, isEmail } from '../google/oauth.js';
 import { gapi, seg } from '../google/rest.js';
 import { buildMime, parseAddresses } from '../google/mime.js';
 import { verifyGoogleOidc } from '../google/pubsub.js';
@@ -23,7 +26,16 @@ import { cursorOf, sinkOf, stableId } from '../google/state.js';
 const API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 const UPLOAD = 'https://gmail.googleapis.com/upload/gmail/v1/users/me/messages/send';
 const ID = /^[A-Za-z0-9_-]{1,120}$/;
-const NEEDED = [SCOPE.gmailSend, SCOPE.gmailRead];
+const NEEDED = [SCOPE.gmailSend];
+/** Whether this company is asked for (and may use) inbox reading. */
+export function readsInbox(ctx) {
+  const list = String(ctx.env('GOOGLE_GMAIL_READ_TENANTS') || '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  return list.includes('all') || (!!ctx.tenantId && list.includes(String(ctx.tenantId).toLowerCase()));
+}
+const scopesFor = (ctx) => [...IDENTITY_SCOPES, ...NEEDED, ...(readsInbox(ctx) ? [SCOPE.gmailRead] : [])];
+/** Reading needs the permission granted at sign-in: a send-only connection never reads. */
+const canRead = (ctx) => grantedScopes(ctx).includes(SCOPE.gmailRead);
+const needRead = (ctx) => { if (!canRead(ctx)) throw new ProviderError('send_only'); };
 const MAX_TOTAL = 18 * 1024 * 1024;       // Gmail refuses a message over 25 MB after encoding; this leaves room for base64.
 const INLINE_LIMIT = 4 * 1024 * 1024;     // above this the upload address is used
 const SYNC_MESSAGES = 50;                 // per run; the next run goes on from the stored history id
@@ -70,6 +82,12 @@ function mapMessage(m, own) {
 }
 
 const profile = (ctx) => gapi(ctx, 'GET', API + '/profile');
+/** The account's address: the mailbox profile when it may be read, else Google's sign-in identity (send-only). */
+async function addressOf(ctx) {
+  if (canRead(ctx)) { const p = await profile(ctx); return String(p.emailAddress || ''); }
+  const me = await gapi(ctx, 'GET', GOOGLE_USERINFO);
+  return me && me.email_verified !== false ? String(me.email || '') : '';
+}
 const ownAddress = (ctx) => String(ctx.connection?.account_label || '').toLowerCase();
 
 /** Asks Gmail to notify the Pub/Sub topic for the inbox. Calling it again simply renews it, so a repeat is harmless. */
@@ -133,9 +151,9 @@ const adapter = {
   kind: 'oauth',
   env: GOOGLE_ENV,
   scopes: [...IDENTITY_SCOPES, ...NEEDED],
-  approval: { needed: true, flag: 'GOOGLE_GMAIL_APPROVED', note: 'Reading a mailbox uses a Google restricted scope. Google must verify the app, including a security assessment, before it may be used outside the test users of the Google Cloud project.' },
+  approval: { needed: true, flag: 'GOOGLE_GMAIL_APPROVED', note: 'Google must verify the app before companies outside the Google Cloud project\'s test users can connect. Sending needs Google\'s normal verification; reading the inbox also needs its yearly security assessment.' },
 
-  authUrl(ctx) { return googleAuthUrl(ctx, this.scopes); },
+  authUrl(ctx) { return googleAuthUrl(ctx, scopesFor(ctx)); },
   exchange: googleExchange,
   refresh: googleRefresh,
   revoke(ctx, tokens) { return googleRevoke(ctx, tokens, ['gcal', 'gbp']); },
@@ -144,18 +162,18 @@ const adapter = {
   async status(ctx) {
     const missing = missingScopes(ctx, NEEDED);
     if (missing.length) return { ok: false, reason: 'scope_missing' };
-    const p = await profile(ctx);
-    if (!isEmail(p.emailAddress)) return { ok: false, reason: 'account_unknown' };
-    const email = p.emailAddress.toLowerCase();
+    const address = await addressOf(ctx);
+    if (!isEmail(address)) return { ok: false, reason: 'account_unknown' };
+    const email = address.toLowerCase();
     if (!domainAllowed(ctx, email)) return { ok: false, reason: 'wrong_account' };
     // The address is the reference: Pub/Sub notices name the mailbox by address and are matched to the company with it.
     return { ok: true, account: { label: email, ref: email }, scopes: grantedScopes(ctx) };
   },
 
   async health(ctx) {
-    const p = await profile(ctx);
+    const address = await addressOf(ctx);
     const known = String(ctx.connection?.account_ref || '').toLowerCase();
-    if (known && String(p.emailAddress || '').toLowerCase() !== known) return { ok: false, reason: 'wrong_account', reauth: true };
+    if (known && address.toLowerCase() !== known) return { ok: false, reason: 'wrong_account', reauth: true };
     return { ok: true, health: 'ok' };
   },
 
@@ -165,6 +183,8 @@ const adapter = {
    * hand over (which is stored once) instead of losing a message.
    */
   async sync(ctx, what = 'all') {
+    // a send-only connection has no inbox to read or watch
+    if (!canRead(ctx)) return { counts: { messages: 0, gone: 0 }, skipped: 'send_only' };
     const cursor = cursorOf(ctx);
     const out = { counts: { messages: 0, gone: 0 } };
     if (what !== 'watch') {
@@ -253,6 +273,9 @@ const adapter = {
       let messageId;
       if (msg.idempotencyKey) {
         messageId = `<vx.${stableId('gmail-send', ctx.tenantId, String(msg.idempotencyKey)).slice(0, 40)}@${from.split('@')[1]}>`;
+      }
+      // the "was it sent already" look needs the inbox; a send-only connection relies on the job queue's own once-only key
+      if (msg.idempotencyKey && canRead(ctx)) {
         const seen = await gapi(ctx, 'GET', API + '/messages', { query: { q: `rfc822msgid:${messageId}`, maxResults: 1 } });
         const first = Array.isArray(seen.messages) ? seen.messages[0] : null;
         if (first && ID.test(String(first.id || ''))) return { id: first.id, threadId: first.threadId || null, messageId, duplicate: true };
@@ -273,6 +296,7 @@ const adapter = {
 
     /** opts: { label = 'INBOX' | 'SENT' | 'ALL' | a label id, q?, pageToken?, max? (1 to 50) }. Returns { threads, next }. */
     async listThreads(ctx, opts = {}) {
+      needRead(ctx);
       const label = String(opts.label || 'INBOX');
       if (label !== 'ALL' && !ID.test(label)) throw new ProviderError('invalid_id');
       const max = Math.max(1, Math.min(50, Number(opts.max) || 25));
@@ -297,6 +321,7 @@ const adapter = {
 
     /** One conversation with its messages (text, HTML, attachment list) and, per message, the addresses to match. */
     async getThread(ctx, id) {
+      needRead(ctx);
       const r = await gapi(ctx, 'GET', `${API}/threads/${seg(id, ID)}`, { query: { format: 'full' } });
       const own = ownAddress(ctx);
       const messages = (Array.isArray(r.messages) ? r.messages : []).map((m) => mapMessage(m, own));
@@ -305,6 +330,7 @@ const adapter = {
 
     /** The bytes of one attachment. Returns { data: Buffer, size }. */
     async getAttachment(ctx, messageId, attachmentId) {
+      needRead(ctx);
       const r = await gapi(ctx, 'GET', `${API}/messages/${seg(messageId, ID)}/attachments/${seg(attachmentId, /^[A-Za-z0-9_-]{1,2000}$/)}`);
       const data = Buffer.from(String(r.data || ''), 'base64url');
       return { data, size: data.length };

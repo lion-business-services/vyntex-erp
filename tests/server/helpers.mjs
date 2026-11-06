@@ -139,8 +139,11 @@ export async function startStack({ jwtExp = 3600 } = {}) {
   // Outbound calls: the two local stand-ins, and api.resend.com answered from memory. Anything else is a failure.
   const mail = { sent: [], status: 200, domains: [{ id: 'dom_1', name: 'mail.example.com', status: 'verified' }], domainsStatus: 200, domainsBody: null };
   const realFetch = globalThis.fetch;
+  // a test may answer one outside service itself (st.outside = (url, init) => Response | null)
+  const hooks = { outside: null };
   globalThis.fetch = async (url, init = {}) => {
     const u = String(url);
+    if (hooks.outside) { const r = await hooks.outside(u, init); if (r) return r; }
     if (u.startsWith('https://api.resend.com/')) {
       const p = new URL(u).pathname;
       if (p === '/emails') {
@@ -219,6 +222,7 @@ export async function startStack({ jwtExp = 3600 } = {}) {
   }
 
   return {
+    get outside() { return hooks.outside; }, set outside(fn) { hooks.outside = fn; },
     api, sb, provider, mail, sql, company, signIn, stepUp, addMember, linkFor, tokenOfInvite, totp,
     browser: (opts) => new Browser(api, opts),
     async stop() {

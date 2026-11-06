@@ -10,7 +10,7 @@ const VERIFY = 'verify_' + randomBytes(12).toString('hex');
 const TOKEN = 'sysuser_' + randomBytes(16).toString('hex');
 const PHONE_ID = '106540352242922';
 const WABA = '102290129340398';
-setTestEnv({ META_APP_SECRET: SECRET, WHATSAPP_WEBHOOK_VERIFY_TOKEN: VERIFY, WHATSAPP_SYSTEM_USER_TOKEN: TOKEN, WHATSAPP_PHONE_NUMBER_ID: PHONE_ID, WHATSAPP_BUSINESS_ACCOUNT_ID: WABA });
+setTestEnv({ META_APP_ID: '1234567890123', WHATSAPP_CONFIG_ID: '9876543210987', META_APP_SECRET: SECRET, WHATSAPP_WEBHOOK_VERIFY_TOKEN: VERIFY, WHATSAPP_SYSTEM_USER_TOKEN: TOKEN, WHATSAPP_PHONE_NUMBER_ID: PHONE_ID, WHATSAPP_BUSINESS_ACCOUNT_ID: WABA });
 for (const k of ['WHATSAPP_APPROVED', 'META_GRAPH_VERSION', 'WHATSAPP_WEBHOOK_MAX_AGE_S']) delete process.env[k];
 const wa = (await import('../../api/_lib/integrations/providers/whatsapp.js')).default;
 const { ProviderError } = await import('../../api/_lib/integrations/oauth.js');
@@ -45,8 +45,9 @@ const value = (more) => ({ object: 'whatsapp_business_account', entry: [{ id: WA
 const WAMID = 'wamid.HBgLMTU1NTU1NTAxNDIVAgASGBQzQTdBNjU5';
 const inboundEvent = (text = 'Is my return ready?', type = 'text') => value({ contacts: [{ profile: { name: 'Sample Person' }, wa_id: '15555550142' }], messages: [{ from: '15555550142', id: WAMID, timestamp: ts(), type, ...(type === 'text' ? { text: { body: text } } : { image: { id: 'media_778899', mime_type: 'image/jpeg', sha256: 'abc', caption: text } }) }] });
 
-test('shape, a key connection, and pending approval until the flag says approved', () => {
-  assert.equal(wa.id, 'whatsapp'); assert.equal(wa.kind, 'key');
+test('shape, a one-button (Embedded Signup) connection, and pending approval until the flag says approved', () => {
+  assert.equal(wa.id, 'whatsapp'); assert.equal(wa.kind, 'embedded');
+  assert.deepEqual(wa.env, ['META_APP_ID', 'META_APP_SECRET', 'WHATSAPP_CONFIG_ID', 'WHATSAPP_WEBHOOK_VERIFY_TOKEN'], 'no single company number in the settings');
   for (const fn of ['authUrl', 'exchange', 'refresh', 'revoke', 'status', 'health', 'sync']) assert.equal(typeof wa[fn], 'function', fn);
   for (const fn of ['verify', 'handle', 'challenge', 'inbound']) assert.equal(typeof wa.webhook[fn], 'function', fn);
   for (const fn of ['listTemplates', 'sendTemplate', 'sendText', 'send', 'downloadMedia']) assert.equal(typeof wa.actions[fn], 'function', fn);
@@ -54,9 +55,10 @@ test('shape, a key connection, and pending approval until the flag says approved
   process.env.WHATSAPP_APPROVED = 'true';
   assert.equal(configState({ ...wa, built: true }).state, 'setup');
   delete process.env.WHATSAPP_APPROVED;
-  const keep = process.env.WHATSAPP_PHONE_NUMBER_ID; delete process.env.WHATSAPP_PHONE_NUMBER_ID;
-  assert.deepEqual(configState({ ...wa, built: true }).missing, ['WHATSAPP_PHONE_NUMBER_ID']);
-  process.env.WHATSAPP_PHONE_NUMBER_ID = keep;
+  const keep = process.env.WHATSAPP_CONFIG_ID; delete process.env.WHATSAPP_CONFIG_ID;
+  assert.deepEqual(configState({ ...wa, built: true }).missing, ['WHATSAPP_CONFIG_ID']);
+  process.env.WHATSAPP_CONFIG_ID = keep;
+  assert.deepEqual(wa.embeddedConfig({ env }), { appId: '1234567890123', configId: '9876543210987', version: 'v23.0' }, 'only public ids go to the page');
   assert.throws(() => wa.authUrl(), (e) => e.code === 'not_oauth');
 });
 
@@ -255,4 +257,54 @@ test('media: downloaded through the server with the token, only from Meta\'s own
   await rejects(wa.actions.downloadMedia(ctxWith(() => reply(200, { url: 'https://lookaside.fbsbx.com/x', file_size: 50 * 1024 * 1024 })).ctx, 'media_778899'), 'media_too_large');
   await rejects(wa.actions.downloadMedia(ctx, '../../etc'), 'media_invalid');
   await rejects(wa.actions.downloadMedia(ctxWith(() => gerr(400, 100)).ctx, 'media_778899'), 'request_rejected');
+});
+
+test('Embedded Signup: the code is exchanged on the server, the app is subscribed, a new number is registered, and the company\'s own token is used', async () => {
+  const BIZ = 'EAAbiz_' + randomBytes(12).toString('hex');
+  const { ctx, calls } = ctxWith((path, init, u) => {
+    if (path === '/oauth/access_token') return reply(200, { access_token: BIZ, token_type: 'bearer' });
+    if (path === `/${WABA}/phone_numbers`) return reply(200, { data: [{ id: PHONE_ID }] });
+    if (path === `/${WABA}/subscribed_apps`) return reply(200, { success: true });
+    if (path === `/${PHONE_ID}/register`) return reply(200, { success: true });
+    return reply(404, {});
+  });
+  const t = await wa.embeddedExchange(ctx, { code: 'AQD-code-1', wabaId: WABA, phoneId: PHONE_ID, event: 'FINISH' });
+  assert.equal(t.access_token, BIZ); assert.equal(t.phone_number_id, PHONE_ID); assert.equal(t.business_account_id, WABA);
+  assert.match(t.pin, /^\d{6}$/); assert.equal(t.coexist, false);
+  const ex = calls.find((c) => c.path === '/oauth/access_token');
+  assert.equal(ex.q.client_id, '1234567890123'); assert.equal(ex.q.client_secret, SECRET); assert.equal(ex.q.code, 'AQD-code-1');
+  const reg = calls.find((c) => c.path === `/${PHONE_ID}/register`);
+  assert.equal(reg.init.headers.authorization, 'Bearer ' + BIZ); assert.deepEqual(JSON.parse(reg.body), { messaging_product: 'whatsapp', pin: t.pin });
+  // sending afterwards uses this company's token and number, not the deployment's
+  const send = ctxWith((path) => (path === `/${PHONE_ID}/messages` ? reply(200, { messages: [{ id: 'wamid.X' }] }) : reply(404, {})), { tokens: t });
+  await wa.actions.sendText(send.ctx, { to: CLIENT, text: 'Hello', consent: consent(), lastInboundAt: new Date().toISOString() });
+  assert.equal(send.calls[0].init.headers.authorization, 'Bearer ' + BIZ);
+});
+
+test('Embedded Signup: a number kept in the WhatsApp Business app is not registered again and its chats are asked for once; bad answers are refused', async () => {
+  const BIZ = 'EAAbiz_' + randomBytes(12).toString('hex');
+  const routes = (over = {}) => (path) => {
+    if (over[path]) return over[path]();
+    if (path === '/oauth/access_token') return reply(200, { access_token: BIZ });
+    if (path === `/${WABA}/phone_numbers`) return reply(200, { data: [{ id: PHONE_ID }] });
+    if (path === `/${WABA}/subscribed_apps`) return reply(200, { success: true });
+    if (path === `/${PHONE_ID}/smb_app_data`) return reply(200, { success: true });
+    return reply(404, {});
+  };
+  const { ctx, calls } = ctxWith(routes());
+  const t = await wa.embeddedExchange(ctx, { code: 'c', wabaId: WABA, phoneId: PHONE_ID, event: 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING' });
+  assert.equal(t.coexist, true); assert.equal(t.pin, undefined);
+  assert.ok(!calls.some((c) => c.path.endsWith('/register')), 'not registered again');
+  assert.deepEqual(calls.filter((c) => c.path.endsWith('/smb_app_data')).map((c) => JSON.parse(c.body).sync_type), ['smb_app_state_sync', 'history']);
+  // no number chosen, an unknown event, a number of another account, a refused subscription
+  await rejects(wa.embeddedExchange(ctx, { code: 'c', wabaId: WABA, phoneId: '', event: 'FINISH_ONLY_WABA' }), 'no_phone_number');
+  await rejects(wa.embeddedExchange(ctx, { code: 'c', wabaId: WABA, phoneId: PHONE_ID, event: 'CANCEL' }), 'bad_request');
+  await rejects(wa.embeddedExchange(ctxWith(routes({ [`/${WABA}/phone_numbers`]: () => reply(200, { data: [{ id: '999999999999' }] }) })).ctx, { code: 'c', wabaId: WABA, phoneId: PHONE_ID, event: 'FINISH' }), 'wrong_account');
+  await rejects(wa.embeddedExchange(ctxWith(routes({ [`/${WABA}/subscribed_apps`]: () => reply(200, { success: false }) })).ctx, { code: 'c', wabaId: WABA, phoneId: PHONE_ID, event: 'FINISH' }), 'subscribe_failed');
+  // a code Meta refuses: a code, never Meta's words
+  await rejects(wa.embeddedExchange(ctxWith(routes({ '/oauth/access_token': () => gerr(400, 100) })).ctx, { code: 'c', wabaId: WABA, phoneId: PHONE_ID, event: 'FINISH' }), 'request_rejected');
+  // disconnecting unsubscribes the app from the company's account
+  const d = ctxWith((path, init) => (path === `/${WABA}/subscribed_apps` && init.method === 'DELETE' ? reply(200, { success: true }) : reply(404, {})));
+  await wa.revoke(d.ctx, t);
+  assert.equal(d.calls[0].init.method, 'DELETE'); assert.equal(d.calls[0].init.headers.authorization, 'Bearer ' + BIZ);
 });

@@ -47,6 +47,7 @@ export const VARIABLES = {
   GOOGLE_CLIENT_SECRET: { need: 'feature', secret: true, provider: 'google', about: 'The secret of that OAuth client.' },
   GOOGLE_GMAIL_APPROVED: { need: 'feature', secret: false, provider: 'google', about: 'true once Google verified the app for the Gmail scopes. Until then Gmail shows "pending approval".' },
   GOOGLE_CALENDAR_APPROVED: { need: 'feature', secret: false, provider: 'google', about: 'true once Google verified the app for the Calendar scope. Also unlocks Meet.' },
+  GOOGLE_GMAIL_READ_TENANTS: { need: 'optional', secret: false, provider: 'google', about: 'Company ids (comma separated) whose Gmail connection may also read the inbox, or all. Others connect to send only (no Google yearly assessment needed).' },
   GOOGLE_GBP_APPROVED: { need: 'feature', secret: false, provider: 'google', about: 'true once Google granted this project access to the Business Profile APIs.' },
   GOOGLE_ALLOWED_DOMAINS: { need: 'optional', secret: false, provider: 'google', about: 'Optional. Comma separated domains: only Google accounts in them may be connected.' },
   GOOGLE_PUBSUB_TOPIC: { need: 'optional', secret: false, provider: 'google', about: 'Optional. projects/<id>/topics/<name>, where Gmail publishes change notices. Without it the mailbox is polled.' },
@@ -83,10 +84,11 @@ export const VARIABLES = {
   META_GRAPH_VERSION: { need: 'optional', secret: false, provider: 'meta', about: 'Optional. Graph API version. The default is set in the adapter.' },
   META_WEBHOOK_MAX_AGE_S: { need: 'optional', secret: false, provider: 'meta', about: 'Optional. Oldest accepted Meta webhook body, in seconds. Default 129600.' },
   // WhatsApp Business (docs/integrations/messaging.md)
+  WHATSAPP_CONFIG_ID: { need: 'feature', secret: false, provider: 'whatsapp', about: 'The Embedded Signup configuration id from the Meta app (WhatsApp, Embedded Signup): each company connects its own number with one button.' },
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: { need: 'feature', secret: true, provider: 'whatsapp', about: 'The value typed into the WhatsApp webhook form.' },
-  WHATSAPP_SYSTEM_USER_TOKEN: { need: 'feature', secret: true, provider: 'whatsapp', about: 'Token of the system user.' },
-  WHATSAPP_PHONE_NUMBER_ID: { need: 'feature', secret: false, provider: 'whatsapp', about: 'The number messages are sent from.' },
-  WHATSAPP_BUSINESS_ACCOUNT_ID: { need: 'feature', secret: false, provider: 'whatsapp', about: 'The WhatsApp Business account that owns the number and the templates.' },
+  WHATSAPP_SYSTEM_USER_TOKEN: { need: 'optional', secret: true, provider: 'whatsapp', about: 'Token of the system user.' },
+  WHATSAPP_PHONE_NUMBER_ID: { need: 'optional', secret: false, provider: 'whatsapp', about: 'The number messages are sent from.' },
+  WHATSAPP_BUSINESS_ACCOUNT_ID: { need: 'optional', secret: false, provider: 'whatsapp', about: 'The WhatsApp Business account that owns the number and the templates.' },
   WHATSAPP_APPROVED: { need: 'feature', secret: false, provider: 'whatsapp', about: 'true once the business is verified and the number is live.' },
   WHATSAPP_WEBHOOK_MAX_AGE_S: { need: 'optional', secret: false, provider: 'whatsapp', about: 'Optional. Oldest accepted WhatsApp webhook body, in seconds. Default 604800.' },
   // Dialpad (docs/integrations/messaging.md)

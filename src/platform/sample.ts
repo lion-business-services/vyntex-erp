@@ -225,6 +225,7 @@ const sampleIntegrations: IntegrationOperations = {
     });
   },
   connect: async (id) => { demoConnect([id]); return { ok: true, data: {}, sample: true }; },
+  finishEmbedded: async () => no(NOT_HERE),
   disconnect: async (id) => { if (!isDemoLinked(id)) return no(NOT_HERE); demoDisconnect(id); return { ok: true, data: { id, state: 'not_connected' }, sample: true }; },
   sync: async (id) => {
     if (!isDemoLinked(id)) return no(NOT_HERE);

@@ -1,0 +1,52 @@
+/* AI employees. Tokens only: both brands define every one. */
+.aiteam .page-header h1 svg{vertical-align:-3px;color:var(--accent)}
+.aiteam>.note{margin-bottom:12px;max-width:90ch}
+
+/* approvals */
+.ai-ap{align-items:flex-start}
+.ai-ap.open{border-left:3px solid var(--accent-line);padding-left:12px}
+.ai-what{font-weight:600;margin:6px 0 4px;overflow-wrap:anywhere}
+.ai-facts{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:6px 0 8px;font-size:13px}
+.ai-facts dt{color:var(--text);opacity:.65}
+.ai-facts dd{margin:0;overflow-wrap:anywhere}
+.ai-draft{border:1px solid var(--line);border-radius:var(--radius-s);padding:8px 10px;margin:6px 0 8px;background:var(--surface)}
+.ai-draft .pre{white-space:pre-wrap;max-height:180px;overflow:auto;margin-top:4px}
+.ai-decide{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.ai-decide .input{max-width:520px}
+
+/* the bots */
+.ai-bots{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-top:10px}
+.ai-bot{border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:var(--surface);
+  transition:border-color var(--motion-fast) var(--ease-vyntex)}
+.ai-bot:hover{border-color:var(--line-strong)}
+.ai-bot.paused{opacity:.72}
+.ai-bot .t{font-weight:600}
+.ai-avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:var(--accent-soft);color:var(--accent);flex:none}
+.ai-access{display:flex;flex-wrap:wrap;gap:6px}
+.ai-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 2px 2px 8px;border:1px solid var(--line);border-radius:999px}
+.ai-chip.lv-none{opacity:.55}
+.ai-h{margin:16px 0 8px;font-size:14px}
+.ai-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px 18px}
+.ai-grid-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px}
+.ai-key{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;margin-top:10px;width:100%}
+
+/* activity and connection */
+.ai-log .item{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ai-when{min-width:130px}
+.ai-cn{display:grid;grid-template-columns:200px 1fr auto;gap:10px;align-items:center;margin:8px 0}
+.ai-cn code{overflow-wrap:anywhere;font-size:12.5px}
+@media (max-width:640px){
+  .ai-cn{grid-template-columns:1fr auto}
+  .ai-cn>span:first-child{grid-column:1/-1}
+  .ai-facts{grid-template-columns:1fr}
+  .ai-bots{grid-template-columns:1fr}
+}
+
+/* 0094: the AI employee's photo, changed by clicking it */
+.ai-photo-edit{position:relative;cursor:pointer;overflow:hidden}
+.ai-photo-edit input{display:none}
+.ai-photo-edit img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.ai-photo-edit:hover,.ai-photo-edit:focus-within{box-shadow:0 0 0 2px var(--accent)}
+.ai-photo-edit.busy{opacity:.6}
+/* the header value: shown as dots without being a password field, so the browser never fills a saved password in */
+.ai-secret{-webkit-text-security:disc;font-family:var(--mono, monospace)}

@@ -873,6 +873,18 @@ select test.apply('g_owner', 'g', jsonb_build_array(
 select test.is(test.reason(:'m1'::jsonb, test.u(1610)::text) || ',' || test.reason(:'m1'::jsonb, test.u(1611)::text) || ',' || test.reason(:'m1'::jsonb, test.u(1612)::text) || ',' || test.reason(:'m1'::jsonb, test.u(1613)::text),
   'forbidden,forbidden,applied,applied', 'a person, the owner included, cannot record a message as sent or received; a draft and a "demo" message are accepted') \g /dev/null
 select test.ok((select provider is null and external_id is null and error is null and status = 'demo' from public.messages where id = test.u(1612)), 'the provider fields a browser sent are not stored') \g /dev/null
+-- 0089: Send from the Messages screen. A new message saved as "queued", and a draft sent later, both in the sender's name
+select test.apply('g_staff', 'g', jsonb_build_array(
+  test.op('messages', test.u(1614), jsonb_build_object('at', '2026-02-11T18:00:00.000Z', 'channel', 'email', 'to', 'c@example.com', 'subject', 'Hi', 'body', 'Sent now', 'status', 'queued', 'by', test.id('g.m_owner'), 'ref', jsonb_build_object('type', 'client', 'id', test.u(1501)))),
+  test.op('messages', test.u(1615), jsonb_build_object('at', '2026-02-11T18:00:00.000Z', 'channel', 'email', 'to', 'c@example.com', 'subject', 'Hi', 'body', 'Draft first', 'status', 'draft', 'ref', jsonb_build_object('type', 'client', 'id', test.u(1501)))))) as q1 \gset
+select test.is(test.reason(:'q1'::jsonb, test.u(1614)::text) || ',' || test.reason(:'q1'::jsonb, test.u(1615)::text), 'applied,applied', 'a person saves a message as queued (Send) or as a draft') \g /dev/null
+select test.apply('g_staff', 'g', jsonb_build_array(test.op('messages', test.u(1615), test.row_of(test.load('g_staff', 'g'), 'messages', test.u(1615)) || '{"status":"queued","body":"Draft, edited and sent"}'))) as q2 \gset
+select test.is(test.reason(:'q2'::jsonb, test.u(1615)::text), 'applied', 'a draft is sent later, edited in the same step') \g /dev/null
+select test.ok((select count(*) = 2 from public.messages where id in (test.u(1614), test.u(1615)) and status = 'queued' and dir = 'out' and by_member_id = test.id('g.m_staff')
+                 and provider is null and external_id is null), 'queued, outgoing, in the name of the person signed in (not the name that was sent)') \g /dev/null
+select test.ok((select body = 'Draft, edited and sent' from public.messages where id = test.u(1615)), 'the edit went with it') \g /dev/null
+select test.ok(test.reason(test.apply('g_staff', 'g', jsonb_build_array(test.op('messages', test.u(1615), test.row_of(test.load('g_staff', 'g'), 'messages', test.u(1615)) || '{"body":"Changed after queuing"}'))), test.u(1615)::text) = 'forbidden',
+  'once queued it is a record: its text cannot change') \g /dev/null
 -- the server queues and sends it; afterwards a person can only mark it read
 select test.is(test.as('service', format($q$update public.messages set status = 'delivered', provider = 'gmail', external_id = 'msg-1613' where id = %L$q$, test.u(1613))), 'rows:1', 'the server records the delivery') \g /dev/null
 select test.apply('g_staff', 'g', jsonb_build_array(test.op('messages', test.u(1613), test.row_of(test.load('g_staff', 'g'), 'messages', test.u(1613)) || '{"body":"Changed after sending"}'))) as m2 \gset

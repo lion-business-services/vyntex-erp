@@ -249,7 +249,7 @@ test('invitations: an address that already has an account must prove it with its
   assert.deepEqual(s.memberships.map((m) => m.role).sort(), ['manager', 'owner'], 'one account, two companies');
   // an active member cannot be invited again
   const dup = await other.owner.post('/api/ws/rpc/member_invite', { tenant: other.tenantId, args: { email: co.email, role: 'staff' } });
-  assert.deepEqual([dup.status, dup.json], [409, { ok: false, error: 'conflict', reason: 'already_member' }]);
+  assert.deepEqual([dup.status, dup.json], [409, { ok: false, error: 'already_member' }]);
 });
 
 test('invitations: when email is not set up, the inviter is handed the one-time link once, and only its hash is stored', async () => {
@@ -568,6 +568,27 @@ test('password reset: a one-time link by email, the same answer for every addres
   for (let i = 0; i < 6; i++) statuses.push((await asker.post('/api/auth/password/reset', { email: c.email })).status);
   assert.deepEqual(statuses, [200, 200, 200, 200, 200, 429]);
   assert.ok(st.mail.sent.length - n <= 3, 'at most three reset emails per account and hour');
+});
+
+test('password reset works for an account with an authenticator, and the authenticator is still asked for after', async () => {
+  const c = await st.company({ password: 'Copper-meadow-lantern-52' });
+  const start = await c.owner.post('/api/auth/mfa/enroll', {});
+  const secret = start.json.secret; secrets.delete(secret);
+  assert.equal((await c.owner.post('/api/auth/mfa/confirm', { factorId: start.json.factorId, code: st.totp(secret) })).status, 200);
+
+  const b = st.browser({ address: '203.0.113.71' }); await b.open();
+  assert.deepEqual((await b.post('/api/auth/password/reset', { email: c.email, lang: 'en' })).json, { ok: true, emailConfigured: true });
+  const token = decodeURIComponent(st.linkFor(c.email).split('#token=')[1]);
+  secrets.add(token);
+  const done = await b.post('/api/auth/password/reset', { token, password: 'Granite-orchard-signal-63' });
+  assert.deepEqual(done.json, { ok: true }, 'Supabase refuses the reset session itself (aal1); the server sets the password by user id');
+
+  assert.equal((await st.signIn(c.email, 'Copper-meadow-lantern-52')).res.status, 401, 'the old password is gone');
+  const fresh = await st.signIn(c.email, 'Granite-orchard-signal-63');
+  assert.equal(fresh.res.status, 200);
+  const s = (await fresh.browser.get('/api/auth/session')).json;
+  assert.deepEqual([s.aal, s.mfa.state], ['aal1', 'verify'], 'the new password alone does not get past the authenticator');
+  assert.equal((await c.owner.get('/api/auth/session')).json.signedIn, false, 'sessions opened before the reset are ended');
 });
 
 test('password change: needs a fresh identity check, follows the password rules, signs out the other browsers', async () => {

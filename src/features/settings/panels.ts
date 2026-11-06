@@ -3,12 +3,18 @@
 // A section shows only where it means something: `perm` is the capability it needs on top of `settings`, `module` the screen
 // it belongs to, `when` anything else (a priced edition, a family of editions, the deployment).
 import { lazy, type ComponentType } from 'react';
-import { LuBuilding2, LuCalendarClock, LuDatabase, LuFileText, LuGlobe, LuLanguages, LuLayers, LuLayoutGrid, LuLink2, LuListTree, LuMail, LuMailCheck, LuMapPin, LuPalette, LuPlug, LuSparkles, LuUsers, LuWorkflow } from 'react-icons/lu';
+import { LuBuilding2, LuCreditCard, LuCalendarClock, LuDatabase, LuFileText, LuGlobe, LuLanguages, LuLayers, LuLayoutGrid, LuLink2, LuListTree, LuMail, LuMailCheck, LuMapPin, LuPalette, LuPlug, LuSparkles, LuUsers, LuWorkflow } from 'react-icons/lu';
 import type { ModuleId } from '@/domain/types';
 import type { Permission } from '@/domain/permissions';
 import { moduleOn } from '@/domain/config';
 import type { App } from '@/app/hooks';
 import { DEPLOY } from '@/config/deployment';
+import { session } from '@/platform/session';
+import { INTERNAL_PLAN } from '@/config/plans';
+
+// Read straight from the build constant so the bundler leaves billing out of a deployment without it.
+declare const __VX_DEPLOY__: string | undefined;
+const BillingView: ComponentType | null = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/billing/settings'));
 
 type Icon = ComponentType<{ 'aria-hidden'?: boolean | 'true' | 'false' }>;
 export interface SettingsPanelDef {
@@ -35,6 +41,8 @@ export const SETTINGS_PANELS: SettingsPanelDef[] = [
   { id: 'team', labelKey: 'settings.tab.team', icon: LuUsers, view: lazy(() => import('./team').then((m) => ({ default: m.TeamSection }))) },
   // plans and prices: only for an edition that is in the pricing file, in a deployment that shows plans
   { id: 'plan', labelKey: 'settings.tab.plan', icon: LuLayers, when: (app) => app.priced, view: lazy(() => import('./plan').then((m) => ({ default: m.PlanSection }))) },
+  // a live VYNTEX ERP company: its subscription, paid through Stripe (src/features/billing)
+  { id: 'billing', labelKey: 'bill.title', icon: LuCreditCard, when: (app) => !!app.live && DEPLOY.id === 'vyntex' && !!BillingView && session()?.planId !== INTERNAL_PLAN, view: BillingView ?? (() => null) },
   { id: 'connections', labelKey: 'settings.tab.connections', icon: LuPlug, when: (app) => app.priced, view: lazy(() => import('./plan').then((m) => ({ default: m.ConnectionsSection }))) },
   // how the company set the product up for itself
   { id: 'modules', labelKey: 'settings.tab.modules', icon: LuLayoutGrid, perm: 'config', view: lazy(() => import('./modules')) },

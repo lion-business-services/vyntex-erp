@@ -246,6 +246,47 @@ test('owner: a lead, a client, an engagement and a task are written to the datab
   await shot(p, 'workspace-tasks');
 });
 
+test('owner: a logo chosen in Settings is stored privately in the company folder and shows after a reload', async () => {
+  const p = who.ownerP.browser;
+  await p.go('/' + P.slug + '/settings/business');
+  await p.page.waitForSelector('[data-testid=settings-logo]', { state: 'attached' });
+  // a 600 by 300 PNG drawn in the page: the settings page scales it to 256 pixels and keeps it as a picture
+  const png = await p.page.evaluate(() => { const c = document.createElement('canvas'); c.width = 600; c.height = 300; const x = c.getContext('2d'); x.fillStyle = '#0a84ff'; x.fillRect(0, 0, 600, 300); return c.toDataURL('image/png').split(',')[1]; });
+  await p.page.setInputFiles('[data-testid=settings-logo]', { name: 'logo.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await p.page.click('[data-testid=settings-save]');
+  // either the save went through (the form is clean again) or the page says the picture could not be stored
+  await p.page.waitForSelector('[data-testid=settings-logo-error], [data-testid=settings-save]:disabled');
+  assert.equal(await p.page.locator('[data-testid=settings-logo-error]').count(), 0, 'no "could not be stored": the page must not fetch() a data: address, which the CSP refuses');
+  await p.page.waitForSelector('[data-testid=sync-status][data-state=saved]');
+  let stored = '';
+  for (let i = 0; i < 40 && !stored.includes('/branding/'); i++) {
+    stored = String(await st.vyntex.sql(String.raw`select '@@R@@' || to_jsonb(coalesce(branding ->> 'logo', ''))::text from public.tenants where id = (select v from _in where k = 't')::uuid;`, { t: P.tenantId }));
+    if (!stored.includes('/branding/')) await p.page.waitForTimeout(250);
+  }
+  assert.match(stored, new RegExp('^' + P.tenantId + '/branding/[0-9a-f-]{36}\\.png$'), 'the record keeps a path in the company folder, never the picture');
+  await p.page.reload();
+  await p.page.waitForFunction(() => { const i = document.querySelector('.side-brand .logo img'); return !!i && i.complete && i.naturalWidth > 0; });
+  noErrors(p, 'logo upload');
+});
+
+test('owner: a profile photo shows everywhere the person appears: the top bar, the team page and lists', async () => {
+  const p = who.ownerP.browser;
+  await p.go('/' + P.slug + '/team');
+  await p.page.click('[data-testid=team-person]');
+  await p.page.click('[data-testid=team-profile-edit]');
+  const png = await p.page.evaluate(() => { const c = document.createElement('canvas'); c.width = 400; c.height = 400; const x = c.getContext('2d'); x.fillStyle = '#e8590c'; x.fillRect(0, 0, 400, 400); return c.toDataURL('image/png').split(',')[1]; });
+  await p.page.setInputFiles('[data-testid=team-profile-photo]', { name: 'me.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') });
+  await p.page.click('[data-testid=team-profile-save]');
+  await p.page.waitForSelector('[data-testid=team-profile-form]', { state: 'detached' });
+  await p.page.waitForSelector('[data-testid=sync-status][data-state=saved]');
+  await p.page.reload();
+  // the top bar shows the photo, not the initials
+  await p.page.waitForFunction(() => { const i = document.querySelector('[data-testid=actor] .avatar img'); return !!i && i.complete && i.naturalWidth > 0; });
+  await p.go('/' + P.slug + '/team');
+  await p.page.waitForFunction(() => { const i = document.querySelector('[data-testid=team-person] img'); return !!i && i.complete && i.naturalWidth > 0; });
+  noErrors(p, 'profile photo');
+});
+
 test('a second browser of the owner starts with nothing and gets the same records from the server', async () => {
   const p = await guy(st.vyntex.origin);
   who.ownerP.second = p;

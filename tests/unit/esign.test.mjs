@@ -353,7 +353,10 @@ test('the signed copy keeps the pages, adds a certificate with both fingerprints
   m.signEnvelope(w.d, w.ctx(), e.id, b.id, answer({ typedName: 'Person u1' }));
   assert.equal(e.status, 'completed');
   const source = await sourcePdf();
-  const out = await m.buildSignedPdf(source, e, { docTitle: 'Test document', docNumber: 'VP-DOC-1001', company: 'Sample Test Co', sentBy: 'Person u1', product: 'VYNTEX ERP' });
+  const fsx = await import('node:fs');
+  // the VYNTEX logo in the certificate header, as the server passes it (api/_lib/esign/brand.js)
+  const brand = { mark: fsx.readFileSync('public/brand/vyntex-mark.jpg'), wordmark: fsx.readFileSync('public/brand/vyntex-wordmark.jpg'), site: 'erp.vyntexusa.com' };
+  const out = await m.buildSignedPdf(source, e, { docTitle: 'Test document', docNumber: 'VP-DOC-1001', company: 'Sample Test Co', sentBy: 'Person u1', product: 'VYNTEX ERP', brand });
   const sha = (x) => crypto.createHash('sha256').update(Buffer.from(x)).digest('hex');
   assert.equal(out.hashes.original, sha(source), 'the original fingerprint is the SHA-256 of the file that was sent');
   assert.equal(out.hashes.final, sha(out.bytes), 'the final fingerprint is the SHA-256 of the finished file');
@@ -363,7 +366,9 @@ test('the signed copy keeps the pages, adds a certificate with both fingerprints
   const text = drawnText(out.bytes);
   assert.ok(text.includes(out.hashes.original), 'the certificate prints the fingerprint of the original');
   assert.ok(text.includes(out.hashes.signed), 'the certificate prints the fingerprint of the signed pages');
-  for (const s of ['Completion certificate', 'Dana Example', 'dana@example.com', 'u1@example.com', 'Test consent sentence.', 'Managing member', e.id, 'VP-DOC-1001']) assert.ok(text.includes(s), 'drawn in the signed copy: ' + s);
+  assert.ok((Buffer.from(out.bytes).toString('latin1').match(/\/Subtype\s*\/Image/g) || []).length >= 2, 'the logo is drawn in the certificate header');
+  assert.ok(text.includes('erp.vyntexusa.com'), 'the footer names where the record was kept');
+  for (const s of ['Certificate of Completion', 'Dana Example', 'dana@example.com', 'u1@example.com', 'Test consent sentence.', 'Managing member', e.id, 'VP-DOC-1001']) assert.ok(text.includes(s), 'drawn in the signed copy: ' + s);
   assert.equal((text.match(/Sample: not a legally binding signature/g) || []).length, 3, 'the sample line is on every page, certificate included');
   assert.equal(/complian|legally valid|ESIGN|UETA|certified/i.test(text), false, 'no claim about any law');
   // the certificate model itself: facts, both fingerprints, every signer with the three moments and the consent

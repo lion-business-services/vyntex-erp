@@ -50,6 +50,8 @@ export interface WorkspaceSession {
   industry: IndustryId;
   /** Plan id from the pricing file, or '' for an edition without plans. Entitlements are worked out from it; prices are never stored. */
   planId: string;
+  /** Server-authoritative trial deadline, if this workspace is on a trial. */
+  trialExpiresAt?: string | null;
   role: WorkspaceRole;
   /** Team user id (office roles) or worker id (workers) of the person acting. */
   actorId: string;
@@ -227,10 +229,14 @@ export interface FileOperations {
 }
 
 /** /api/integrations/*. In a sample workspace a connection is never `connected`. */
+/** The public ids the WhatsApp Connect page needs to open Meta's window. */
+export interface EmbeddedSignup { appId: string; configId: string; version: string }
 export interface IntegrationOperations {
   list(): Promise<Connection[]>;
   /** Where to send the person to give access (OAuth), or what to fill in (key based). */
-  connect(provider: ProviderId): Promise<Outcome<{ redirect?: string }>>;
+  connect(provider: ProviderId): Promise<Outcome<{ redirect?: string; embedded?: EmbeddedSignup }>>;
+  /** Embedded Signup (WhatsApp): what the provider's window handed back, for the server to exchange. */
+  finishEmbedded(provider: ProviderId, input: { code: string; wabaId: string; phoneId: string; event: string }): Promise<Outcome<Connection>>;
   disconnect(provider: ProviderId): Promise<Outcome<Connection>>;
   sync(provider: ProviderId, what?: string): Promise<Outcome<Connection>>;
   test(provider: ProviderId): Promise<Outcome<{ healthy: boolean; detail?: string }>>;

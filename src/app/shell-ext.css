@@ -8,3 +8,8 @@
 
 /* a long menu (the professional-services edition has many screens) scrolls inside the sidebar */
 .side .nav{overflow-y:auto;min-height:0}
+
+/* Clear, quiet trial countdown for database-backed workspaces only. */
+.vx-trial-banner{display:flex;gap:9px 18px;align-items:center;flex-wrap:wrap;background:var(--accent-soft,#bbaa6f18);border:1px solid var(--line);padding:11px 14px;border-radius:9px;margin:0 0 16px;font-size:12px}
+.vx-trial-banner strong{color:var(--accent,#c6a36d);font-weight:800}
+.vx-trial-banner span{flex:1;min-width:180px;opacity:.8}.vx-trial-banner a{font-weight:750;color:var(--accent,#c6a36d)}

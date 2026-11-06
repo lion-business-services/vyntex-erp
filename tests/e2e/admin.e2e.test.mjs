@@ -103,7 +103,10 @@ test('the operator creates a client workspace; the address is checked; the owner
   await p.fill('[data-testid=admin-f-slug]', 'greenline');
   await p.selectOption('[data-testid=admin-f-industry]', 'landscape');
   const plans = await p.locator('[data-testid=admin-f-plan] option').evaluateAll((els) => els.map((e) => e.value));
-  assert.ok(plans.length === 3, 'a priced edition offers its three plans: ' + plans.join());
+  assert.ok(plans.length === 4 && plans[3] === 'trial', 'a priced edition offers its three plans and the invitation-only trial: ' + plans.join());
+  await p.selectOption('[data-testid=admin-f-plan]', 'trial');
+  await p.waitForSelector('[data-testid=admin-f-trial-note]');
+  await p.selectOption('[data-testid=admin-f-plan]', plans[1]);
   await p.fill('[data-testid=admin-f-owner-name]', 'Gina Sample');
   await p.fill('[data-testid=admin-f-owner-email]', 'gina@greenline.example');
   await p.click('[data-testid=admin-f-submit]');
@@ -188,4 +191,120 @@ test('signing in again later: the owner at their own address, password then the 
   await later.workspace();
   assert.equal(new URL(later.page.url()).pathname, '/greenline');
   noErrors(later, 'sign in again');
+});
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Demo requests: a request from the sales pages becomes a 7-day trial workspace with one click (0077, api/admin.js
+// demo-requests). The row here is written the way api/demo-request.js stores it, with the server key.
+// ---------------------------------------------------------------------------------------------------------------------
+const LONG = 'We clean offices and two medical buildings, mostly at night.\nWe need schedules for three crews.\nClients ask for photos after each visit.\nCan the trial start this week?';
+
+test('a demo request shows in the console; Start 7-day trial opens the form filled in; the row then shows the workspace', async () => {
+  await st.vyntex.sql(String.raw`
+    insert into public.demo_requests (name, business, industry, phone, email, language, contact_method, team_size, message, consent, consent_text, consent_at, email_delivered, source_ip_hash, user_agent)
+    values ('Bea Sample', 'Brightside Sample Cleaning LLC', 'clean', '+15555550142', 'bea@brightside.example', 'es', 'whatsapp', '6-15', (select v from _in where k = 'm'),
+            true, 'I agree to be contacted by VYNTEX USA about this request.', now(), true, repeat('a', 64), 'Sample Browser/1.0');
+    select '@@R@@' || '1';`, { m: LONG });
+  const p = op.page;
+  await op.go('/admin');
+  const row = p.locator('[data-testid=admin-dr-row][data-email="bea@brightside.example"]');
+  await row.waitFor();
+  const text = await row.innerText();
+  for (const want of ['Brightside Sample Cleaning LLC', 'Bea Sample', 'VYNTEX CLEAN', '6-15 people', 'Prefers WhatsApp', 'Spanish', '+15555550142', 'bea@brightside.example'])
+    assert.ok(text.includes(want), want + ' is shown: ' + text);
+  assert.ok(!text.includes('Sample Browser') && !text.includes('I agree to be contacted'), 'never the browser signature or the consent evidence');
+  assert.equal(await row.locator('[data-testid=admin-dr-email]').getAttribute('href'), 'mailto:bea@brightside.example');
+  assert.equal(await row.locator('[data-testid=admin-dr-phone]').getAttribute('href'), 'tel:+15555550142');
+  // the message is clamped, and opens
+  const msg = row.locator('[data-testid=admin-dr-message]');
+  const shut = await msg.evaluate((e) => e.clientHeight);
+  await row.locator('button[aria-expanded=false]').click();
+  assert.ok((await msg.evaluate((e) => e.clientHeight)) > shut, 'Show more opens the whole message');
+  assert.equal(await p.innerText('[data-testid=admin-stat-demos]'), '1', 'one demo request to follow up');
+  await shot(op, 'admin-demo-requests');
+
+  await row.locator('[data-testid=admin-dr-start]').click();
+  await p.waitForSelector('[data-testid=admin-form]');
+  await p.waitForSelector('[data-testid=admin-f-prefilled]');
+  assert.equal(await p.inputValue('[data-testid=admin-f-name]'), 'Brightside Sample Cleaning LLC');
+  assert.equal(await p.inputValue('[data-testid=admin-f-slug]'), 'brightside-sample-cleaning', 'the address word is suggested from the name');
+  assert.equal(await p.inputValue('[data-testid=admin-f-industry]'), 'clean', 'the edition of the request');
+  assert.equal(await p.inputValue('[data-testid=admin-f-plan]'), 'trial', 'the 7-day trial');
+  await p.waitForSelector('[data-testid=admin-f-trial-note]');
+  assert.equal(await p.inputValue('[data-testid=admin-f-owner-name]'), 'Bea Sample');
+  assert.equal(await p.inputValue('[data-testid=admin-f-owner-email]'), 'bea@brightside.example');
+  assert.equal(await p.inputValue('[data-testid=admin-f-lang]'), 'es', 'the invitation in the language the person asked for');
+  // still editable: nothing is made until Create
+  await p.fill('[data-testid=admin-f-slug]', 'brightside');
+  assert.equal(await one(st.vyntex, `(select count(*) from public.tenants where slug like 'brightside%')`), 0, 'nothing made yet');
+  await shot(op, 'admin-demo-prefilled');
+  await p.click('[data-testid=admin-f-submit]');
+  await p.waitForSelector('[data-testid=admin-result]');
+  assert.equal(await p.inputValue('[data-testid=admin-result-address]'), st.vyntex.origin + '/brightside');
+  await p.click('text=Done');
+  await p.waitForSelector('[data-testid=admin-dr-row][data-email="bea@brightside.example"][data-workspace=brightside]');
+  assert.match(await row.innerText(), /Workspace created: brightside/);
+  assert.equal(await row.locator('[data-testid=admin-dr-start]').count(), 0, 'no second trial button');
+  assert.equal(await row.locator('[data-testid=admin-dr-workspace]').getAttribute('href'), '/brightside');
+  assert.equal(await p.innerText('[data-testid=admin-stat-demos]'), '0');
+  const made = await one(st.vyntex, `(select jsonb_build_object('plan', plan_id, 'industry', industry_id) from public.tenants where slug = 'brightside')`);
+  assert.deepEqual(made, { plan: 'trial', industry: 'clean' });
+  noErrors(op, 'demo requests');
+});
+
+const HASH = '#new-trial&business=' + encodeURIComponent('Harbor Sample Builders') + '&owner=' + encodeURIComponent('Hal Sample') +
+  '&email=' + encodeURIComponent('hal@harbor.example') + '&industry=Construction&lang=en';
+
+test('the link from the notification email opens the form filled in, and leaves nothing in the address bar', async () => {
+  const p = op.page;
+  const asked = []; const onRequest = (r) => asked.push(r.url()); p.on('request', onRequest);
+  await op.go('/signin');
+  await p.goto(st.vyntex.origin + '/admin' + HASH);
+  await p.waitForSelector('[data-testid=admin-f-prefilled]');
+  assert.equal(await p.inputValue('[data-testid=admin-f-name]'), 'Harbor Sample Builders');
+  assert.equal(await p.inputValue('[data-testid=admin-f-slug]'), 'harbor-sample-builders');
+  assert.equal(await p.inputValue('[data-testid=admin-f-industry]'), 'build', '"Construction" is VYNTEX BUILD');
+  assert.equal(await p.inputValue('[data-testid=admin-f-plan]'), 'trial');
+  assert.equal(await p.inputValue('[data-testid=admin-f-owner-name]'), 'Hal Sample');
+  assert.equal(await p.inputValue('[data-testid=admin-f-owner-email]'), 'hal@harbor.example');
+  assert.equal(await p.inputValue('[data-testid=admin-f-lang]'), 'en');
+  const u = new URL(p.url());
+  assert.equal(u.pathname + u.search + u.hash, '/admin', 'the details are taken off the address bar');
+  assert.equal(await p.evaluate(() => sessionStorage.getItem('vx.admin.newTrial')), null, 'and not kept in the tab');
+  p.off('request', onRequest);
+  assert.ok(!asked.some((x) => /harbor|hal%40|Hal%20/i.test(x)), 'no request carried the details: ' + asked.filter((x) => /harbor/i.test(x)).join(' '));
+  // closing it makes nothing; a reload does not open it again
+  await p.click('[data-testid=admin-form] >> text=Cancel');
+  await p.reload();
+  await p.waitForSelector('[data-testid=admin-table]');
+  assert.equal(await p.locator('[data-testid=admin-form]').count(), 0, 'used once');
+  assert.equal(await one(st.vyntex, `(select count(*) from public.tenants where slug like 'harbor%')`), 0, 'nothing made');
+  // a link opened in the tab while the console is on screen
+  await p.goto(st.vyntex.origin + '/admin' + HASH.replace('industry=Construction', 'industry=VYNTEX%20WASH'));
+  await p.waitForSelector('[data-testid=admin-f-prefilled]');
+  assert.equal(await p.inputValue('[data-testid=admin-f-industry]'), 'wash', 'the product name works too');
+  assert.equal(new URL(p.url()).hash, '');
+  await p.click('[data-testid=admin-form] >> text=Cancel');
+  noErrors(op, 'hash link');
+});
+
+test('the link survives the sign-in: opened signed out, it opens the form filled in after the password and the code', async () => {
+  const p2 = await guy(st.vyntex.origin);
+  const link = HASH.replace('industry=Construction', 'industry=cleaning').replace('lang=en', 'lang=es');
+  await p2.page.goto(st.vyntex.origin + '/admin' + link);
+  await p2.page.waitForSelector('[data-testid=auth-form]');
+  assert.equal(await p2.page.evaluate(() => sessionStorage.getItem('vx.admin.newTrial')), link, 'kept in the tab before the sign-in screen');
+  // even when the address loses it on the way (a reload of the sign-in page without it)
+  await p2.page.evaluate(() => history.replaceState(null, '', '/admin'));
+  await p2.page.reload();
+  await fillSignIn(p2, opEmail, PW.op);
+  await typeCode(p2, st.vyntex.totp(opSecret));
+  await p2.page.waitForSelector('[data-testid=admin-f-prefilled]');
+  assert.equal(await p2.page.inputValue('[data-testid=admin-f-name]'), 'Harbor Sample Builders');
+  assert.equal(await p2.page.inputValue('[data-testid=admin-f-industry]'), 'clean', '"cleaning" is VYNTEX CLEAN');
+  assert.equal(await p2.page.inputValue('[data-testid=admin-f-plan]'), 'trial');
+  assert.equal(await p2.page.inputValue('[data-testid=admin-f-lang]'), 'es');
+  assert.equal(new URL(p2.page.url()).hash, '', 'the address bar is clean');
+  assert.equal(await p2.page.evaluate(() => sessionStorage.getItem('vx.admin.newTrial')), null);
+  noErrors(p2, 'link through sign-in');
 });

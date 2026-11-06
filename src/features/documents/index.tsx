@@ -4,7 +4,7 @@
 // the printout and the PDF. In an edition without the Signatures screen, e-signature is the one-signer demo and is
 // labelled as one everywhere.
 import { useMemo, useState } from 'react';
-import { LuFilePlus, LuLock, LuPaperclip } from 'react-icons/lu';
+import { LuFilePlus, LuLock, LuPaperclip, LuUpload } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { A, currentUrl, go, useRoute } from '@/app/router';
 import type { PageProps } from '@/app/routes';
@@ -48,7 +48,7 @@ function DocList() {
   const [status, setStatus] = useState<'' | DocStatus>('');
   const [clientId, setClientId] = useState(route.query.get('client') ?? '');
   const [folder, setFolder] = useState('');
-  const [form, setForm] = useState(() => currentUrl().includes('new=1'));
+  const [form, setForm] = useState<false | 'new' | 'upload'>(() => (currentUrl().includes('new=1') ? 'new' : false));
   const preset: NewDocPreset = { kind: (route.query.get('kind') as DocKind | null) ?? undefined, clientId: route.query.get('client') ?? undefined, jobId: route.query.get('job') ?? undefined, leadId: route.query.get('lead') ?? undefined };
 
   // the kinds this edition offers, plus any kind a document already on file has
@@ -68,7 +68,8 @@ function DocList() {
   const unpaid = all.filter((d) => { const j = byId(data.jobs, d.jobId); return d.kind === 'invoice' && d.status !== 'void' && !!j && jobMoney(data, j).clientOwes > 0.005; }).length;
   const filtered = !!(q || kind || status || clientId || folder);
   const clear = () => { setQ(''); setKind(''); setStatus(''); setClientId(''); setFolder(''); };
-  const add = <CanWrite><Button variant="primary" icon={<LuFilePlus />} onClick={() => setForm(true)} data-testid="docs-new">{t('docs.new')}</Button></CanWrite>;
+  // uploading a file (a PDF to send for signature, a client's paperwork) is its own button, next to writing one from a template
+  const add = <CanWrite><span className="row tight">{files && <Button icon={<LuUpload aria-hidden="true" />} onClick={() => setForm('upload')} data-testid="docs-upload">{t('docs.upload')}</Button>}<Button variant="primary" icon={<LuFilePlus />} onClick={() => setForm('new')} data-testid="docs-new">{t('docs.new')}</Button></span></CanWrite>;
   const unapproved = (d: DocRecord) => !!d.templateId && d.status === 'draft' && !data.templates.find((x) => x.id === d.templateId)?.approved;
 
   return (
@@ -99,7 +100,7 @@ function DocList() {
       )}
 
       {!all.length ? (
-        <Card className="docs-none"><Empty title={t('docs.empty')} action={<CanWrite><Button variant="primary" onClick={() => setForm(true)}>{t('docs.new')}</Button></CanWrite>}>{t('docs.emptyHint')}</Empty></Card>
+        <Card className="docs-none"><Empty title={t('docs.empty')} action={<CanWrite><span className="row tight">{files && <Button icon={<LuUpload aria-hidden="true" />} onClick={() => setForm('upload')}>{t('docs.upload')}</Button>}<Button variant="primary" onClick={() => setForm('new')}>{t('docs.new')}</Button></span></CanWrite>}>{t('docs.emptyHint')}</Empty></Card>
       ) : !rows.length ? (
         <Card className="docs-none"><Empty title={t('common.noResults')} action={<Button onClick={clear}>{t('common.clearFilters')}</Button>} /></Card>
       ) : (
@@ -126,7 +127,7 @@ function DocList() {
           </div>
         </Card>
       )}
-      {form && <NewDocModal onClose={() => setForm(false)} preset={preset} />}
+      {form && <NewDocModal onClose={() => setForm(false)} preset={form === 'upload' ? { ...preset, kind: 'upload' } : preset} />}
     </>
   );
 }

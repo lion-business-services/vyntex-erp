@@ -4,12 +4,14 @@
 import type { ISODate, JobStatus, PayMethod } from '@/domain/types';
 import { assigneeName, byId, calendarEvents, clientMoney, insuranceState, isOpenLead, jobMoney, kpiValues, workerMoney } from '@/domain/selectors';
 import { addDays, today } from '@/lib/dates';
-import { moduleOn } from '@/domain/config';
+import { moduleOn, stagesOf } from '@/domain/config';
 import { reviewStats } from '@/domain/actions/reviews';
 import { check, type Env, type Proposal } from './engine';
 import { maskTaxIds } from './records';
+import { SPEC_BY_ID, cleanArgs, specsFor } from './actions';
 
-const CAP = 40;
+// kept small: the free model's daily allowance is counted in tokens, and every question carries this summary
+const CAP = 25;
 
 /**
  * The summary the model answers from. Names, dates, statuses and totals; no phone numbers, emails or addresses, and never
@@ -22,6 +24,7 @@ export function buildContext(env: Env): Record<string, unknown> {
     today: today(), company: data.company.name, product: pack.product,
     words: { job: t('project'), jobs: t('projects'), worker: t('sub'), workers: t('subs'), client: t('client'), clients: t('clients') },
     statuses: pack.jobStatuses.map((s) => ({ id: s, label: t('st_' + s) })),
+    leadStages: stagesOf(data, pack).map((s) => ({ id: s.id, label: t('ls_' + s.id), kind: s.kind })),
     services: pack.serviceTypes.map((s) => ({ id: s.id, label: t('ty_' + s.id) })),
     people: [...data.users.map((u) => ({ id: 'u:' + u.id, name: u.name, role: u.role })), ...data.workers.filter((w) => w.active !== false).map((w) => ({ id: 'w:' + w.id, name: w.name, role: w.trade }))].slice(0, CAP),
     asking: 'u:' + env.actor,
@@ -84,7 +87,18 @@ export function toProposal(tool: string, input: Record<string, unknown>, env: En
     case 'record_client_payment': {
       const amount = typeof input.amount === 'number' && isFinite(input.amount) ? Math.round(input.amount * 100) / 100 : 0;
       const method = METHODS.includes(input.method as PayMethod) ? (input.method as PayMethod) : 'check';
-      p = { kind: 'payment', jobId: str(input.job_id, 60), amount, method, date: isoDate(input.date) ?? today() }; break;
+      const jobId = str(input.job_id, 60);
+      // a payment on a project that is still an estimate: the confirm also marks it as a signed contract
+      p = { kind: 'payment', jobId, amount, method, date: isoDate(input.date) ?? today(), ...(byId(env.data.jobs, jobId)?.status === 'estimate' ? { approve: true } : {}) }; break;
+    }
+    case 'do_action': {
+      // 0097: any other entry of the catalog; its arguments come as a JSON object string (or an object)
+      const x = SPEC_BY_ID.get(str(input.action, 40));
+      if (!x || !specsFor(env).includes(x)) return env.lang === 'es' ? 'Esa acción no está disponible aquí.' : 'That action is not available here.';
+      let raw: unknown = input.arguments ?? input.args ?? {};
+      if (typeof raw === 'string') { try { raw = raw.trim() ? JSON.parse(raw) : {}; } catch { return env.t('asst.model.badAction'); } }
+      const a = cleanArgs(x, raw, env); if (typeof a === 'string') return a;
+      p = { kind: 'action', action: x.id, args: a }; break;
     }
     case 'book_appointment': {
       const date = isoDate(input.date); const time = typeof input.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(input.time) ? input.time : undefined;
@@ -93,6 +107,27 @@ export function toProposal(tool: string, input: Record<string, unknown>, env: En
       break;
     }
     case 'request_review': p = { kind: 'review', clientId: str(input.client_id, 60), ...(str(input.job_id, 60) ? { jobId: str(input.job_id, 60) } : {}), channel: 'email' }; break;
+    case 'create_client': p = { kind: 'client', name: str(input.name, 120), ...(str(input.phone, 40) ? { phone: str(input.phone, 40) } : {}), ...(str(input.email, 120) ? { email: str(input.email, 120) } : {}) }; break;
+    case 'create_project': {
+      const price = typeof input.price === 'number' && isFinite(input.price) ? Math.round(input.price * 100) / 100 : undefined;
+      p = { kind: 'job', name: str(input.name, 140), ...(str(input.client_id, 60) ? { clientId: str(input.client_id, 60) } : {}), ...(str(input.client_name, 120) ? { clientName: str(input.client_name, 120) } : {}), ...(isoDate(input.start) ? { start: isoDate(input.start) } : {}), ...(price !== undefined ? { price } : {}) };
+      break;
+    }
+    case 'update_lead': {
+      const value = typeof input.value === 'number' && isFinite(input.value) ? Math.round(input.value * 100) / 100 : undefined;
+      p = { kind: 'leadUpdate', leadId: str(input.lead_id, 60), ...(str(input.stage, 60) ? { stage: str(input.stage, 60) } : {}), ...(value !== undefined ? { value } : {}), ...(isoDate(input.follow_up) ? { followUp: isoDate(input.follow_up) } : {}) };
+      break;
+    }
+    case 'update_task': p = { kind: 'taskUpdate', taskId: str(input.task_id, 60), ...(str(input.title, 140) ? { title: str(input.title, 140) } : {}), ...(isoDate(input.due_date) ? { due: isoDate(input.due_date) } : {}), ...(str(input.assignee_id, 60) ? { assignee: str(input.assignee_id, 60) } : {}) }; break;
+    case 'create_invoice': {
+      const lines = (Array.isArray(input.lines) ? input.lines : []).slice(0, 30).map((l) => {
+        const x = (l && typeof l === 'object' ? l : {}) as Record<string, unknown>;
+        const num = (v: unknown, d: number) => (typeof v === 'number' && isFinite(v) ? Math.round(v * 100) / 100 : d);
+        return { description: str(x.description, 300), qty: num(x.quantity, 1), price: num(x.unit_price, -1) };
+      });
+      p = { kind: 'invoice', jobId: str(input.job_id, 60), lines, ...(isoDate(input.due_date) ? { due: isoDate(input.due_date) } : {}) };
+      break;
+    }
     case 'schedule_lead_visit': { const date = isoDate(input.date); const time = typeof input.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(input.time) ? input.time : undefined; if (date) p = { kind: 'visit', leadId: str(input.lead_id, 60), date, time }; break; }
   }
   if (!p) return null;

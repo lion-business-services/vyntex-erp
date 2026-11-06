@@ -208,6 +208,10 @@ end $f$;
 create or replace function devsb.user_update(p jsonb) returns jsonb language plpgsql as $f$
 begin
   if not devsb.session_ok(p) then return devsb.err(403, 'session_not_found', 'Session from session_id claim in JWT does not exist'); end if;
+  -- as Supabase: with a verified authenticator, a password change needs an aal2 session
+  if p ? 'password' and coalesce(p ->> 'aal', 'aal1') <> 'aal2' and exists (select 1 from auth.mfa_factors f where f.user_id = (p ->> 'sub')::uuid and f.status = 'verified') then
+    return devsb.err(401, 'insufficient_aal', 'AAL2 session is required to update email or password when MFA is enabled.');
+  end if;
   if p ? 'password' then
     if length(p ->> 'password') < 6 then return devsb.err(422, 'weak_password', 'Password should be at least 6 characters'); end if;
     update auth.users set encrypted_password = extensions.crypt(p ->> 'password', extensions.gen_salt('bf', 4)) where id = (p ->> 'sub')::uuid;
@@ -364,7 +368,7 @@ end $f$;
 -- The function and its argument names come from the catalog; the JSON values are passed as a parameter, never as text.
 create or replace function devsb.call(p_fn text, p_args jsonb) returns jsonb language plpgsql as $f$
 declare
-  f record; v_parts text[] := '{}'; v_sql text; v_out jsonb; k text; i integer; v_type text; v_state text; v_msg text;
+  f record; v_parts text[] := '{}'; v_sql text; v_out jsonb; k text; i integer; v_type text; v_state text; v_msg text; v_hint text;
   v_keys text[] := coalesce((select array_agg(x) from jsonb_object_keys(p_args) x), '{}');
 begin
   select p.oid, p.proname, coalesce(p.proargnames, '{}') as names, p.proargtypes::oid[] as types, p.pronargs, p.pronargdefaults,
@@ -405,8 +409,8 @@ begin
       execute v_sql into v_out using p_args;
     end if;
   exception when others then
-    get stacked diagnostics v_state = returned_sqlstate, v_msg = message_text;
-    return jsonb_build_object('__error', v_state, 'message', v_msg);
+    get stacked diagnostics v_state = returned_sqlstate, v_msg = message_text, v_hint = pg_exception_hint;
+    return jsonb_build_object('__error', v_state, 'message', v_msg, 'hint', v_hint);
   end;
   return jsonb_build_object('result', v_out);
 end $f$;
@@ -635,7 +639,8 @@ export async function startDevSupabase(opts = {}) {
         if (out.__error) {
           const s = out.__error;
           const status = s === 'PGRST202' ? 404 : s === '42501' ? (c.role === 'anon' ? 401 : 403) : s === '23505' || s === '23503' ? 409 : s === '42883' ? 404 : 400;
-          return send(res, status, { code: s, message: out.message, details: null, hint: null });
+          // PostgREST passes the HINT of a raised exception on as "hint" (the server keeps it only when it is one word of ours)
+          return send(res, status, { code: s, message: out.message, details: null, hint: out.hint || null });
         }
         return send(res, 200, out.result === undefined ? null : out.result);
       }

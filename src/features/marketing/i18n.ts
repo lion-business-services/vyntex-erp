@@ -8,6 +8,7 @@ export const dict: Dict = {
   en: {
     'mk.title.home': 'The AI-powered ERP that runs your entire business', 'mk.title.pricing': 'Plans and prices', 'mk.title.request': 'Request a demo',
     'mk.nav.label': 'Main', 'mk.nav.home': 'Overview', 'mk.nav.product': 'Product', 'mk.nav.industries': 'Industries', 'mk.nav.integrations': 'Integrations', 'mk.nav.pricing': 'Pricing', 'mk.nav.how': 'How it works',
+    'mk.site.back': 'Back to vyntexusa.com', 'mk.site.main': 'VYNTEX USA website',
     'mk.nav.request': 'Request a demo', 'mk.nav.demo': 'Explore demo', 'mk.nav.menu': 'Open the menu', 'mk.nav.close': 'Close the menu',
     'mk.notFound': 'That page does not exist. This is the overview.',
     'mk.tok.job': '{job}', 'mk.tok.worker': '{worker}', 'mk.tok.jobs': '{jobs}', 'mk.tok.workers': '{workers}',
@@ -107,6 +108,7 @@ export const dict: Dict = {
   es: {
     'mk.title.home': 'El ERP con IA que dirige todo su negocio', 'mk.title.pricing': 'Planes y precios', 'mk.title.request': 'Solicite una demo',
     'mk.nav.label': 'Principal', 'mk.nav.home': 'Inicio', 'mk.nav.product': 'Producto', 'mk.nav.industries': 'Industrias', 'mk.nav.integrations': 'Integraciones', 'mk.nav.pricing': 'Precios', 'mk.nav.how': 'Cómo funciona',
+    'mk.site.back': 'Volver a vyntexusa.com', 'mk.site.main': 'Sitio web de VYNTEX USA',
     'mk.nav.request': 'Solicitar una demo', 'mk.nav.demo': 'Explorar la demo', 'mk.nav.menu': 'Abrir el menú', 'mk.nav.close': 'Cerrar el menú',
     'mk.notFound': 'Esa página no existe. Esta es la página de inicio.',
     'mk.tok.job': '{job}', 'mk.tok.worker': '{worker}', 'mk.tok.jobs': '{jobs}', 'mk.tok.workers': '{workers}',

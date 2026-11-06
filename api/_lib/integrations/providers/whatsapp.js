@@ -12,12 +12,26 @@
 //   window     free text only within 24 hours of the person's last message. Outside it only a template goes out,
 //   template   and only one that Meta shows as APPROVED for that language (checked with a real call).
 //
-// Settings: META_APP_SECRET (signs the webhooks), WHATSAPP_WEBHOOK_VERIFY_TOKEN, WHATSAPP_SYSTEM_USER_TOKEN,
-//           WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_BUSINESS_ACCOUNT_ID, WHATSAPP_APPROVED, WHATSAPP_WEBHOOK_MAX_AGE_S (optional).
+// One button for every company (owner request of November 6, 2026): Meta's Embedded Signup. The company clicks
+// Connect, a small VYNTEX page (public/connect/whatsapp.html) opens Meta's own window, the person signs in to Facebook,
+// picks or creates their WhatsApp Business account and number, and Meta hands back a one-time code (it lasts 30
+// seconds) with the two ids. The server exchanges the code for the company's own business token, subscribes VYNTEX's
+// app to that account's webhooks and registers the number. The token is sealed in the company's connection; each
+// company has its own number, and an incoming message finds its company by the number (conn_by_account).
+// A number already used in the WhatsApp Business app can stay in the app (Meta's coexistence): it is not registered
+// again, and its last 180 days of chats and contacts are asked for once.
+//
+// Settings: META_APP_ID, META_APP_SECRET (the code exchange, and the signature of the webhooks),
+//           WHATSAPP_CONFIG_ID (the Embedded Signup configuration made in the Meta app), WHATSAPP_WEBHOOK_VERIFY_TOKEN,
+//           WHATSAPP_APPROVED (true once VYNTEX is a Meta Tech Provider with the WhatsApp permissions approved),
+//           WHATSAPP_WEBHOOK_MAX_AGE_S (optional).
+//           Older single-number settings still work as a fallback for a connection without its own token:
+//           WHATSAPP_SYSTEM_USER_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_BUSINESS_ACCOUNT_ID.
 // Not proven against the live service: no account exists in this build. Tested with mocked responses.
 import { ProviderError } from '../oauth.js';
 import { parseJson, payloadHash } from '../webhook.js';
-import { graph, verifyHubSignature, hubChallenge, maxAgeSeconds, withinAge } from '../messaging/graph.js';
+import { randomInt } from 'node:crypto';
+import { graph, graphVersion, verifyHubSignature, hubChallenge, maxAgeSeconds, withinAge } from '../messaging/graph.js';
 import { toMessage, toStatus, e164, opaque, isoTime } from '../messaging/normalize.js';
 import { assertConsent, consentChange, insideWindow } from '../messaging/consent.js';
 
@@ -82,13 +96,57 @@ function read(body) {
 const mediaOf = (m) => { const part = m[m.type]; return part && typeof part === 'object' && typeof part.id === 'string' ? { id: part.id, mime: String(part.mime_type || ''), kind: m.type, name: String(part.filename || '').slice(0, 200) } : null; };
 const textOf = (m) => (m.type === 'text' ? String(m.text?.body || '') : m.type === 'button' ? String(m.button?.text || '') : m.type === 'interactive' ? String(m.interactive?.button_reply?.title || m.interactive?.list_reply?.title || '') : String(m[m.type]?.caption || ''));
 
+const FINISH = new Set(['FINISH', 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING', 'FINISH_ONLY_WABA']);
+const SCOPES = ['whatsapp_business_messaging', 'whatsapp_business_management'];
+
 export default {
   id: 'whatsapp',
   name: 'WhatsApp Business',
-  kind: 'key',
-  env: ['META_APP_SECRET', 'WHATSAPP_WEBHOOK_VERIFY_TOKEN', 'WHATSAPP_SYSTEM_USER_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_BUSINESS_ACCOUNT_ID'],
-  scopes: ['whatsapp_business_messaging', 'whatsapp_business_management'],
-  approval: { needed: true, flag: 'WHATSAPP_APPROVED', note: 'Meta verifies the business and approves the display name and each message template before messages can be sent to customers.' },
+  kind: 'embedded',
+  env: ['META_APP_ID', 'META_APP_SECRET', 'WHATSAPP_CONFIG_ID', 'WHATSAPP_WEBHOOK_VERIFY_TOKEN'],
+  scopes: SCOPES,
+  approval: { needed: true, flag: 'WHATSAPP_APPROVED', note: 'VYNTEX must be a Meta Tech Provider (business verification and App Review of the WhatsApp permissions) before companies can connect their own numbers. Meta also approves each company\'s display name and message templates.' },
+
+  /** What the Connect page needs to open Meta's window. Nothing secret: the app id and the configuration id are public. */
+  embeddedConfig(ctx) {
+    const appId = String(ctx.env('META_APP_ID') || ''); const configId = String(ctx.env('WHATSAPP_CONFIG_ID') || '');
+    if (!ID.test(appId) || !ID.test(configId)) throw new ProviderError('not_configured');
+    return { appId, configId, version: graphVersion(ctx) };
+  },
+
+  /**
+   * What Meta's window handed back: { code, wabaId, phoneId, event }. The code is exchanged here (never in the
+   * browser), the app is subscribed to the account's webhooks, and a new number is registered with a PIN made here
+   * (kept sealed with the token). Returns the tokens to seal; the framework's status call earns "connected".
+   */
+  async embeddedExchange(ctx, input) {
+    const code = String(input?.code || ''); const wabaId = String(input?.wabaId || ''); const phoneId = String(input?.phoneId || ''); const event = String(input?.event || '');
+    if (!code || code.length > 2000 || /\s/.test(code)) throw new ProviderError('bad_request');
+    if (!FINISH.has(event)) throw new ProviderError('bad_request');
+    if (event === 'FINISH_ONLY_WABA' || !ID.test(phoneId)) throw new ProviderError('no_phone_number');
+    if (!ID.test(wabaId)) throw new ProviderError('bad_request');
+    const t = await graph(ctx, '/oauth/access_token', { query: { client_id: ctx.env('META_APP_ID'), client_secret: ctx.env('META_APP_SECRET'), code } });
+    const token = typeof t.access_token === 'string' ? t.access_token : '';
+    if (!token || token.length > 4000) throw new ProviderError('token_exchange_failed');
+    // the company's own token answers for the account and number it chose: anything else is refused
+    const numbers = await graph(ctx, `/${wabaId}/phone_numbers`, { token, query: { fields: 'id', limit: 100 } });
+    if (!(Array.isArray(numbers.data) ? numbers.data : []).some((n) => String(n.id) === phoneId)) throw new ProviderError('wrong_account');
+    const sub = await graph(ctx, `/${wabaId}/subscribed_apps`, { method: 'POST', token });
+    if (sub.success !== true) throw new ProviderError('subscribe_failed');
+    const coexist = event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING';
+    let pin;
+    if (!coexist) {
+      pin = String(randomInt(0, 1_000_000)).padStart(6, '0');
+      const reg = await graph(ctx, `/${phoneId}/register`, { method: 'POST', token, body: { messaging_product: 'whatsapp', pin } });
+      if (reg.success !== true) throw new ProviderError('register_failed');
+    } else {
+      // the app's contacts and last 180 days of chats, asked for once (Meta allows each only once, within 24 hours)
+      for (const type of ['smb_app_state_sync', 'history']) {
+        try { await graph(ctx, `/${phoneId}/smb_app_data`, { method: 'POST', token, body: { messaging_product: 'whatsapp', sync_type: type } }); } catch { /* the chats stay in the app; nothing else depends on it */ }
+      }
+    }
+    return { access_token: token, phone_number_id: phoneId, business_account_id: wabaId, ...(pin ? { pin } : {}), coexist, scope: SCOPES.join(' ') };
+  },
 
   /**
    * The verified call behind "connected": the phone number answers with this token, and it is one of the numbers of
@@ -116,11 +174,14 @@ export default {
     }
   },
 
-  // A system user token is not exchanged, refreshed or revoked from here: it is made and ended in Meta Business settings.
+  // Connecting is Embedded Signup (above). The business token does not expire, so there is nothing to refresh.
   authUrl() { throw new ProviderError('not_oauth'); },
   async exchange() { throw new ProviderError('not_oauth'); },
   async refresh(ctx, tokens) { return tokens; },
-  async revoke() { /* disconnecting removes the connection; the token itself is ended in Meta Business settings */ },
+  /** Disconnecting stops VYNTEX's app from receiving the account's messages. The company's number stays theirs. */
+  async revoke(ctx, tokens) {
+    if (tokens && tokens.access_token && ID.test(String(tokens.business_account_id || ''))) await graph(ctx, `/${tokens.business_account_id}/subscribed_apps`, { method: 'DELETE', token: tokens.access_token });
+  },
 
   /** The templates and their approval state are the only thing to pull: messages arrive by webhook. */
   async sync(ctx) {

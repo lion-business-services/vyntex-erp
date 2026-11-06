@@ -8,12 +8,13 @@ import { useApp } from '@/app/hooks';
 import type { PageProps } from '@/app/routes';
 import { A } from '@/app/router';
 import { act } from '@/store/store';
-import { Avatar, Badge, Button, Card, Empty, Field, Modal, Note, PageHeader, Stat, Tabs, cx, toast } from '@/ui';
+import { Badge, Button, Card, Empty, Field, Modal, Note, PageHeader, Stat, Tabs, cx, toast } from '@/ui';
 import { barberOf, chairOf, payStatement, serviceName, setVisitExtras, statementFor, weekOf, type Statement } from '@/domain/actions/shop';
 import type { PayMethod } from '@/domain/types';
 import { addDaysFrom, today } from '@/lib/dates';
 import { money2 } from '@/lib/money';
 import './commissions.css';
+import { PersonAvatar } from '@/app/person';
 
 type Tab = 'week' | 'history' | 'rules';
 
@@ -57,7 +58,7 @@ export default function CommissionsPage(_: PageProps) {
                 const u = barberOf(data, s.staffId)!; const ch = chairOf(data, s.staffId);
                 return (
                   <tr key={s.staffId} data-barber={s.staffId}>
-                    <td className="t1"><button type="button" className="pay-who linkbtn" onClick={() => setOpen(s.staffId)} data-testid="pay-open"><Avatar name={u.name} size="sm" /><span>{u.name}</span></button></td>
+                    <td className="t1"><button type="button" className="pay-who linkbtn" onClick={() => setOpen(s.staffId)} data-testid="pay-open"><PersonAvatar user={u} name={u.name} size="sm" /><span>{u.name}</span></button></td>
                     <td data-label={t('pay.col.how')} className="small">{ch?.pay === 'rent' ? t('floor.pay.rentLine', { amount: money2(ch.rent) }) : t('floor.pay.splitLine', { split: ch?.split ?? 0, own: ch?.ownSplit ?? 0 })}</td>
                     <td data-label={t('pay.col.visits')} className="num">{s.visits}</td>
                     <td data-label={t('pay.col.services')} className="num">{money2(s.services)}</td>

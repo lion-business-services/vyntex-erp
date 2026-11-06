@@ -3,10 +3,29 @@
 // own configuration (`moduleOn`) and by the viewer's role (`can`): see `modulesFor` below.
 // A module owns src/features/<id>/ (index.tsx, i18n.ts, <id>.css) and its actions in src/domain/actions/<area>.ts.
 import { lazy, type ComponentType } from 'react';
+
+// Every section's code, by its loader: drawn on demand (React.lazy) and fetched ahead of time while the browser is idle
+// (prefetchSections), so a click on a section shows it at once instead of a blank page while its code downloads.
+const LOADERS: Array<() => Promise<unknown>> = [];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function page<T extends ComponentType<any>>(load: () => Promise<{ default: T }>) { LOADERS.push(load); return lazy(load); }
+let prefetched = false;
+/** Fetches every section's code in the background, a few at a time, when the browser has nothing else to do. */
+export function prefetchSections(): void {
+  if (prefetched || typeof window === 'undefined') return;
+  prefetched = true;
+  const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+  if (conn?.saveData) return; // the person asked their device to save data: sections load when opened
+  const queue = [...LOADERS];
+  const idle = (fn: () => void) => ('requestIdleCallback' in window ? (window as Window & { requestIdleCallback: (f: () => void, o?: { timeout: number }) => number }).requestIdleCallback(fn, { timeout: 2000 }) : window.setTimeout(fn, 300));
+  const next = () => { const batch = queue.splice(0, 3); if (!batch.length) return; void Promise.allSettled(batch.map((l) => l())).then(() => idle(next)); };
+  idle(next);
+}
 import {
   LuAlarmClock, LuArmchair, LuBadgeCheck, LuCrown, LuPercent, LuBanknote, LuBookOpen, LuBriefcase, LuCalculator, LuCalendarClock, LuCalendarDays, LuChartColumn, LuFileText, LuHandCoins,
   LuHardHat, LuLayoutDashboard, LuLightbulb, LuListChecks, LuLock, LuMail, LuPlug, LuScrollText, LuSettings, LuShare2, LuShieldCheck, LuSignature, LuSparkles,
   LuStar, LuUserPlus, LuUsers, LuUsersRound, LuWallet, LuZap,
+  LuTruck, LuWrench, LuCalendarCheck, LuClipboardCheck, LuPackageOpen, LuBot, LuMessagesSquare,
 } from 'react-icons/lu';
 import type { ModuleId } from '@/domain/types';
 import type { Permission } from '@/domain/permissions';
@@ -16,6 +35,12 @@ import type { App } from './hooks';
 import { envelopesWaiting } from '@/domain/actions/esign';
 import { assistantOn } from '@/features/assistant/deploy';
 import { inLine } from '@/domain/actions/shop';
+import { isLive, session } from '@/platform/session';
+import { INTERNAL_PLAN } from '@/config/plans';
+import { TRADE_SECTIONS, type SectionId } from '@/features/trade/store';
+
+/** A trade section of the HVAC and plumbing editions: demo level, so only in the public demo, never in a live workspace. */
+const trade = (id: SectionId) => ({ pack }: Pick<App, 'pack'>) => !isLive() && !!TRADE_SECTIONS[pack.id]?.includes(id);
 
 /** `id` is the record in the address (/jobs/<id>), `sub` anything after it. */
 export interface PageProps { id?: string; sub?: string }
@@ -40,46 +65,73 @@ export interface ModuleDef {
   countBad?: boolean;
   /** An extra condition on top of the edition's module list, read from the pack. */
   when?: (app: Pick<App, 'data' | 'pack'>) => boolean;
+  /** Not part of any edition's list: the screen exists exactly when `when` says so. */
+  standalone?: boolean;
+  /**
+   * Shown as a tab of another section instead of a menu entry of its own, when that section is in the menu (Deadlines
+   * inside Tasks, Team calendar inside Appointments, Client messages and AI employees inside Team). Its address, its
+   * permission and its on/off switch stay its own; without the host section it is a menu entry as before.
+   */
+  under?: ModuleId;
+  /** The tab label when it is shown inside a section (defaults to the menu label). */
+  tabKey?: string;
+  /** The place of its tab inside the section (smaller first; the host is always first). */
+  tabOrder?: number;
 }
 
 export const MODULES: ModuleDef[] = [
-  { id: 'dashboard', path: '', group: 'work', icon: LuLayoutDashboard, labelKey: 'nav.dashboard', page: lazy(() => import('@/features/dashboard')) },
+  { id: 'dashboard', path: '', group: 'work', icon: LuLayoutDashboard, labelKey: 'nav.dashboard', page: page(() => import('@/features/dashboard')) },
   // the barbershop edition's live floor: chairs, the walk-in line, the kiosk and the waiting-area display
-  { id: 'floor', path: 'floor', perm: 'appointments', group: 'work', icon: LuArmchair, labelKey: 'nav.floor', page: lazy(() => import('@/features/floor')), count: ({ data }) => inLine(data).length },
+  { id: 'floor', path: 'floor', perm: 'appointments', group: 'work', icon: LuArmchair, labelKey: 'nav.floor', page: page(() => import('@/features/floor')), count: ({ data }) => inLine(data).length },
   // ---- work
-  { id: 'leads', path: 'leads', perm: 'leads', group: 'work', icon: LuUserPlus, labelKey: 'nav.leads', page: lazy(() => import('@/features/leads')), count: ({ data }) => newLeads(data).length },
-  { id: 'clients', path: 'clients', perm: 'clients', group: 'work', icon: LuUsers, labelKey: 'nav.clients', page: lazy(() => import('@/features/clients')) },
-  { id: 'jobs', path: 'jobs', perm: 'jobs', group: 'work', icon: LuBriefcase, labelKey: 'nav.jobs', page: lazy(() => import('@/features/jobs')) },
-  { id: 'appointments', path: 'appointments', perm: 'appointments', group: 'work', icon: LuCalendarClock, labelKey: 'nav.appointments', page: lazy(() => import('@/features/appointments')) },
-  { id: 'calendar', path: 'calendar', perm: 'calendar', group: 'work', icon: LuCalendarDays, labelKey: 'nav.calendar', page: lazy(() => import('@/features/calendar')) },
-  { id: 'tasks', path: 'tasks', perm: 'tasks', group: 'work', icon: LuListChecks, labelKey: 'nav.tasks', page: lazy(() => import('@/features/tasks')), count: ({ data }) => data.tasks.filter(isOverdue).length, countBad: true },
+  { id: 'leads', path: 'leads', perm: 'leads', group: 'work', icon: LuUserPlus, labelKey: 'nav.leads', page: page(() => import('@/features/leads')), count: ({ data }) => newLeads(data).length },
+  { id: 'clients', path: 'clients', perm: 'clients', group: 'work', icon: LuUsers, labelKey: 'nav.clients', page: page(() => import('@/features/clients')) },
+  { id: 'jobs', path: 'jobs', perm: 'jobs', group: 'work', icon: LuBriefcase, labelKey: 'nav.jobs', page: page(() => import('@/features/jobs')) },
+  { id: 'appointments', path: 'appointments', perm: 'appointments', group: 'work', icon: LuCalendarClock, labelKey: 'nav.appointments', tabKey: 'nav.tab.appointments', page: page(() => import('@/features/appointments')) },
+  // ---- the HVAC and plumbing trade sections (demo level)
+  { id: 'dispatch', path: 'dispatch', perm: 'jobs', group: 'work', icon: LuTruck, labelKey: 'nav.dispatch', page: page(() => import('@/features/trade/dispatch')), when: trade('dispatch') },
+  { id: 'agreements', path: 'agreements', perm: 'clients', group: 'work', icon: LuCalendarCheck, labelKey: 'nav.agreements', page: page(() => import('@/features/trade/agreements')), when: trade('agreements') },
+  { id: 'equipment', path: 'equipment', perm: 'clients', group: 'work', icon: LuWrench, labelKey: 'nav.equipment', page: page(() => import('@/features/trade/client-equipment')), when: trade('equipment') },
+  { id: 'supplies', path: 'supplies', perm: 'jobs', group: 'work', icon: LuPackageOpen, labelKey: 'nav.supplies', page: page(() => import('@/features/trade/supplies')), when: trade('supplies') },
+  { id: 'permits', path: 'permits', perm: 'jobs', group: 'work', icon: LuClipboardCheck, labelKey: 'nav.permits', page: page(() => import('@/features/trade/compliance')), when: trade('permits') },
+  { id: 'calendar', path: 'calendar', perm: 'calendar', group: 'work', icon: LuCalendarDays, labelKey: 'nav.calendar', under: 'appointments', tabKey: 'nav.tab.teamCalendar', page: page(() => import('@/features/calendar')) },
+  { id: 'tasks', path: 'tasks', perm: 'tasks', group: 'work', icon: LuListChecks, labelKey: 'nav.tasks', page: page(() => import('@/features/tasks')), count: ({ data }) => data.tasks.filter(isOverdue).length, countBad: true },
   // ---- business
-  { id: 'team', path: 'team', perm: 'team', group: 'business', icon: LuHardHat, labelKey: 'nav.team', page: lazy(() => import('@/features/team')) },
-  { id: 'catalog', path: 'catalog', perm: 'catalog', group: 'business', icon: LuBookOpen, labelKey: 'nav.catalog', page: lazy(() => import('@/features/catalog')) },
-  { id: 'opportunities', path: 'opportunities', perm: 'opportunities', group: 'business', icon: LuLightbulb, labelKey: 'nav.opportunities', page: lazy(() => import('@/features/opportunities')) },
-  { id: 'documents', path: 'documents', perm: 'documents', group: 'business', icon: LuFileText, labelKey: 'nav.documents', page: lazy(() => import('@/features/documents')) },
-  { id: 'esign', path: 'esign', perm: 'esign', group: 'business', icon: LuSignature, labelKey: 'nav.esign', page: lazy(() => import('@/features/esign')), count: ({ data }) => envelopesWaiting(data) },
-  { id: 'messages', path: 'messages', perm: 'comms', group: 'business', icon: LuMail, labelKey: 'nav.messages', page: lazy(() => import('@/features/messages')), count: ({ data }) => data.messages.filter((m) => m.status === 'draft').length },
-  { id: 'payments', path: 'payments', perm: 'money', group: 'business', icon: LuWallet, labelKey: 'nav.money', page: lazy(() => import('@/features/payments')) },
-  { id: 'reviews', path: 'reviews', perm: 'reviews', group: 'business', icon: LuStar, labelKey: 'nav.reviews', page: lazy(() => import('@/features/reviews')) },
-  { id: 'deadlines', path: 'deadlines', perm: 'deadlines', group: 'business', icon: LuAlarmClock, labelKey: 'nav.deadlines', page: lazy(() => import('@/features/deadlines')) },
-  { id: 'memberships', path: 'memberships', perm: 'clients', group: 'business', icon: LuCrown, labelKey: 'nav.memberships', page: lazy(() => import('@/features/memberships')) },
-  { id: 'commissions', path: 'barber-pay', perm: 'payroll', group: 'business', icon: LuPercent, labelKey: 'nav.commissions', page: lazy(() => import('@/features/commissions')) },
-  { id: 'reports', path: 'reports', perm: 'reports', group: 'business', icon: LuChartColumn, labelKey: 'nav.reports', page: lazy(() => import('@/features/reports')) },
+  { id: 'team', path: 'team', perm: 'team', group: 'business', icon: LuHardHat, labelKey: 'nav.team', tabKey: 'nav.tab.profiles', page: page(() => import('@/features/team')) },
+  { id: 'catalog', path: 'catalog', perm: 'catalog', group: 'business', icon: LuBookOpen, labelKey: 'nav.catalog', page: page(() => import('@/features/catalog')) },
+  { id: 'opportunities', path: 'opportunities', perm: 'opportunities', group: 'business', icon: LuLightbulb, labelKey: 'nav.opportunities', page: page(() => import('@/features/opportunities')) },
+  { id: 'documents', path: 'documents', perm: 'documents', group: 'business', icon: LuFileText, labelKey: 'nav.documents', page: page(() => import('@/features/documents')) },
+  { id: 'esign', path: 'esign', perm: 'esign', group: 'business', icon: LuSignature, labelKey: 'nav.esign', page: page(() => import('@/features/esign')), count: ({ data }) => envelopesWaiting(data) },
+  { id: 'messages', path: 'messages', perm: 'comms', group: 'business', icon: LuMail, labelKey: 'nav.messages', under: 'team', tabOrder: 20, tabKey: 'nav.tab.clientMessages', page: page(() => import('@/features/messages')), count: ({ data }) => data.messages.filter((m) => m.status === 'draft').length },
+  { id: 'payments', path: 'payments', perm: 'money', group: 'business', icon: LuWallet, labelKey: 'nav.money', page: page(() => import('@/features/payments')) },
+  // invoices are sent from the server (0086): a tab of Payments in a live workspace that has Payments
+  { id: 'invoices', path: 'invoices', perm: 'money', group: 'business', icon: LuFileText, labelKey: 'nav.invoices', under: 'payments', standalone: true,
+    page: page(() => import('@/features/invoices')), when: ({ data, pack }) => isLive() && moduleOn(data, pack, 'payments') },
+  { id: 'reviews', path: 'reviews', perm: 'reviews', group: 'business', icon: LuStar, labelKey: 'nav.reviews', page: page(() => import('@/features/reviews')) },
+  { id: 'deadlines', path: 'deadlines', perm: 'deadlines', group: 'business', icon: LuAlarmClock, labelKey: 'nav.deadlines', under: 'tasks', page: page(() => import('@/features/deadlines')) },
+  { id: 'memberships', path: 'memberships', perm: 'clients', group: 'business', icon: LuCrown, labelKey: 'nav.memberships', page: page(() => import('@/features/memberships')) },
+  { id: 'commissions', path: 'barber-pay', perm: 'payroll', group: 'business', icon: LuPercent, labelKey: 'nav.commissions', page: page(() => import('@/features/commissions')) },
+  { id: 'reports', path: 'reports', perm: 'reports', group: 'business', icon: LuChartColumn, labelKey: 'nav.reports', page: page(() => import('@/features/reports')) },
   // the subcontractor W-9 and 1099 screens: only where the edition has them
-  { id: 'compliance', path: 'compliance', perm: 'compliance', group: 'business', icon: LuShieldCheck, labelKey: 'nav.compliance', page: lazy(() => import('@/features/compliance')), when: ({ pack }) => pack.compliance },
-  { id: 'social', path: 'social', perm: 'social', group: 'business', icon: LuShare2, labelKey: 'nav.social', page: lazy(() => import('@/features/social')) },
-  { id: 'cash', path: 'cash', perm: 'cash', group: 'business', icon: LuBanknote, labelKey: 'nav.cash', page: lazy(() => import('@/features/cash')) },
-  { id: 'payroll', path: 'payroll', perm: 'payroll', group: 'business', icon: LuHandCoins, labelKey: 'nav.payroll', page: lazy(() => import('@/features/payroll')) },
-  { id: 'bookkeeping', path: 'bookkeeping', perm: 'bookkeeping', group: 'business', icon: LuCalculator, labelKey: 'nav.bookkeeping', page: lazy(() => import('@/features/bookkeeping')) },
-  { id: 'licensing', path: 'licensing', perm: 'licensing', group: 'business', icon: LuBadgeCheck, labelKey: 'nav.licensing', page: lazy(() => import('@/features/licensing')) },
+  { id: 'compliance', path: 'compliance', perm: 'compliance', group: 'business', icon: LuShieldCheck, labelKey: 'nav.compliance', page: page(() => import('@/features/compliance')), when: ({ pack }) => pack.compliance },
+  { id: 'social', path: 'social', perm: 'social', group: 'business', icon: LuShare2, labelKey: 'nav.social', page: page(() => import('@/features/social')) },
+  { id: 'cash', path: 'cash', perm: 'cash', group: 'business', icon: LuBanknote, labelKey: 'nav.cash', page: page(() => import('@/features/cash')) },
+  { id: 'payroll', path: 'payroll', perm: 'payroll', group: 'business', icon: LuHandCoins, labelKey: 'nav.payroll', page: page(() => import('@/features/payroll')) },
+  { id: 'bookkeeping', path: 'bookkeeping', perm: 'bookkeeping', group: 'business', icon: LuCalculator, labelKey: 'nav.bookkeeping', page: page(() => import('@/features/bookkeeping')) },
+  { id: 'licensing', path: 'licensing', perm: 'licensing', group: 'business', icon: LuBadgeCheck, labelKey: 'nav.licensing', page: page(() => import('@/features/licensing')) },
   // ---- system
-  { id: 'automations', path: 'automations', perm: 'automations', group: 'system', icon: LuZap, labelKey: 'nav.automations', page: lazy(() => import('@/features/automations')) },
-  { id: 'integrations', path: 'integrations', perm: 'integrations', group: 'system', icon: LuPlug, labelKey: 'nav.integrations', page: lazy(() => import('@/features/integrations')) },
-  { id: 'assistant', path: 'assistant', perm: 'assistant', group: 'system', icon: LuSparkles, labelKey: 'nav.assistant', page: lazy(() => import('@/features/assistant')), when: ({ data, pack }) => assistantOn(data, pack) },
-  { id: 'settings', path: 'settings', perm: 'settings', group: 'system', icon: LuSettings, labelKey: 'nav.settings', page: lazy(() => import('@/features/settings')) },
-  { id: 'security', path: 'security', perm: 'users', group: 'system', icon: LuLock, labelKey: 'nav.security', page: lazy(() => import('@/features/security')) },
-  { id: 'audit', path: 'audit', perm: 'audit', group: 'system', icon: LuScrollText, labelKey: 'nav.audit', page: lazy(() => import('@/features/audit')) },
+  { id: 'automations', path: 'automations', perm: 'automations', group: 'system', icon: LuZap, labelKey: 'nav.automations', page: page(() => import('@/features/automations')) },
+  { id: 'integrations', path: 'integrations', perm: 'integrations', group: 'system', icon: LuPlug, labelKey: 'nav.integrations', page: page(() => import('@/features/integrations')) },
+  { id: 'assistant', path: 'assistant', perm: 'assistant', group: 'system', icon: LuSparkles, labelKey: 'nav.assistant', page: page(() => import('@/features/assistant')), when: ({ data, pack }) => assistantOn(data, pack) },
+  { id: 'settings', path: 'settings', perm: 'settings', group: 'system', icon: LuSettings, labelKey: 'nav.settings', page: page(() => import('@/features/settings')) },
+  // the team's chat (0087): a tab of Team, right after the profiles, in a live workspace with a Team section
+  { id: 'teamchat', path: 'chat', perm: 'team', group: 'business', icon: LuMessagesSquare, labelKey: 'nav.teamchat', under: 'team', tabOrder: 10, standalone: true,
+    page: page(() => import('@/features/teamchat')), when: ({ data, pack }) => isLive() && moduleOn(data, pack, 'team') },
+  // VYNTEX USA's own workspace only (plan internal), signed in: its AI employees and their approvals (0084)
+  { id: 'aiteam', path: 'ai-employees', perm: 'users', group: 'system', icon: LuBot, labelKey: 'nav.aiteam', under: 'team', tabOrder: 30, page: page(() => import('@/features/aiteam')), standalone: true,
+    when: () => isLive() && session()?.planId === INTERNAL_PLAN },
+  { id: 'security', path: 'security', perm: 'users', group: 'system', icon: LuLock, labelKey: 'nav.security', page: page(() => import('@/features/security')) },
+  { id: 'audit', path: 'audit', perm: 'audit', group: 'system', icon: LuScrollText, labelKey: 'nav.audit', page: page(() => import('@/features/audit')) },
 ];
 /** An edition whose team page is the office team shows people, not hard hats. */
 export const TEAM_ICON_OFFICE: Icon = LuUsersRound;
@@ -91,6 +143,7 @@ export const moduleById = (id: ModuleDef['id']): ModuleDef | undefined => MODULE
 /** Whether a screen exists for the company on screen (edition, company configuration and the module's own condition). Says nothing about the viewer's role. */
 export function moduleExists(m: ModuleDef, app: Pick<App, 'data' | 'pack'>): boolean {
   if (m.id === 'dashboard') return true;
+  if (m.standalone) return !!m.when?.(app);
   return moduleOn(app.data, app.pack, m.id) && (!m.when || m.when(app));
 }
 /**
@@ -109,4 +162,21 @@ export function modulesFor(app: Pick<App, 'data' | 'pack' | 'can'>): ModuleDef[]
     (app.pack.id !== 'barber' || BARBER_DAILY_MODULES.includes(m.id)) &&
     moduleExists(m, app) &&
     (!m.perm || app.can(m.perm))).sort((a, b) => order(a) - order(b));
+}
+
+/**
+ * The menu: the screens the viewer gets, less the ones shown as a tab of a section that is itself in the menu. Each entry
+ * carries the screens of its section (itself first), so the menu can light up for any of them and the page can show tabs.
+ */
+export interface MenuEntry { module: ModuleDef; tabs: ModuleDef[] }
+export function menuFor(app: Pick<App, 'data' | 'pack' | 'can'>): MenuEntry[] {
+  const list = modulesFor(app);
+  const shown = new Set(list.map((m) => m.id));
+  const hosted = (m: ModuleDef) => !!m.under && shown.has(m.under);
+  return list.filter((m) => !hosted(m)).map((m) => ({ module: m, tabs: [m, ...list.filter((c) => hosted(c) && c.under === m.id).sort((a, b) => (a.tabOrder ?? 50) - (b.tabOrder ?? 50))] }));
+}
+/** The section a screen is shown in (its tabs), or undefined when it stands alone. */
+export function sectionOf(id: ModuleDef['id'], app: Pick<App, 'data' | 'pack' | 'can'>): MenuEntry | undefined {
+  const e = menuFor(app).find((x) => x.tabs.some((m) => m.id === id));
+  return e && e.tabs.length > 1 ? e : undefined;
 }

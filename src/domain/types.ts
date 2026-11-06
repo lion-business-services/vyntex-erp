@@ -5,7 +5,7 @@
 export type Lang = 'en' | 'es' | 'zh';
 /** Text an edition ships in several languages. English and Spanish are always present. Read it with `pick()` from '@/i18n'. */
 export type L10n<T = string> = { en: T; es: T; zh?: T };
-export type IndustryId = 'build' | 'clean' | 'landscape' | 'wash' | 'haul' | 'snow' | 'turnover' | 'events' | 'practice' | 'barber';
+export type IndustryId = 'build' | 'clean' | 'landscape' | 'wash' | 'haul' | 'snow' | 'turnover' | 'events' | 'hvac' | 'plumbing' | 'practice' | 'barber';
 /** YYYY-MM-DD */
 export type ISODate = string;
 /** Full ISO timestamp */
@@ -499,7 +499,15 @@ export type ModuleId =
   | 'reports' | 'compliance' | 'automations' | 'assistant' | 'settings' | 'catalog' | 'opportunities' | 'reviews' | 'integrations'
   | 'social' | 'cash' | 'payroll' | 'bookkeeping' | 'licensing' | 'deadlines' | 'security' | 'audit'
   // the barbershop edition: the live floor (chairs, walk-in queue, kiosk, display), memberships and gift cards, barber pay
-  | 'floor' | 'memberships' | 'commissions';
+  | 'floor' | 'memberships' | 'commissions'
+  // the HVAC and plumbing editions' trade sections (demo level, src/features/trade)
+  | 'dispatch' | 'agreements' | 'equipment' | 'supplies' | 'permits'
+  // VYNTEX USA's own workspace: its AI employees and what they ask a person to decide (src/features/aiteam)
+  | 'aiteam'
+  // invoices emailed with a pay link, a tab of Payments in a live workspace (src/features/invoices)
+  | 'invoices'
+  // the team's own chat, with the AI employees (src/features/teamchat), a tab of Team in a live workspace
+  | 'teamchat';
 
 /** A pipeline stage. `kind` is what the rest of the app reasons about; the id and label are free. */
 export interface StageDef {
@@ -584,12 +592,57 @@ export interface SecureAccessLog { id: string; at: ISODateTime; clientId: string
 export interface AuditEntry { id: string; at: ISODateTime; by: string; action: string; entity?: string; entityId?: string; summary?: string; ipHash?: string }
 
 // ---- service catalog
-export interface CatalogTier { id: string; name: string; price: number; unit: 'flat' | 'hour' | 'month' | 'quarter' | 'year'; note?: string; externalIds?: Record<string, string> }
+/** What a tier charges for: a setup fee, a recurring fee, hours, a one-time price or a price per unit. Only "setup" is labelled. */
+export type CatalogTierKind = 'setup' | 'recurring' | 'hourly' | 'one_time' | 'per_unit';
+export interface CatalogTier {
+  id: string; name: string; price: number; unit: 'flat' | 'hour' | 'month' | 'quarter' | 'year'; note?: string; externalIds?: Record<string, string>;
+  /** The price is quoted for each client: shown as "Quote" (or "From $X" with `from` and a price), never as $0. Kept in `extra`. */
+  quote?: boolean;
+  /** The price is a starting price: "From $4,000". Kept in `extra`. */
+  from?: boolean;
+  /** What a flat price is charged per, written out: "per form", "per user per month". Kept in `extra`. */
+  per?: string;
+  kind?: CatalogTierKind;
+}
+/** Text of a service in one language. The lists are "What's included" and "Not included", one item per entry. */
+export interface CatalogServiceText { name?: string; description?: string; highlights?: string[]; excludes?: string[]; bestFor?: string; /** "7 to 10 business days". */ leadTime?: string; categoryNote?: string }
 export interface CatalogService {
   id: string;
   name: string;
-  /** Names and descriptions in other languages, when the business wrote them. */
-  i18n?: Partial<Record<Lang, { name?: string; description?: string }>>;
+  /** Names, descriptions and the lists of what is included in other languages, when the business wrote them. */
+  i18n?: Partial<Record<Lang, CatalogServiceText>>;
+  /** The catalog ("book") the service is listed in, e.g. "VYNTEX Services". A company with several books sees one tab per book. Kept in `extra`. */
+  book?: string;
+  /** Place of the book among the company's books (the smallest number of its services counts). Kept in `extra`. */
+  bookOrder?: number;
+  /** Place of the service within its category. Without it, services are sorted by name. Kept in `extra`. */
+  order?: number;
+  /** Place of the service's category within its book (the smallest number of its services counts). Kept in `extra`. */
+  categoryOrder?: number;
+  /** "What's included", "Not included" and "Best for" in the base language. Kept in `extra`. */
+  highlights?: string[];
+  excludes?: string[];
+  bestFor?: string;
+  /** Shown with a "Most popular" ribbon on the catalog cards. Kept in `extra`. */
+  popular?: boolean;
+  /** How long it takes to deliver, in the base language ("7 to 10 business days"). Kept in `extra`. */
+  leadTime?: string;
+  /** The commercial terms a card states when the company set them (none are assumed). Kept in `extra`. */
+  /** Months the client commits to before the monthly fee can be cancelled. */
+  minTermMonths?: number;
+  /** The setup fee can be split into this many equal payments. */
+  installments?: number;
+  /** Paying the year up front costs this many monthly fees. */
+  prepayMonths?: number;
+  /** The monthly fee is an optional care plan (a website): no yearly prepay and no minimum term are shown for it. */
+  carePlan?: boolean;
+  /** What the carriers usually charge a month, at cost, as [low, high] in dollars. */
+  usageRange?: [number, number];
+  /** One sentence about the service's category, shown under the category tabs. Kept in `extra` (Spanish in i18n.es). */
+  categoryNote?: string;
+  /** Software plans: people included ('unlimited' or a number), and the welcome credit in dollars (0: none). */
+  users?: number | 'unlimited';
+  welcomeCredit?: number;
   category: string;
   description?: string;
   active: boolean;

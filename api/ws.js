@@ -12,8 +12,8 @@
 // The browser never sees a Supabase address or token. A function that is not on the allow-list cannot be reached,
 // whatever its name, and the functions that reveal, export or change who can do what also need a fresh identity check.
 import { randomUUID } from 'node:crypto';
-import { entry, ok, fail, readJson, readRaw, HttpError, methodNotAllowed, upstreamError, isUuid, isPlainObject, json } from './_lib/respond.js';
-import { appOrigin, isTest, need } from './_lib/env.js';
+import { entry, ok, fail, readJson, readRaw, HttpError, methodNotAllowed, upstreamError, isUuid, isPlainObject, json, log } from './_lib/respond.js';
+import { appOrigin, isTest, need, deployId } from './_lib/env.js';
 import { userRpc, serviceRpc, storage } from './_lib/supabase.js';
 import { guard } from './_lib/guard.js';
 import { limit, keyHash } from './_lib/ratelimit.js';
@@ -23,6 +23,7 @@ import { sendSystemEmail, inviteEmail } from './_lib/mail.js';
 import { RPCS } from './_lib/rpc-allowlist.js';
 
 const MAX_APPLY_BYTES = 1024 * 1024;
+const BIG_RPCS = new Set(['assistant_ask', 'assistant_transcribe']);
 const MAX_OPS = 500;
 const MAX_FILE_BYTES = 4 * 1024 * 1024;   // a Vercel function accepts a body of about 4.5 MB
 const BUCKET = 'workspace-files';
@@ -75,7 +76,8 @@ async function rpc(request, name) {
   // A name that is not on the list does not exist, whether or not the database has a function called that.
   if (!spec) return fail(404, 'unknown_operation');
   const { session, cookies } = await guard(request, { stepUp: spec.stepUp });
-  const body = await readJson(request, 256 * 1024);
+  // a question with pictures, and voice to be written down (0096), may be larger than any other call
+  const body = await readJson(request, BIG_RPCS.has(name) ? 4 * 1024 * 1024 : 256 * 1024);
   const tenant = tenantOf(body.tenant);
   const args = body.args === undefined ? {} : body.args;
   if (!isPlainObject(args) || Object.keys(args).length > 30) return fail(400, 'invalid_args', {}, { cookies });
@@ -141,6 +143,15 @@ async function invite(request, session, cookies, tenant, args, idem) {
     return json(status, answer, { cookies });
   };
 
+  // Seats: the users the company's plan includes (pricing file, through the domain bundle). Office invitations past the
+  // limit are refused before anything is made; members already in the company are never touched.
+  const seats = await seatCheck(session, tenant, role);
+  if (seats) {
+    if (idemKey) await serviceRpc('idem_abort', { p_scope: 'invite', p_key: `${session.uid}:${idemKey}` });
+    await securityEvent({ tenant, user: session.uid, kind: 'operation.refused', outcome: 'denied', request, meta: { name: 'member_invite', reason: 'seat_limit' } });
+    return fail(409, 'seat_limit', seats, { cookies });
+  }
+
   const token = randomToken(32);
   const created = await userRpc(session.at, 'invite_create', {
     p_tenant: tenant, p_email: email, p_role: role, p_name: typeof args.name === 'string' ? args.name.slice(0, 200) : '',
@@ -148,6 +159,10 @@ async function invite(request, session, cookies, tenant, args, idem) {
   });
   if (!created.ok) {
     if (idemKey) await serviceRpc('idem_abort', { p_scope: 'invite', p_key: `${session.uid}:${idemKey}` });
+    // said as it is, so the Team screen explains it: a Partner Portal account cannot join a company workspace (0098),
+    // and someone already on the team needs no invitation
+    if (created.hint === 'partner_account' || created.word === 'partner_account') return fail(409, 'partner_account', {}, { cookies });
+    if (created.word === 'already_member') return fail(409, 'already_member', {}, { cookies });
     const e = upstreamError(created); e.extra = { cookies }; throw e;
   }
   const inv = created.data;
@@ -163,6 +178,26 @@ async function invite(request, session, cookies, tenant, args, idem) {
     return finish(200, { ok: true, invitation: { id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expires_at }, delivery: sent.reason === 'not_configured' ? 'manual' : 'manual_failed', link });
   }
   return finish(200, { ok: true, invitation: { id: inv.id, email: inv.email, role: inv.role, expiresAt: inv.expires_at }, delivery: 'sent' });
+}
+
+/**
+ * Null when one more person in `role` may be invited; otherwise { limit, used, plan } for the answer. Only VYNTEX ERP sells
+ * plans with a number of users: LBS Command has none. The count comes from the database with the person's own token
+ * (public.seat_usage refuses anyone who is not a member); the limit comes from the pricing file.
+ */
+async function seatCheck(session, tenant, role) {
+  if (deployId() !== 'vyntex') return null;
+  const { seats } = await import('./_lib/domain.bundle.mjs');
+  if (!seats.takesSeat(role)) return null;
+  const r = await userRpc(session.at, 'seat_usage', { p_tenant: tenant });
+  // A database without migration 0078 has no count to give: invitations stay unlimited there (logged) rather than
+  // stopping every invitation. Any other failure stops the invitation.
+  if (!r.ok && (r.sqlstate === 'PGRST202' || r.sqlstate === '42883')) { log('ws', 'seat_usage_missing'); return null; }
+  if (!r.ok) throw upstreamError(r);
+  const u = isPlainObject(r.data) ? r.data : {};
+  const limit = seats.seatLimit(String(u.industry || ''), typeof u.plan === 'string' ? u.plan : null);
+  const used = (Number(u.members) || 0) + (Number(u.invites) || 0);
+  return seats.seatAvailable(limit, used, role) ? null : { limit, used, plan: String(u.plan || '') };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

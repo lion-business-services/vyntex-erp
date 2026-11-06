@@ -91,6 +91,12 @@ function usable(entry) {
 export async function startConnect({ adapter, session, tenantId, request, returnTo = '/' }) {
   usable(adapter);
   const origin = appOrigin(request);
+  // Embedded Signup (WhatsApp): the page opens the provider's own window with these public ids; finishEmbedded() ends it
+  if (adapter.kind === 'embedded') {
+    await authorize(session, tenantId, 'connect');
+    try { return { embedded: adapter.embeddedConfig(makeCtx(adapter, { tenantId, origin })) }; }
+    catch (e) { throw new HttpError(409, e instanceof ProviderError ? e.code : 'not_configured'); }
+  }
   if (adapter.kind !== 'oauth') {
     const memberId = await authorize(session, tenantId, 'connect');
     return { card: await verifyAndStore({ adapter, tenantId, memberId, tokens: null, origin, request, user: session.uid }) };
@@ -148,6 +154,25 @@ export async function finishConnect({ adapter, request, session, code, state, pa
   return { returnTo: row.return_to || '/', result: 'connected' };
 }
 
+/**
+ * Embedded Signup finished in the provider's window: { code, ... } from the page, which a person signed in to this
+ * company sent with a fresh identity check. The adapter exchanges the code; the status call earns "connected".
+ */
+export async function finishEmbedded({ adapter, session, tenantId, request, input }) {
+  usable(adapter);
+  if (adapter.kind !== 'embedded') throw new HttpError(404, 'not_found');
+  const memberId = await authorize(session, tenantId, 'connect');
+  const origin = appOrigin(request);
+  let tokens;
+  try { tokens = await adapter.embeddedExchange(makeCtx(adapter, { tenantId, origin }), input); }
+  catch (e) {
+    const reason = e instanceof ProviderError ? e.code : 'token_exchange_failed';
+    await securityEvent({ tenant: tenantId, user: session.uid, kind: 'integration.connect_failed', outcome: 'failed', request, meta: { provider: adapter.id, reason } });
+    throw new HttpError(502, 'verify_failed', { reason });
+  }
+  return verifyAndStore({ adapter, tenantId, memberId, tokens, origin, request, user: session.uid });
+}
+
 /** Uses a state up without exchanging anything (the person refused on the provider's page). */
 export async function discardState(adapter, state) {
   const hash = stateHash(state);
@@ -170,7 +195,7 @@ async function verifyAndStore({ adapter, tenantId, memberId, tokens, origin, req
     const reason = (status && status.reason) || 'status_failed';
     // A refused sign-in says nothing about the tokens already stored: a working connection stays as it is. Only a
     // connection that has no tokens of its own (a key or platform provider), or none that works, is written as failed.
-    const keep = adapter.kind === 'oauth' && existing && existing.token_enc && ['connected', 'attention'].includes(existing.state);
+    const keep = (adapter.kind === 'oauth' || adapter.kind === 'embedded') && existing && existing.token_enc && ['connected', 'attention'].includes(existing.state);
     if (!keep) await store.putRow(tenantId, adapter.id, { state: 'error', reason, last_error: reason, health: 'down' }, null);
     await securityEvent({ tenant: tenantId, user, kind: 'integration.connect_failed', outcome: 'failed', request, meta: { provider: adapter.id, reason } });
     throw new HttpError(502, 'verify_failed', { reason });
@@ -199,7 +224,8 @@ async function verifyAndStore({ adapter, tenantId, memberId, tokens, origin, req
 export async function connectionCtx(adapter, tenantId, { fetchFn, origin = '' } = {}) {
   const row = await store.getRow(tenantId, adapter.id);
   if (!row || !['connected', 'attention'].includes(row.state)) throw new ProviderError('not_connected');
-  if (adapter.kind !== 'oauth') return makeCtx(adapter, { tenantId, origin, row, fetchFn });
+  // a key or platform connection has no tokens of its own; an embedded one (WhatsApp) carries the company's sealed token
+  if (adapter.kind !== 'oauth') return makeCtx(adapter, { tenantId, origin, row, fetchFn, tokens: adapter.kind === 'embedded' && row.token_enc ? await store.tokensOf(row) : null });
   let tokens = await store.tokensOf(row);
   if (!tokens) {
     await store.putRow(tenantId, adapter.id, { state: 'reauth', reason: 'token_unreadable', last_error: 'token_unreadable' }, null);

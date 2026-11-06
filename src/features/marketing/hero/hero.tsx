@@ -4,6 +4,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
   LuBriefcase, LuDroplets, LuHardHat, LuKeyRound, LuScissors, LuSnowflake, LuSparkles, LuTent, LuTrees, LuTruck,
+  LuAirVent, LuWrench,
 } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { Link } from '@/app/router';
@@ -20,7 +21,7 @@ import { ProductWindow } from './window';
 export const EDITION_ICON: Record<string, ReactNode> = {
   build: <LuHardHat aria-hidden="true" />, clean: <LuSparkles aria-hidden="true" />, landscape: <LuTrees aria-hidden="true" />, wash: <LuDroplets aria-hidden="true" />,
   haul: <LuTruck aria-hidden="true" />, snow: <LuSnowflake aria-hidden="true" />, turnover: <LuKeyRound aria-hidden="true" />, events: <LuTent aria-hidden="true" />,
-  barber: <LuScissors aria-hidden="true" />,
+  hvac: <LuAirVent aria-hidden="true" />, plumbing: <LuWrench aria-hidden="true" />, barber: <LuScissors aria-hidden="true" />,
 };
 
 /** A sentence with the industry's own words set apart, so the visitor sees what the edition selector changes. */
@@ -107,7 +108,8 @@ export function Hero() {
             <h1 id="mk-h1">{t('mk.hero.h1a')} <span className="chrome-text mk-sheen">{t('mk.hero.h1b')}</span></h1>
             <p className={cx('mk-lede', switched && 'in')} key={pack.id + lang}><Worded t={t} k="mk.hero.lede" tokens={['jobs', 'workers']} /></p>
             <div className="mk-cta">
-              <Link to="/demo" className="btn primary lg" data-testid="mk-open-demo">{t('mk.cta.demo')}<Arrow /></Link>
+              <Link to="/start-trial" className="btn primary lg" data-testid="mk-start-trial">{t('mk.tr.cta')}<Arrow /></Link>
+              <Link to="/demo" className="btn lg" data-testid="mk-open-demo">{t('mk.cta.demo')}<Arrow /></Link>
               <Link to="/request-demo" className="btn lg" data-testid="mk-request">{t('mk.cta.request')}</Link>
               <Link to="/pricing" className="mk-tlink" data-testid="mk-pricing">{t('mk.cta.pricing')}</Link>
             </div>

@@ -4,7 +4,7 @@
 // Ids of connected systems (`externalIds`) follow the owner's standing rule for the Square catalog: insert only, never
 // upsert. A sync may add a service or a tier the other system does not have yet and write the new id here once
 // (`linkExternalId`); it never replaces an id that is already there, and nothing in this file copies one to another record.
-import type { CatalogService, CatalogTier, DemoState, Job, Lang, Playbook, PlaybookStep, Task, TeamUser } from '../types';
+import type { CatalogService, CatalogServiceText, CatalogTier, CatalogTierKind, DemoState, Job, Lang, Playbook, PlaybookStep, Task, TeamUser } from '../types';
 import { type Ctx, logActivity } from '../context';
 import { addDaysFrom, today } from '@/lib/dates';
 import { uid } from '@/lib/id';
@@ -15,11 +15,26 @@ export type Service = CatalogService & { /** Short code the business uses for th
 export type PlaybookFull = Playbook & { welcomeI18n?: Partial<Record<Lang, string>> };
 
 export const TIER_UNITS: CatalogTier['unit'][] = ['flat', 'hour', 'month', 'quarter', 'year'];
+export const TIER_KINDS: CatalogTierKind[] = ['setup', 'recurring', 'hourly', 'one_time', 'per_unit'];
 
 /* ---------- reading ---------- */
 /** The name in the viewer's language when the business wrote one, otherwise the name as entered. */
 export const serviceName = (s: CatalogService, lang: Lang): string => s.i18n?.[lang]?.name || s.name;
 export const serviceDescription = (s: CatalogService, lang: Lang): string => s.i18n?.[lang]?.description || s.description || '';
+/** "What's included" in the viewer's language, else the base list. */
+export const serviceHighlights = (s: CatalogService, lang: Lang): string[] => (s.i18n?.[lang]?.highlights?.length ? s.i18n[lang]!.highlights! : s.highlights ?? []);
+/** "Not included" in the viewer's language, else the base list. */
+export const serviceExcludes = (s: CatalogService, lang: Lang): string[] => (s.i18n?.[lang]?.excludes?.length ? s.i18n[lang]!.excludes! : s.excludes ?? []);
+export const serviceBestFor = (s: CatalogService, lang: Lang): string => s.i18n?.[lang]?.bestFor || s.bestFor || '';
+/** How long the service takes to deliver, in the viewer's language when written, else the base language. */
+export const serviceLeadTime = (s: CatalogService, lang: Lang): string => s.i18n?.[lang]?.leadTime || s.leadTime || '';
+/** The book a service is listed in, trimmed; empty when it is in none. */
+export const bookOf = (s: Pick<CatalogService, 'book'>): string => (typeof s.book === 'string' ? s.book.trim() : '');
+/**
+ * The price a tier puts on new work. A quoted tier puts nothing: the person types the agreed amount, so a quote never
+ * lands on an engagement, an estimate or an opportunity as $0 or as its starting price.
+ */
+export const tierAmount = (tier: CatalogTier | undefined): number => (tier && !tier.quote ? tier.price : 0);
 export const serviceOf = (d: Pick<DemoState, 'catalog'>, id: string | undefined): Service | undefined => (id ? (d.catalog ?? []).find((s) => s.id === id) : undefined);
 /** The named tier, or the first one: the first tier is the price a service starts from. */
 export const tierOf = (s: CatalogService | undefined, tierId?: string): CatalogTier | undefined => s?.tiers.find((x) => x.id === tierId) ?? s?.tiers[0];
@@ -43,15 +58,31 @@ export type ServiceInput = Omit<Service, 'id' | 'tiers' | 'externalIds'> & { tie
 const clean = (s: string | undefined) => (s ?? '').trim();
 const cents = (n: number) => Math.max(0, Math.round((Number(n) || 0) * 100) / 100);
 
-/** Names and descriptions per language, without empty entries. */
-function tidyI18n(i18n: CatalogService['i18n']): CatalogService['i18n'] {
+/** A list of short lines without empty ones, or nothing. */
+const lines = (l: unknown): string[] | undefined => { const out = Array.isArray(l) ? l.map((x) => clean(String(x ?? ''))).filter(Boolean) : []; return out.length ? out : undefined; };
+/** One language's text without empty entries. Fields this file does not know are kept as they are. */
+function tidyText(v: CatalogServiceText | undefined): CatalogServiceText | undefined {
+  const { name: n, description: dsc, highlights: h, excludes: x, bestFor: b, ...rest } = v ?? {};
+  const name = clean(n); const description = clean(dsc); const highlights = lines(h); const excludes = lines(x); const bestFor = clean(b);
+  const out: CatalogServiceText = { ...rest, ...(name ? { name } : {}), ...(description ? { description } : {}), ...(highlights ? { highlights } : {}), ...(excludes ? { excludes } : {}), ...(bestFor ? { bestFor } : {}) };
+  return Object.keys(out).length ? out : undefined;
+}
+/**
+ * Text per language, without empty entries. With `cur`, what the input does not mention is kept from the saved service, so
+ * a form that edits names and descriptions never drops a list written somewhere else.
+ */
+function tidyI18n(i18n: CatalogService['i18n'], cur?: CatalogService['i18n']): CatalogService['i18n'] {
   const out: NonNullable<CatalogService['i18n']> = {};
-  for (const [lang, v] of Object.entries(i18n ?? {})) {
-    const name = clean(v?.name); const description = clean(v?.description);
-    if (name || description) out[lang as Lang] = { ...(name ? { name } : {}), ...(description ? { description } : {}) };
+  const langs = new Set([...Object.keys(cur ?? {}), ...Object.keys(i18n ?? {})]) as Set<Lang>;
+  for (const lang of langs) {
+    const given = Object.fromEntries(Object.entries(i18n?.[lang] ?? {}).filter(([, v]) => v !== undefined));
+    const v = tidyText({ ...(cur?.[lang] ?? {}), ...given });
+    if (v) out[lang] = v;
   }
   return Object.keys(out).length ? out : undefined;
 }
+/** A field of the input when it was given, else the saved value. Lets a caller leave out what it does not edit. */
+const given = <T extends object, K extends keyof T>(input: T, cur: T | undefined, k: K): T[K] | undefined => (input[k] !== undefined ? input[k] : cur?.[k]);
 
 /**
  * Adds a service or saves changes to one. Tiers keep their order as given (the first is the starting price). A tier that
@@ -60,22 +91,36 @@ function tidyI18n(i18n: CatalogService['i18n']): CatalogService['i18n'] {
  */
 export function saveService(d: DemoState, ctx: Ctx, input: ServiceInput, id?: string): Service | null {
   const name = clean(input.name);
-  const given = input.tiers.filter((t) => clean(t.name));
-  if (!name || !given.length) return null;
+  const named = input.tiers.filter((t) => clean(t.name));
+  if (!name || !named.length) return null;
   const cur = id ? serviceOf(d, id) : undefined;
   if (id && !cur) return null;
-  const tiers: CatalogTier[] = given.map((t) => {
+  const tiers: CatalogTier[] = named.map((t) => {
     const old = cur?.tiers.find((x) => x.id === t.id);
-    return { id: old?.id ?? uid('tr'), name: clean(t.name), price: cents(t.price), unit: TIER_UNITS.includes(t.unit) ? t.unit : 'flat', ...(clean(t.note) ? { note: clean(t.note) } : {}), ...(old?.externalIds ? { externalIds: old.externalIds } : {}) };
+    // fields of the tier this file does not know stay as they were
+    const { id: _i, name: _n, price: _p, unit: _u, note: _o, externalIds: _e, quote: _q, from: _f, per: _r, kind: _k, ...rest } = old ?? ({} as CatalogTier);
+    const quote = given(t as CatalogTier, old, 'quote'); const from = given(t as CatalogTier, old, 'from'); const per = clean(given(t as CatalogTier, old, 'per'));
+    const kind = given(t as CatalogTier, old, 'kind');
+    return {
+      ...rest, id: old?.id ?? uid('tr'), name: clean(t.name), price: cents(t.price), unit: TIER_UNITS.includes(t.unit) ? t.unit : 'flat', ...(clean(t.note) ? { note: clean(t.note) } : {}),
+      ...(quote ? { quote: true } : {}), ...(from ? { from: true } : {}), ...(per ? { per } : {}), ...(kind && TIER_KINDS.includes(kind) ? { kind } : {}),
+      ...(old?.externalIds ? { externalIds: old.externalIds } : {}),
+    };
   });
   for (const old of cur?.tiers ?? []) if (old.externalIds && Object.keys(old.externalIds).length && !tiers.some((t) => t.id === old.id)) tiers.push(old);
   const body = {
     name, category: clean(input.category), active: input.active !== false, tiers,
-    description: clean(input.description) || undefined, i18n: tidyI18n(input.i18n),
+    description: clean(input.description) || undefined, i18n: tidyI18n(input.i18n, cur?.i18n),
     repeat: input.repeat && input.repeat !== 'once' ? input.repeat : undefined,
     playbookId: input.playbookId || undefined, appointmentTypeId: input.appointmentTypeId || undefined,
     docKinds: input.docKinds?.length ? [...new Set(input.docKinds)] : undefined,
     code: clean(input.code) || undefined, internalNote: clean(input.internalNote) || undefined,
+    // the book, the lists and the places in the order: a caller that leaves one out keeps what is saved
+    ...(input.book !== undefined ? { book: clean(input.book) || undefined } : {}),
+    ...(input.highlights !== undefined ? { highlights: lines(input.highlights) } : {}),
+    ...(input.excludes !== undefined ? { excludes: lines(input.excludes) } : {}),
+    ...(input.bestFor !== undefined ? { bestFor: clean(input.bestFor) || undefined } : {}),
+    ...Object.fromEntries((['bookOrder', 'order', 'categoryOrder'] as const).filter((k) => input[k] !== undefined).map((k) => [k, Number.isFinite(input[k]) ? input[k] : undefined])),
   };
   if (cur) {
     Object.assign(cur, body);
@@ -145,7 +190,7 @@ export function linkExternalId(d: DemoState, _ctx: Ctx, target: { serviceId: str
 /** One line of a catalog file: a service and one of its price tiers. */
 export interface CatalogRow {
   category: string; service: string; serviceEs?: string; description?: string; descriptionEs?: string; code?: string;
-  repeat?: string; active?: boolean; tier: string; price: number; unit: string; note?: string;
+  repeat?: string; active?: boolean; tier: string; price: number; unit: string; note?: string; /** The book a new service is listed in. */ book?: string;
 }
 export interface ImportPlan { newServices: number; newTiers: number; changedTiers: number; unchanged: number; skipped: { line: number; reason: 'name' | 'price' }[] }
 const key = (s: string) => clean(s).toLowerCase();
@@ -174,7 +219,7 @@ export function importCatalog(d: DemoState, ctx: Ctx, rows: CatalogRow[], apply:
       const repeat = REPEATS.includes(key(r.repeat ?? '')) && key(r.repeat ?? '') !== 'once' ? (key(r.repeat!) as Service['repeat']) : undefined;
       s = {
         id: uid('sv'), name, category: clean(r.category), active: r.active !== false, tiers: [], repeat,
-        description: clean(r.description) || undefined, code: clean(r.code) || undefined,
+        description: clean(r.description) || undefined, code: clean(r.code) || undefined, ...(clean(r.book) ? { book: clean(r.book) } : {}),
         i18n: tidyI18n({ en: { name, description: clean(r.description) }, es: { name: clean(r.serviceEs), description: clean(r.descriptionEs) } }),
       };
       added.push(s); plan.newServices++;

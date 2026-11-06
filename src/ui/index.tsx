@@ -20,9 +20,10 @@ export function Badge({ tone = 'neutral', outline, children, title }: { tone?: T
   return <span className={cx('badge', tone !== 'neutral' && tone, outline && 'outline')} title={title}>{children}</span>;
 }
 export function Dot({ tone = 'neutral' }: { tone?: Tone }) { return <span className={cx('dot', tone !== 'neutral' && tone)} aria-hidden="true" />; }
-export function Avatar({ name, size, accent }: { name: string; size?: 'sm'; accent?: boolean }) {
+/** Initials in a circle, or the person's photo when `photo` is an address an <img> can show (see app/person.tsx). */
+export function Avatar({ name, size, accent, photo }: { name: string; size?: 'sm'; accent?: boolean; photo?: string }) {
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || '?';
-  return <span className={cx('avatar', size, accent && 'accent')} aria-hidden="true">{initials}</span>;
+  return <span className={cx('avatar', size, accent && 'accent', photo && 'photo')} aria-hidden="true">{photo ? <img src={photo} alt="" loading="lazy" decoding="async" /> : initials}</span>;
 }
 export function Card({ title, actions, children, flush, className, id }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; flush?: boolean; className?: string; id?: string }) {
   return (

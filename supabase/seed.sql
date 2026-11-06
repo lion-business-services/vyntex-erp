@@ -15,7 +15,9 @@ insert into public.industries (id, product_name, sort_order) values
   ('turnover',  'VYNTEX TURNOVER',  7),
   ('events',    'VYNTEX EVENTS',    8),
   ('practice',  'VYNTEX PRACTICE',  9),
-  ('barber',    'VYNTEX BARBER',   10)
+  ('barber',    'VYNTEX BARBER',   10),
+  ('hvac',      'VYNTEX HVAC',     11),
+  ('plumbing',  'VYNTEX PLUMBING', 12)
 on conflict (id) do update
   set product_name = excluded.product_name,
       sort_order = excluded.sort_order;

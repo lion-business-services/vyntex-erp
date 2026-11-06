@@ -114,7 +114,7 @@ export function FieldEditor({ envelope, pages, view, images, pdfUrl, mode, ancho
     <div className="es-editor" data-testid="esign-editor">
       <div className="es-work">
         <div className="es-pages" data-testid="esign-pages">
-          {mode !== 'drawn' && (
+          {(mode === 'viewer' || mode === 'blank') && (
             <Note tone={mode === 'blank' ? 'warn' : undefined}>
               {t(mode === 'viewer' ? 'esign.prep.viewerNote' : 'esign.prep.blankNote')}{' '}
               {mode === 'viewer' ? <button type="button" className="linkbtn" onClick={() => setViewerOff(true)} data-testid="esign-viewer-off">{t('esign.pages.useSheets')}</button>

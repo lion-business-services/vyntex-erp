@@ -40,6 +40,38 @@
       "destination": "/api/public?vxpath=:path*"
     },
     {
+      "source": "/api/bot/:path*",
+      "destination": "/api/public?vxpath=bot/:path*"
+    },
+    {
+      "source": "/api/pay/:path*",
+      "destination": "/api/public?vxpath=pay/:path*"
+    },
+    {
+      "source": "/api/billing/:path*",
+      "destination": "/api/billing?vxpath=:path*"
+    },
+    {
+      "source": "/pricing",
+      "destination": "/pricing.html"
+    },
+    {
+      "source": "/request-demo",
+      "destination": "/request-demo.html"
+    },
+    {
+      "source": "/demo",
+      "destination": "/demo.html"
+    },
+    {
+      "source": "/start-trial",
+      "destination": "/start-trial.html"
+    },
+    {
+      "source": "/api/partners/:path*",
+      "destination": "/api/partners?vxpath=:path*"
+    },
+    {
       "source": "/((?!api/|assets/|brand/|brand-lbs/)[^.]*)",
       "destination": "/index.html"
     }
@@ -80,7 +112,20 @@
         },
         {
           "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()"
+          "value": "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), browsing-topics=()"
+        }
+      ]
+    },
+    {
+      "source": "/connect/whatsapp.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://connect.facebook.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://*.facebook.com https://*.fbcdn.net; frame-src https://www.facebook.com https://web.facebook.com https://business.facebook.com; connect-src 'self' https://*.facebook.com https://graph.facebook.com; font-src 'self'"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
         }
       ]
     },
@@ -121,6 +166,24 @@
       ]
     },
     {
+      "source": "/(pricing|request-demo|demo|start-trial)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/((?!(?:pricing|request-demo|demo|start-trial)$)[^.]+)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
       "source": "/api/(.*)",
       "headers": [
         {
@@ -129,5 +192,8 @@
         }
       ]
     }
+  ],
+  "regions": [
+    "iad1"
   ]
 }

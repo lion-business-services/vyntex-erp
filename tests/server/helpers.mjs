@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { VARIABLES } from '../../api/_lib/env.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
+/** The isolated throwaway database (tests/server/run.mjs may move it with PGTEST_DIR). */
+const PG_DIR = process.env.VX_PG_SERVER_DIR || '/tmp/vx-pg-server';
 export const root = path.resolve(here, '../..');
 export const ORIGIN = 'http://localhost:4620';
 export const PORTS = { site: 4620, supabase: 4621, provider: 4622, serve: 4623 };
@@ -52,12 +54,12 @@ export function assertNoLeak(assert) {
 let pgStartedHere = false;
 export function startPostgres() {
   if (process.env.VX_PG_READY === '1') return;   // tests/server/run.mjs already started it for the whole run
-  const r = spawnSync('bash', [path.join(here, 'pg_local.sh'), 'start'], { env: { ...process.env, PGTEST_DIR: '/tmp/vx-pg-server', MIGRATIONS_MODE: 'isolated' }, encoding: 'utf8' });
+  const r = spawnSync('bash', [path.join(here, 'pg_local.sh'), 'start'], { env: { ...process.env, PGTEST_DIR: PG_DIR, MIGRATIONS_MODE: 'isolated' }, encoding: 'utf8' });
   if (r.status !== 0) throw new Error('the local PostgreSQL did not start:\n' + r.stdout + r.stderr);
   pgStartedHere = true;
 }
 export function stopPostgres() {
-  if (pgStartedHere) spawnSync('bash', [path.join(here, 'pg_local.sh'), 'stop'], { env: { ...process.env, PGTEST_DIR: '/tmp/vx-pg-server' } });
+  if (pgStartedHere) spawnSync('bash', [path.join(here, 'pg_local.sh'), 'stop'], { env: { ...process.env, PGTEST_DIR: PG_DIR } });
 }
 
 /**
@@ -121,7 +123,7 @@ export async function startStack({ jwtExp = 3600 } = {}) {
   startPostgres();
   const { startDevSupabase, totp } = await import('../../scripts/dev-supabase.mjs');
   const { startMockProvider } = await import('./mock_provider.mjs');
-  const sb = await startDevSupabase({ port: PORTS.supabase, jwtExp, host: '/tmp/vx-pg-server/sock' });
+  const sb = await startDevSupabase({ port: PORTS.supabase, jwtExp, host: PG_DIR + '/sock' });
   const provider = await startMockProvider({ port: PORTS.provider });
   Object.assign(process.env, {
     SUPABASE_URL: sb.url, SUPABASE_ANON_KEY: sb.anonKey, SUPABASE_SERVICE_ROLE_KEY: sb.serviceKey,
@@ -137,8 +139,11 @@ export async function startStack({ jwtExp = 3600 } = {}) {
   // Outbound calls: the two local stand-ins, and api.resend.com answered from memory. Anything else is a failure.
   const mail = { sent: [], status: 200, domains: [{ id: 'dom_1', name: 'mail.example.com', status: 'verified' }], domainsStatus: 200, domainsBody: null };
   const realFetch = globalThis.fetch;
+  // a test may answer one outside service itself (st.outside = (url, init) => Response | null)
+  const hooks = { outside: null };
   globalThis.fetch = async (url, init = {}) => {
     const u = String(url);
+    if (hooks.outside) { const r = await hooks.outside(u, init); if (r) return r; }
     if (u.startsWith('https://api.resend.com/')) {
       const p = new URL(u).pathname;
       if (p === '/emails') {
@@ -217,6 +222,7 @@ export async function startStack({ jwtExp = 3600 } = {}) {
   }
 
   return {
+    get outside() { return hooks.outside; }, set outside(fn) { hooks.outside = fn; },
     api, sb, provider, mail, sql, company, signIn, stepUp, addMember, linkFor, tokenOfInvite, totp,
     browser: (opts) => new Browser(api, opts),
     async stop() {

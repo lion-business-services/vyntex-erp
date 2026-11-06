@@ -5,11 +5,12 @@ import { useEffect, useState } from 'react';
 import { LuChevronLeft, LuChevronRight, LuPlus } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { A } from '@/app/router';
-import { Avatar, Badge, Button, Card, IconButton, Seg, cx } from '@/ui';
+import { Badge, Button, Card, IconButton, Seg, cx } from '@/ui';
 import { hoursOf, isCancelled, minutesOf, personOf, typeOfAppt } from '@/domain/actions/appointments';
 import type { Appointment, TeamUser } from '@/domain/types';
 import { addDaysFrom, fmtDate, parseDate, today } from '@/lib/dates';
 import { ApptStatusBadge, byWhen, useStaff, useTypeName, type BookDefaults } from './parts';
+import { PersonAvatar } from '@/app/person';
 
 type Span = 'day' | 'week';
 /** Height of one minute in the day view, in pixels. */
@@ -86,7 +87,7 @@ function ColumnHead({ u, date, onBook }: { u: TeamUser; date: string; onBook?: (
   const away = awayOn(u, date);
   return (
     <div className="appointments-colh">
-      <Avatar name={u.name} size="sm" /><span className="grow clip">{u.name}</span>
+      <PersonAvatar user={u} name={u.name} size="sm" /><span className="grow clip">{u.name}</span>
       {away && <Badge tone="warn">{t('appointments.away')}</Badge>}
       {onBook && !away && date >= today() && <IconButton size="sm" label={t('appointments.bookFor', { name: u.name })} onClick={() => onBook({ staffId: u.id, date })}><LuPlus /></IconButton>}
     </div>
@@ -190,7 +191,7 @@ function Week({ people, days, list, onBook, phone }: { people: TeamUser[]; days:
           <tbody>
             {people.map((u) => (
               <tr key={u.id}>
-                <th scope="row"><span className="row tight nowrap"><Avatar name={u.name} size="sm" /><span className="clip">{u.name}</span></span></th>
+                <th scope="row"><span className="row tight nowrap"><PersonAvatar user={u} name={u.name} size="sm" /><span className="clip">{u.name}</span></span></th>
                 {days.map((d) => {
                   const mine = list.filter((a) => a.date === d && a.staffId === u.id).sort(byWhen); const away = awayOn(u, d);
                   return (

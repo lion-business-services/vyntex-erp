@@ -18,6 +18,7 @@ import { greetName } from '@/features/messages/templates';
 import { prepareDocEmail, recordSignature } from './actions';
 import type { DocModel, TextBlock } from './model';
 import { SuccessCheck, useBecame } from './success';
+import { useStoredImage } from '@/features/settings/image';
 
 const isEmail = (s: string) => /^\S+@\S+\.\S+$/.test(s.trim());
 
@@ -29,6 +30,7 @@ function plainPaste(e: React.ClipboardEvent<HTMLElement>) {
 }
 
 export function Paper({ model, editing, label, paperRef }: { model: DocModel; editing?: boolean; label: string; paperRef?: React.RefObject<HTMLDivElement | null> }) {
+  const logoSrc = useStoredImage(model.company.logo);
   const edit = (b: TextBlock) => (editing && !b.locked
     ? { 'data-key': b.key, contentEditable: true, suppressContentEditableWarning: true, spellCheck: true, role: 'textbox', 'aria-multiline': true, 'aria-label': b.base.slice(0, 60), onPaste: plainPaste }
     : { 'data-key': b.key });
@@ -42,7 +44,7 @@ export function Paper({ model, editing, label, paperRef }: { model: DocModel; ed
     <article className="paper docs-paper" lang={model.lang} aria-label={label} ref={paperRef}>
       <div className="docs-head">
         <div className="docs-co">
-          {model.company.logo && <img src={model.company.logo} alt="" />}
+          {logoSrc && <img src={logoSrc} alt="" />}
           <div><b>{model.company.name}</b>{model.company.lines.map((l, i) => <span key={i}>{l}</span>)}</div>
         </div>
         <div className="docs-headr"><h2 {...edit(model.title)}>{shown(model.title)}</h2>{model.meta.map((l, i) => <span key={i}>{l}</span>)}</div>

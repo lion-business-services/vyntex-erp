@@ -1,12 +1,17 @@
 // Carries out a confirmed proposal through the same business actions the rest of the app uses,
 // then reads the data back to make sure the change is really there before reporting it.
 import { act, getSnapshot } from '@/store/store';
-import { addClientPayment, addNote, bookAppointment, createLead, createTask, requestReview, setJobStatus, setTaskStatus, updateLead } from '@/domain/actions';
+import { addClientPayment, addNote, bookAppointment, createJob, createLead, createTask, requestReview, saveClient, setJobStatus, setLeadStage, setTaskStatus, updateLead, updateTask } from '@/domain/actions';
+import { isLive } from '@/platform/session';
+import { addDaysFrom, today } from '@/lib/dates';
 import { byId, jobMoney } from '@/domain/selectors';
 import { money2 } from '@/lib/money';
 import { effectiveRules, shippedRules } from '@/domain/rules/engine';
 import { runRuleName } from '@/features/automations/format';
-import { check, type Env, type Proposal } from './engine';
+import { check, projectClient, type Env, type Proposal } from './engine';
+import { SPEC_BY_ID, bindStore, runAction } from './actions';
+
+bindStore(act, () => getSnapshot().data);
 
 export interface Outcome { ok: boolean; text: string; link?: { label: string; to: string }; /** Names of the automation rules that ran because of the change. */ rules?: string[] }
 
@@ -50,6 +55,7 @@ export function execute(p: Proposal, env: Env): Outcome {
         break;
       }
       case 'payment': {
+        if (p.approve && byId(getSnapshot().data.jobs, p.jobId)?.status === 'estimate') act(setJobStatus, p.jobId, 'contract');
         const before = byId(getSnapshot().data.jobs, p.jobId)?.received.length ?? 0;
         act(addClientPayment, p.jobId, { amount: p.amount, date: p.date, method: p.method, ref: '' });
         const d = getSnapshot().data; const job = byId(d.jobs, p.jobId);
@@ -78,6 +84,32 @@ export function execute(p: Proposal, env: Env): Outcome {
         if ((d.reviews ?? []).some((x) => x.id === res.review.id)) out = { ok: true, text: t('asst.done.review', { name: byId(d.clients, p.clientId)?.name ?? '' }), link: { label: t('asst.open.reviews'), to: '/reviews' } };
         break;
       }
+      case 'client': {
+        const c = act(saveClient, { name: p.name, ...(p.phone ? { phone: p.phone } : {}), ...(p.email ? { email: p.email } : {}) });
+        if (byId(getSnapshot().data.clients, c.id)) out = { ok: true, text: t('asst.done.client', { name: c.name }), link: { label: t('asst.open.record'), to: `/clients/${c.id}` } };
+        break;
+      }
+      case 'job': {
+        const c = projectClient(p, getSnapshot().data); if (!c) break;
+        const job = act(createJob, { name: p.name, clientId: c.id, ...(p.start ? { start: p.start } : {}), ...(p.price !== undefined ? { price: p.price } : {}) });
+        if (byId(getSnapshot().data.jobs, job.id)) out = { ok: true, text: t('asst.done.job', { name: job.name, client: c.name }), link: { label: t('asst.open.job'), to: `/jobs/${job.id}` } };
+        break;
+      }
+      case 'leadUpdate': {
+        if (p.value !== undefined || p.followUp) act(updateLead, p.leadId, { ...(p.value !== undefined ? { value: p.value } : {}), ...(p.followUp ? { followUp: p.followUp } : {}) });
+        if (p.stage) act(setLeadStage, p.leadId, p.stage);
+        const lead = byId(getSnapshot().data.leads, p.leadId);
+        if (lead && (!p.stage || lead.status === p.stage)) out = { ok: true, text: t('asst.done.leadUpdate', { name: lead.name }), link: { label: t('asst.open.lead'), to: `/leads/${lead.id}` } };
+        break;
+      }
+      case 'taskUpdate': {
+        act(updateTask, p.taskId, { ...(p.title ? { title: p.title } : {}), ...(p.due ? { due: p.due } : {}), ...(p.assignee ? { assignee: p.assignee } : {}) });
+        const task = byId(getSnapshot().data.tasks, p.taskId);
+        if (task && (!p.due || task.due === p.due)) out = { ok: true, text: t('asst.done.taskUpdate', { name: task.title }), link: { label: t('asst.open.task'), to: `/tasks?task=${task.id}` } };
+        break;
+      }
+      case 'invoice': return { ok: false, text: t('asst.state.failed', { why: t('asst.failed.generic') }) }; // made by executeAsync
+      case 'action': return failed; // made by executeAsync
     }
   } catch {
     return failed;
@@ -89,4 +121,35 @@ export function execute(p: Proposal, env: Env): Outcome {
     if (ran.length) out.rules = [...new Set(ran)];
   }
   return out;
+}
+
+/**
+ * The same, for actions that go to the server: a draft invoice (live workspaces only; a sample workspace has no
+ * invoices). Everything else is carried out by execute().
+ */
+export async function executeAsync(p: Proposal, env: Env): Promise<Outcome> {
+  if (p.kind === 'action') {
+    // 0097: any entry of the catalog; some go to the server (invoices, e-sign, files)
+    const { t } = env;
+    const blocked = check(p, env);
+    if (blocked) return { ok: false, text: t('asst.state.failed', { why: blocked }) };
+    const x = SPEC_BY_ID.get(p.action); if (!x) return { ok: false, text: t('asst.state.failed', { why: t('asst.failed.generic') }) };
+    const r = await runAction(x, p.args, env);
+    const link = r.link ? { link: { label: t('asst.open.record'), to: r.link } } : {};
+    return r.ok ? { ok: true, text: t('asst.action.done', { what: env.lang === 'es' ? x.es : x.en }), ...link } : { ok: false, text: t('asst.state.failed', { why: r.why ?? t('asst.failed.generic') }), ...link };
+  }
+  if (p.kind !== 'invoice') return execute(p, env);
+  const { t } = env;
+  const blocked = check(p, env);
+  if (blocked) return { ok: false, text: t('asst.state.failed', { why: blocked }) };
+  if (!isLive()) return { ok: false, text: t('asst.state.failed', { why: t('asst.invoice.liveOnly') }) };
+  try {
+    const { rpc } = await import('@/platform/live/ops');
+    const issue = today();
+    const a = await rpc<{ id: string; number?: string }>('invoice_save', { p_invoice: { jobId: p.jobId, issueDate: issue, dueDate: p.due ?? addDaysFrom(issue, 15), lang: env.lang === 'es' ? 'es' : 'en',
+      lines: p.lines.map((l) => ({ text: l.description, qty: l.qty, unitCents: Math.round(l.price * 100) })), feePct: 0, notes: '', sendTo: '' } });
+    if (!a.ok) return { ok: false, text: t('asst.state.failed', { why: t('asst.failed.generic') }) };
+    const inv = a.data.result;
+    return { ok: true, text: t('asst.done.invoice', { n: inv?.number ?? '' }), link: { label: t('asst.open.invoices'), to: '/invoices' } };
+  } catch { return { ok: false, text: t('asst.state.failed', { why: t('asst.failed.generic') }) }; }
 }

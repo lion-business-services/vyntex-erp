@@ -26,6 +26,7 @@ import { ClosedClient, OtherOffices } from './Access';
 import { kindOf, moneyByClient, nextAppointment, optOuts } from './model';
 import '@/features/leads/work.css';
 import './clients.css';
+import { PersonAvatar } from '@/app/person';
 
 type Sort = 'name' | 'newest' | 'balance';
 type Life = '' | 'active' | 'inactive' | 'former';
@@ -80,7 +81,7 @@ function ClientList() {
                           <td data-label={t('clients.col.contact')}>
                             {c.phone || c.email ? <span className="clients-contact">{c.phone && <span className="nowrap">{c.phone}</span>}{c.email && <span className="xs dim clients-mail">{c.email}</span>}</span> : <span className="dim small">{t('clients.noContact')}</span>}
                           </td>
-                          {full && <td className="clients-c-who" data-label={t('clients.p.assigned')}>{owner ? <span className="row tight nowrap"><Avatar name={owner.name} size="sm" />{owner.name.split(' ')[0]}</span> : <span className="dim small">{t('common.unassigned')}</span>}</td>}
+                          {full && <td className="clients-c-who" data-label={t('clients.p.assigned')}>{owner ? <span className="row tight nowrap"><PersonAvatar user={owner} name={owner.name} size="sm" />{owner.name.split(' ')[0]}</span> : <span className="dim small">{t('common.unassigned')}</span>}</td>}
                           <td data-label={t('nav.jobs')} className="num">{m.jobs}</td>
                           {showMoney && !full && <>
                             <td data-label={t('clients.col.billed')} className="num">{money(m.billed)}</td>
@@ -252,7 +253,7 @@ function ClientDetail({ id, tab }: { id: string; tab?: string }) {
       {full && (
         <dl className="clients-glance" data-testid="clients-glance">
           {data.offices.length > 0 && <div><dt>{t('clients.p.office')}</dt><dd>{office ? office.name : <span className="muted">{t('clients.noOfficeShort')}</span>}</dd></div>}
-          <div><dt>{t('clients.p.assigned')}</dt><dd>{who ? <span className="row tight nowrap"><Avatar name={who.name} size="sm" />{who.name}</span> : <span className="muted">{t('common.unassigned')}</span>}</dd></div>
+          <div><dt>{t('clients.p.assigned')}</dt><dd>{who ? <span className="row tight nowrap"><PersonAvatar user={who} name={who.name} size="sm" />{who.name}</span> : <span className="muted">{t('common.unassigned')}</span>}</dd></div>
           {balance !== null && <div><dt>{t('clients.glance.balance')}</dt><dd className={cx('clients-figure', balance > 0.005 && 'owes')} data-testid="clients-balance">{money(Math.max(0, balance))}</dd></div>}
           {can('appointments') && moduleOn(data, pack, 'appointments') && <div><dt>{t('clients.glance.next')}</dt><dd>{appt ? <A to={`/clients/${client.id}/appointments`}><LuCalendarClock aria-hidden="true" className="clients-inl" />{day(appt.date)}, {time(appt.time)}</A> : <span className="muted">{t('clients.glance.noAppt')}</span>}</dd></div>}
           {optOuts(client).length > 0 && <div className="wide"><dt>{t('clients.glance.asked')}</dt><dd><OptOutMarks client={client} /></dd></div>}

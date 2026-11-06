@@ -6,7 +6,7 @@ import { LuAtSign, LuSend, LuTrash2 } from 'react-icons/lu';
 import { useApp } from '@/app/hooks';
 import { A } from '@/app/router';
 import { act } from '@/store/store';
-import { Avatar, Button, Field, IconButton, Modal, cx, toast } from '@/ui';
+import { Button, Field, IconButton, Modal, cx, toast } from '@/ui';
 import { TASK_STATUSES } from '@/app/forms';
 import { addTaskComment, createTask, deleteTask, deleteTaskComment, editTaskComment, updateTask } from '@/domain/actions';
 import { taskTypesOf } from '@/domain/config';
@@ -15,6 +15,7 @@ import { visibleClients } from '@/domain/access';
 import type { MessageChannel, Priority, Task, TaskComment, TaskStatus, TeamUser } from '@/domain/types';
 import { today } from '@/lib/dates';
 import { REQUEST_CHANNELS } from './request';
+import { PersonAvatar } from '@/app/person';
 
 const PRIORITIES: Priority[] = ['high', 'medium', 'low'];
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -48,7 +49,7 @@ export function TaskComments({ task }: { task: Task }) {
         <ol className="tasks-thread">
           {list.map((c) => { const who = actorName(data, c.by) ?? t('common.system'); return (
             <li key={c.id} data-comment={c.id}>
-              <Avatar name={who} size="sm" />
+              <PersonAvatar name={who} size="sm" />
               <div className="grow">
                 <div className="xs muted"><b className="tasks-cwho">{who}</b> · {dateTime(c.at)}</div>
                 {editing?.id === c.id ? (
@@ -69,7 +70,7 @@ export function TaskComments({ task }: { task: Task }) {
         <div className="tasks-cform">
           <textarea ref={box} className="input" rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder={t('tasks.c.ph')} aria-label={t('tasks.c.ph')} data-testid="tasks-comment-text"
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && text.trim()) { e.preventDefault(); send(); } }} />
-          {offers.length > 0 && <div className="tasks-offers" role="listbox" aria-label={t('tasks.c.mention')}>{offers.map((u) => <button type="button" key={u.id} role="option" aria-selected="false" onClick={() => mention(u)}><Avatar name={u.name} size="sm" />{u.name}</button>)}</div>}
+          {offers.length > 0 && <div className="tasks-offers" role="listbox" aria-label={t('tasks.c.mention')}>{offers.map((u) => <button type="button" key={u.id} role="option" aria-selected="false" onClick={() => mention(u)}><PersonAvatar user={u} name={u.name} size="sm" />{u.name}</button>)}</div>}
           <div className="row between">
             <button type="button" className="linkbtn small tasks-at" onClick={() => { setText(`${text}${text && !/\s$/.test(text) ? ' ' : ''}@`); box.current?.focus(); }} data-testid="tasks-comment-at"><LuAtSign aria-hidden="true" />{t('tasks.c.mention')}</button>
             <Button size="sm" variant="primary" icon={<LuSend aria-hidden="true" />} onClick={send} disabled={!text.trim()} data-testid="tasks-comment-send">{t('tasks.c.send')}</Button>

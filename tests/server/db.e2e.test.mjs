@@ -14,7 +14,7 @@ const PSQL = process.env.PSQL || '/usr/lib/postgresql/16/bin/psql';
 const file = path.join(root, 'tests/server/sql/server_core_test.sql');
 
 function run(mutation) {
-  const args = ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '-h', '/tmp/vx-pg-server/sock', '-U', 'supabase_admin', '-d', 'vyntex_server', '-c', 'begin'];
+  const args = ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '-h', (process.env.VX_PG_SERVER_DIR || '/tmp/vx-pg-server') + '/sock', '-U', 'supabase_admin', '-d', 'vyntex_server', '-c', 'begin'];
   if (mutation) args.push('-c', mutation);
   args.push('-f', file, '-c', 'rollback');
   const r = spawnSync(PSQL, args, { encoding: 'utf8', env: { ...process.env, PGOPTIONS: '-c client_min_messages=warning' } });
@@ -26,7 +26,7 @@ before(async () => {
   startPostgres();
   // the stand-in tables for Supabase Auth's sessions and factors come with the test double
   const { startDevSupabase } = await import('../../scripts/dev-supabase.mjs');
-  const sb = await startDevSupabase({ port: PORTS.supabase });
+  const sb = await startDevSupabase({ port: PORTS.supabase, host: (process.env.VX_PG_SERVER_DIR || '/tmp/vx-pg-server') + '/sock' });
   await sb.stop();
 });
 after(() => { stopPostgres(); });

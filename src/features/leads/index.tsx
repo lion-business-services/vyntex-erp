@@ -7,7 +7,7 @@ import { useApp } from '@/app/hooks';
 import { A, go, useRoute } from '@/app/router';
 import type { PageProps } from '@/app/routes';
 import { act } from '@/store/store';
-import { Avatar, Button, Card, Empty, PageHeader, SearchBox, Seg, cx, confirmDialog, toast } from '@/ui';
+import { Button, Card, Empty, PageHeader, SearchBox, Seg, cx, confirmDialog, toast } from '@/ui';
 import { LeadStageBadge, PriorityBadge } from '@/app/shared';
 import { convertLead, setLeadStage } from '@/domain/actions';
 import { byId } from '@/domain/selectors';
@@ -26,6 +26,7 @@ import { LeadDetail } from './Detail';
 import './work.css';
 import './board.css';
 import './leads.css';
+import { PersonAvatar } from '@/app/person';
 
 // Stages, sources and lost reasons come from the company's configuration (src/domain/config.ts), never from a fixed list.
 type Flag = '' | 'attention' | 'stale' | 'hot';
@@ -89,7 +90,7 @@ function LeadList() {
                       <td data-label={t('leads.col.next')}>{s.open ? <><NextStepLine lead={l} signals={s} plain={!full} />{full && <span className="leads-c-inline"><ContactAge signals={s} compact /></span>}</> : full && l.lostReason ? <span className="small muted">{reasonLabel(l.lostReason)}</span> : null}</td>
                       {full && <td className="leads-c-contact" data-label={t('leads.col.contact')}>{s.open ? <ContactAge signals={s} /> : <span className="small muted">{date(l.lostAt ?? l.created)}</span>}</td>}
                       <td data-label={t('leads.col.value')} className="num">{l.value ? money(l.value) : <span className="dim">{'—'}</span>}</td>
-                      <td data-label={t('leads.col.owner')}>{u ? <span className="row tight nowrap" title={u.name}><Avatar name={u.name} size="sm" /><span className="leads-own">{u.name.split(' ')[0]}</span></span> : <span className="dim">{t('common.unassigned')}</span>}</td>
+                      <td data-label={t('leads.col.owner')}>{u ? <span className="row tight nowrap" title={u.name}><PersonAvatar user={u} name={u.name} size="sm" /><span className="leads-own">{u.name.split(' ')[0]}</span></span> : <span className="dim">{t('common.unassigned')}</span>}</td>
                       {!full && <td data-label={t('leads.col.age')} className="small muted">{date(l.created)}</td>}
                     </tr>
                   );

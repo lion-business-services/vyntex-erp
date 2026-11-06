@@ -1,0 +1,35 @@
+/* The trade sections of the HVAC and plumbing editions. */
+.trade .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 14px 0; }
+.trade .filters { gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.trade .pad { padding: 16px; }
+.trade .warn-t { color: var(--warn, #e0a100); font-weight: 600; }
+.trade .td-rowact { justify-content: flex-end; flex-wrap: wrap; }
+.trade .td-oncall select, .trade .td-actions select { max-width: 190px; }
+.td-queue { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.td-lanes { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(250px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 8px; margin-top: 12px; }
+.td-lane { background: var(--surface-2, rgba(255,255,255,.03)); border: 1px solid var(--line, rgba(255,255,255,.08)); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 10px; min-height: 160px; }
+.td-lane > header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.td-lane > header .xs { flex-basis: 100%; }
+.td-free { display: flex; align-items: center; gap: 6px; margin: 8px 0; }
+.td-card { background: var(--surface, rgba(255,255,255,.04)); border: 1px solid var(--line, rgba(255,255,255,.1)); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+.td-card.urgent { border-color: var(--bad, #e5484d); box-shadow: 0 0 0 1px var(--bad, #e5484d) inset; }
+.td-card.done { opacity: .6; }
+.td-card .td-title { font-weight: 600; }
+.td-card .td-actions { margin-top: 6px; flex-wrap: wrap; }
+.td-steps { display: flex; gap: 3px; margin-bottom: 4px; }
+.td-steps i { width: 18px; height: 5px; border-radius: 3px; background: var(--line, rgba(255,255,255,.15)); }
+.td-steps i.on { background: var(--accent, #00ddff); }
+.td-steps i.bad { background: var(--bad, #e5484d); }
+.td-line { position: relative; height: 54px; margin: 8px 18px 4px; }
+.td-pipe { position: absolute; left: 0; right: 0; top: 24px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, rgba(163,166,174,.35), rgba(163,166,174,.6)); }
+.td-mark { position: absolute; top: 14px; width: 16px; height: 28px; margin-left: -8px; border-radius: 6px; display: flex; justify-content: center; }
+.td-mark b { position: absolute; top: -16px; font-size: 11px; white-space: nowrap; }
+.td-mark.ok { background: var(--ok, #30a46c); }
+.td-mark.warn { background: var(--warn, #e0a100); }
+.td-mark.bad { background: var(--bad, #e5484d); }
+.td-findings { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 6px; }
+@media (max-width: 720px) { .td-lanes { grid-auto-flow: row; grid-auto-columns: auto; } }
+.td-tabs { margin-bottom: 6px; }
+.td-bar { display: inline-block; width: 70px; height: 6px; border-radius: 3px; background: var(--line, rgba(255,255,255,.12)); overflow: hidden; }
+.td-bar i { display: block; height: 100%; background: var(--ok, #30a46c); }
+.td-bar.bad i { background: var(--bad, #e5484d); }

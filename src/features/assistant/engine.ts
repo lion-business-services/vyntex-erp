@@ -6,7 +6,8 @@ import type { IndustryPack } from '@/packs/types';
 import { makeT, type TFn } from '@/i18n';
 import type { Permission } from '@/domain/permissions';
 import { assigneeName, byId, calendarEvents, clientMoney, insuranceState, isDueToday, isOpenLead, isOverdue, jobMoney, jobsOfClient, kpiValues, workerMoney } from '@/domain/selectors';
-import { moduleOn, openStages, stageByRole, stageRole } from '@/domain/config';
+import { moduleOn, openStages, stageByRole, stageRole, stagesOf } from '@/domain/config';
+import { SPEC_BY_ID, actionRows, cleanArgs, isRiskyAction, type Args } from './actions';
 import { asksForTaxId, parseAppointment, parseReview, reviewProblem, routeQuestion } from './records';
 import { addDays, monthLabel, today } from '@/lib/dates';
 import { money, money2, sum } from '@/lib/money';
@@ -27,10 +28,27 @@ export type Proposal =
   | { kind: 'note'; ref: Ref; text: string }
   | { kind: 'taskDone'; taskId: string }
   | { kind: 'jobStatus'; jobId: string; status: JobStatus }
-  | { kind: 'payment'; jobId: string; amount: number; method: PayMethod; date: ISODate }
+  // approve: the project is still an estimate, so confirming also marks it as a signed contract (the payment form needs that)
+  | { kind: 'payment'; jobId: string; amount: number; method: PayMethod; date: ISODate; approve?: boolean }
   | { kind: 'visit'; leadId: string; date: ISODate; time?: string }
   | { kind: 'appointment'; clientId?: string; leadId?: string; typeId: string; date: ISODate; time: string; staffId: string }
-  | { kind: 'review'; clientId: string; jobId?: string; channel: MessageChannel };
+  | { kind: 'review'; clientId: string; jobId?: string; channel: MessageChannel }
+  // VYNTEX AI (0095): more of what the owner asks for
+  | { kind: 'client'; name: string; phone?: string; email?: string }
+  | { kind: 'job'; clientId?: string; clientName?: string; name: string; start?: ISODate; price?: number }
+  | { kind: 'leadUpdate'; leadId: string; stage?: string; value?: number; followUp?: ISODate }
+  | { kind: 'taskUpdate'; taskId: string; title?: string; due?: ISODate; assignee?: string }
+  | { kind: 'invoice'; jobId: string; due?: ISODate; lines: { description: string; qty: number; price: number }[] }
+  // 0097: any other entry of the catalog in actions.ts, by its id, with checked arguments
+  | { kind: 'action'; action: string; args: Args };
+
+/** What VYNTEX AI asks the person to confirm before doing: anything that reaches a client or records money. */
+export const RISKY: ReadonlySet<Proposal['kind']> = new Set<Proposal['kind']>(['payment', 'review']);
+/** Whether a proposal waits for Confirm: the two above, and every catalog entry that reaches a client, moves money, changes a price, deletes or publishes. */
+export function needsConfirm(p: Proposal): boolean {
+  if (p.kind !== 'action') return RISKY.has(p.kind);
+  const x = SPEC_BY_ID.get(p.action); return !x || isRiskyAction(x, p.args);
+}
 
 export interface Item { title: string; sub?: string; right?: string; tone?: 'bad' | 'warn' | 'ok'; to?: string }
 export type Block =
@@ -131,10 +149,21 @@ function takeAssignee(w: Work, env: Env): Person[] | null {
 
 /* ---------- what a proposal will change, in words ---------- */
 export interface Card { title: string; rows: [string, string][]; note?: string }
-export const PERM: Record<Proposal['kind'], Permission> = { task: 'tasks', lead: 'leads', note: 'clients', taskDone: 'tasks', jobStatus: 'jobs', payment: 'money', visit: 'leads', appointment: 'appointments', review: 'reviews' };
+export const PERM: Record<Proposal['kind'], Permission> = { task: 'tasks', lead: 'leads', note: 'clients', taskDone: 'tasks', jobStatus: 'jobs', payment: 'money', visit: 'leads', appointment: 'appointments', review: 'reviews',
+  client: 'clients', job: 'jobs', leadUpdate: 'leads', taskUpdate: 'tasks', invoice: 'money', action: 'assistant' };
+/** The client a new project is for: by id, or by name for a client made in the same answer. */
+export function projectClient(p: Extract<Proposal, { kind: 'job' }>, data: DemoState): Client | undefined {
+  if (p.clientId) return byId(data.clients, p.clientId);
+  const n = fold(p.clientName ?? '');
+  return n ? data.clients.find((c) => fold(c.name) === n) : undefined;
+}
 
 export function describe(p: Proposal, env: Env): Card {
   const { data, t, date, time } = env;
+  if (p.kind === 'action') {
+    const x = SPEC_BY_ID.get(p.action);
+    return x ? { title: env.lang === 'es' ? x.es : x.en, rows: actionRows(x, p.args, env), note: isRiskyAction(x, p.args) ? t('asst.action.confirmNote') : undefined } : { title: p.action, rows: [] };
+  }
   const ruleOn = (id: string) => data.automation.enabled[id] !== false;
   switch (p.kind) {
     case 'task':
@@ -162,8 +191,9 @@ export function describe(p: Proposal, env: Env): Card {
       const job = byId(data.jobs, p.jobId); const owes = job ? jobMoney(data, job).clientOwes : 0;
       return {
         title: t('asst.card.payment'),
-        rows: [[t('asst.kind.job'), job ? jobLabel(data, job) : t('asst.gone')], [t('common.amount'), money2(p.amount)], [t('common.date'), date(p.date)], [t('common.method'), t('m_' + p.method)], [t('asst.row.balanceAfter'), money2(Math.max(0, owes - p.amount))]],
-        note: ruleOn('payment-posted') ? t('asst.card.payNote') : undefined,
+        rows: [[t('asst.kind.job'), job ? jobLabel(data, job) : t('asst.gone')], [t('common.amount'), money2(p.amount)], [t('common.date'), date(p.date)], [t('common.method'), t('m_' + p.method)], [t('asst.row.balanceAfter'), money2(Math.max(0, owes - p.amount))],
+          ...(p.approve && job?.status === 'estimate' ? [[t('asst.row.status'), `${t('st_estimate')} → ${t('st_contract')}`] as [string, string]] : [])],
+        note: [p.approve && job?.status === 'estimate' ? t('asst.pay.approveNote', { name: job.name, status: t('st_contract') }) : '', ruleOn('payment-posted') ? t('asst.card.payNote') : ''].filter(Boolean).join(' ') || undefined,
       };
     }
     case 'visit': {
@@ -182,6 +212,24 @@ export function describe(p: Proposal, env: Env): Card {
         note: type?.prepay && type.fee > 0 ? t('asst.card.apptPrepay') : t('asst.card.apptNote'),
       };
     }
+    case 'client':
+      return { title: t('asst.card.client'), rows: [[t('common.name'), p.name], ...(p.phone ? [[t('common.phone'), p.phone] as [string, string]] : []), ...(p.email ? [['Email', p.email] as [string, string]] : [])] };
+    case 'job': {
+      const c = projectClient(p, data);
+      return { title: t('asst.card.job'), rows: [[t('asst.kind.job'), p.name], [t('asst.kind.client'), c?.name ?? p.clientName ?? t('asst.gone')], ...(p.start ? [[t('asst.row.start'), date(p.start)] as [string, string]] : []), ...(p.price ? [[t('common.amount'), money2(p.price)] as [string, string]] : [])] };
+    }
+    case 'leadUpdate': {
+      const lead = byId(data.leads, p.leadId);
+      return { title: t('asst.card.leadUpdate'), rows: [[t('asst.kind.lead'), lead?.name ?? t('asst.gone')], ...(p.stage ? [[t('common.status'), t('ls_' + p.stage)] as [string, string]] : []), ...(p.value !== undefined ? [[t('asst.row.value'), money2(p.value)] as [string, string]] : []), ...(p.followUp ? [[t('asst.row.followUp'), date(p.followUp)] as [string, string]] : [])] };
+    }
+    case 'taskUpdate': {
+      const task = byId(data.tasks, p.taskId);
+      return { title: t('asst.card.taskUpdate'), rows: [[t('asst.row.task'), p.title ?? task?.title ?? t('asst.gone')], ...(p.due ? [[t('common.due'), date(p.due)] as [string, string]] : []), ...(p.assignee ? [[t('common.assignedTo'), assigneeName(data, p.assignee) || t('common.unassigned')] as [string, string]] : [])] };
+    }
+    case 'invoice': {
+      const job = byId(data.jobs, p.jobId); const total = p.lines.reduce((a, l) => a + l.qty * l.price, 0);
+      return { title: t('asst.card.invoice'), rows: [[t('asst.kind.job'), job ? jobLabel(data, job) : t('asst.gone')], [t('asst.row.lines'), String(p.lines.length)], [t('common.amount'), money2(total)], ...(p.due ? [[t('common.due'), date(p.due)] as [string, string]] : [])], note: t('asst.card.invoiceNote') };
+    }
     case 'review': {
       const job = byId(data.jobs, p.jobId);
       return { title: t('asst.card.review'), rows: [[t('asst.kind.client'), byId(data.clients, p.clientId)?.name ?? t('asst.gone')], [t('asst.row.about'), job ? job.name : t('reviews.noJob')], [t('asst.row.channel'), t('auto.ch.' + p.channel)]], note: t('asst.card.reviewNote') };
@@ -192,6 +240,12 @@ export function describe(p: Proposal, env: Env): Card {
 /** Why a proposal cannot be carried out right now (the record is gone, the role lacks access, the amount is too high), or null when it can. */
 export function check(p: Proposal, env: Env): string | null {
   const { data, t } = env;
+  if (p.kind === 'action') {
+    // the entry's own permission, then its arguments again against the records as they are now
+    const x = SPEC_BY_ID.get(p.action); if (!x) return t('asst.model.badAction');
+    if (!env.can(x.perm)) return t(x.perm === 'money' ? 'asst.noMoney' : 'asst.noAccess');
+    const a = cleanArgs(x, p.args, env); return typeof a === 'string' ? a : null;
+  }
   if (!env.can(PERM[p.kind])) return t(p.kind === 'payment' ? 'asst.noMoney' : 'asst.noAccess');
   switch (p.kind) {
     case 'task': return !p.title.trim() ? t('asst.need.taskTitle') : p.assignee && !assigneeName(data, p.assignee) ? t('asst.goneRecord') : null;
@@ -207,7 +261,8 @@ export function check(p: Proposal, env: Env): string | null {
     }
     case 'payment': {
       // same rules as the payment form: a real amount, never more than the balance, and not on an estimate
-      const job = byId(data.jobs, p.jobId); if (!job || job.status === 'estimate') return t('asst.pay.noJob');
+      const job = byId(data.jobs, p.jobId); if (!job) return t('asst.goneRecord');
+      if (job.status === 'estimate' && !(p.approve && env.can(PERM.jobStatus))) return t('asst.pay.estimate', { name: job.name, status: t('st_contract') });
       if (!(p.amount > 0)) return t('form.pay.positive');
       const owes = jobMoney(data, job).clientOwes;
       return p.amount > owes + 0.005 ? t('form.pay.tooMuch', { amount: money2(Math.max(0, owes)) }) : null;
@@ -219,6 +274,23 @@ export function check(p: Proposal, env: Env): string | null {
       return !who || !byId(data.users, p.staffId) ? t('asst.goneRecord') : !type ? t('asst.appt.unknown_type') : p.date < today() ? t('asst.appt.past') : null;
     }
     case 'review': return !byId(data.clients, p.clientId) ? t('asst.goneRecord') : reviewProblem(p, env);
+    case 'client': return p.name.trim().length < 2 ? t('asst.need.clientName') : null;
+    case 'job': return !p.name.trim() ? t('asst.need.jobName') : !projectClient(p, data) ? t('asst.need.jobClient') : p.price !== undefined && !(p.price >= 0) ? t('form.pay.positive') : null;
+    case 'leadUpdate': {
+      const lead = byId(data.leads, p.leadId); if (!lead) return t('asst.goneRecord');
+      if (p.stage && !stagesOf(data, env.pack).some((x) => x.id === p.stage)) return t('asst.goneRecord');
+      return p.stage === undefined && p.value === undefined && !p.followUp ? t('asst.need.change') : null;
+    }
+    case 'taskUpdate': {
+      const task = byId(data.tasks, p.taskId); if (!task) return t('asst.goneRecord');
+      if (p.assignee && !assigneeName(data, p.assignee)) return t('asst.goneRecord');
+      return !p.title && !p.due && !p.assignee ? t('asst.need.change') : null;
+    }
+    case 'invoice': {
+      const job = byId(data.jobs, p.jobId); if (!job) return t('asst.goneRecord');
+      if (!p.lines.length || p.lines.some((l) => !l.description.trim() || !(l.qty > 0) || !(l.price >= 0))) return t('asst.need.invoiceLines');
+      return null;
+    }
   }
 }
 
@@ -569,12 +641,12 @@ function parsePayment(input: string, env: Env): Reply {
   const example: Block[] = owing[0] ? [{ type: 'examples', items: [t('asst.ex.payment', { amount: money(Math.min(500, Math.floor(jobMoney(data, owing[0]).clientOwes)) || 1), name: owing[0].name })] }] : [];
   if (amount === null || !(amount > 0)) return say(text(t('asst.need.amount')), ...example);
   const query = w.rest(NAME_LEAD, NAME_TRAIL);
-  const forJob = (j: Job): Choice => ({ label: jobLabel(data, j), sub: t('form.pay.owes', { amount: money2(Math.max(0, jobMoney(data, j).clientOwes)) }), proposal: { kind: 'payment', jobId: j.id, amount, method, date } });
+  const forJob = (j: Job): Choice => ({ label: jobLabel(data, j), sub: t('form.pay.owes', { amount: money2(Math.max(0, jobMoney(data, j).clientOwes)) }), proposal: { kind: 'payment', jobId: j.id, amount, method, date, ...(j.status === 'estimate' ? { approve: true } : {}) } });
   if (!words(query, industryWords(env)).length) return owing.length ? which(env, 'asst.which.payJob', owing.slice(0, 5).map(forJob)) : say(text(t('asst.pay.nothingOwed')));
-  const pick = best(rank(query, jobCands(env, open), industryWords(env)));
+  const pick = best(rank(query, jobCands(env, data.jobs), industryWords(env)));
   if (pick.many) return which(env, 'asst.which.job', pick.many.map(forJob));
   if (!pick.one) return say(text(t('asst.notFound.job', { q: tidy(query) })));
-  return offer({ kind: 'payment', jobId: pick.one.id, amount, method, date }, env);
+  return offer({ kind: 'payment', jobId: pick.one.id, amount, method, date, ...(pick.one.status === 'estimate' ? { approve: true } : {}) }, env);
 }
 
 function parseVisit(input: string, env: Env): Reply {

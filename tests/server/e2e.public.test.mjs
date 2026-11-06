@@ -11,7 +11,7 @@ import { randomBytes, createHash, createHmac } from 'node:crypto';
 import path from 'node:path';
 import { setTestEnv, Browser, seen, secrets, assertNoLeak, root, ORIGIN } from './helpers.mjs';
 
-const PG = '/tmp/vx-pg-public';
+const PG = process.env.VX_PG_PUBLIC_DIR || '/tmp/vx-pg-public';
 const PORT = 4741;
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 const sha = (v) => createHash('sha256').update(v).digest('hex');
@@ -294,6 +294,36 @@ test('two signers answering at the same moment: both signatures land', async () 
   const both = await Promise.all([1, 2].map((i) => S.visitor('203.0.113.7' + i).post('/api/public/sign/submit', signBody(td, { typedName: 'Sample Signer One' }))));
   assert.deepEqual(both.map((r) => r.status), [200, 200]);
   assert.equal((await envelopeRow(co, d.envelope)).kinds.filter((k) => k === 'signed').length, 1);
+});
+
+test('a copy and shareable link for every signer, and the company signs its part from inside the ERP (0090)', async () => {
+  const link = (envelope, signer) => co.owner.post('/api/public/office/envelope_link', { tenant: co.tenantId, args: { p_envelope: envelope, p_signer: signer } });
+  const tokenOf = (r) => r.json.result.url.split('/').pop();
+  const e = await draftEnvelope(co, { tag: 'cs' });
+  const sent = await send(co, e.envelope);
+  assert.equal(sent.status, 200, sent.text); assert.equal(sent.json.result.sentTo, 1, 'ordered: the first signer is emailed');
+  const emailed = S.tokenFor(e.e1);
+  // the client's link, copied: a working link, and the emailed one still works too
+  const copied = await link(e.envelope, e.s1);
+  assert.equal(copied.status, 200, copied.text);
+  assert.match(copied.json.result.url, /^https?:\/\/[^/]+\/sign\/[A-Za-z0-9_-]{43}$/);
+  assert.equal((await S.visitor('203.0.113.90').post('/api/public/sign/view', { token: tokenOf(copied) })).status, 200);
+  assert.equal((await S.visitor('203.0.113.91').post('/api/public/sign/view', { token: emailed })).status, 200, 'the emailed link still opens');
+  // the second signer's link can be copied before their turn too, and works once it comes
+  const second = await link(e.envelope, e.s2);
+  assert.equal(second.status, 200, second.text);
+  assert.equal((await link(e.envelope, '99999999-9999-4999-8999-999999999999')).status, 403, 'a signer of another request');
+  assert.equal((await link(e.envelope, 'nope')).status, 400);
+  const signed = await S.visitor('203.0.113.92').post('/api/public/sign/submit', signBody(tokenOf(copied), { typedName: 'Sample Signer One' }));
+  assert.equal(signed.status, 200, signed.text);
+  assert.equal((await S.visitor('203.0.113.93').post('/api/public/sign/view', { token: emailed })).status, 404, 'once signed, no other link of theirs opens');
+  assert.equal((await link(e.envelope, e.s1)).json.reason, 'already_answered');
+  const done = await S.visitor('203.0.113.94').post('/api/public/sign/submit', signBody(tokenOf(second), { typedName: 'Sample Signer Two' }));
+  assert.equal(done.status, 200, done.text); assert.equal(done.json.completed, true);
+  assert.equal((await envelopeRow(co, e.envelope)).status, 'completed');
+  assert.equal((await link(e.envelope, e.s2)).json.reason, 'not_open');
+  const logged = await S.sql(String.raw`select '@@R@@' || jsonb_build_object('n', (select count(*) from app.security_events x where x.tenant_id = (select v from _in where k = 't')::uuid and x.kind = 'esign.link_copied'))::text;`, { t: co.tenantId });
+  assert.equal(logged.n, 2, 'each copied link is in the security log');
 });
 
 test('declining closes the request for everyone, and the daily pass expires and reminds', async () => {

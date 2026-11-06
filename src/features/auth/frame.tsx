@@ -1,17 +1,29 @@
 // The page every sign-in screen and public token page sits in. The brand frame itself (the lion or the V on one side, the
 // form on the other) is drawn by src/brand/AuthFrame.tsx; this adds what every one of these pages needs around it:
 // the language choice, how to reach support, the page title, and where the keyboard lands when a step changes.
-import { useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react';
 import { useApp } from '@/app/hooks';
 import { AuthFrame as BrandFrame } from '@/brand/AuthFrame';
 import { setLanguage } from '@/store/store';
 import { DEPLOY } from '@/config/deployment';
 import type { Lang } from '@/domain/types';
 import { ThemeToggle } from '@/ui/ThemeToggle';
+import { LuArrowLeft } from 'react-icons/lu';
+import { BRAND } from '@/config/brand';
 import './auth.css';
 
 // Read straight from the build constant, as elsewhere, so each bundle keeps only its own branch.
 declare const __VX_DEPLOY__: string | undefined;
+
+/**
+ * A page that is not the ERP itself (the VYNTEX Partner Portal) dresses the same sign-in, invitation and reset screens as
+ * its own: a label over the heading, its own lines in the brand panel, and its own fine print and links under the form.
+ * Presentation only; what the server allows does not change.
+ */
+export interface AuthLook { eyebrow?: ReactNode; panel?: ReactNode; fine?: ReactNode; links?: ReactNode; className?: string }
+const LookContext = createContext<AuthLook | null>(null);
+export function AuthLookProvider({ look, children }: { look: AuthLook; children: ReactNode }) { return <LookContext.Provider value={look}>{children}</LookContext.Provider>; }
+export function useAuthLook() { return useContext(LookContext); }
 
 const LANG_NAME: Record<Lang, string> = { en: 'English', es: 'Español', zh: '中文' };
 
@@ -21,6 +33,7 @@ const LANG_NAME: Record<Lang, string> = { en: 'English', es: 'Español', zh: '�
  */
 export function AuthFrame({ title, sub, children, testId, step }: { title: string; sub?: string; children: ReactNode; testId?: string; step?: string }) {
   const { t, lang } = useApp();
+  const look = useAuthLook();
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => { document.title = `${title} · ${DEPLOY.productName}`; }, [title]);
   useEffect(() => {
@@ -29,17 +42,20 @@ export function AuthFrame({ title, sub, children, testId, step }: { title: strin
     const field = el.querySelector<HTMLElement>('input:not([type=hidden]):not([type=checkbox]):not([disabled]), [data-autofocus]');
     (field ?? el).focus({ preventScroll: !field });
   }, [step]);
+  // VYNTEX only: the way back to the company's main website (LBS signs in on its own pages and has none)
+  const vyntex = typeof __VX_DEPLOY__ === 'undefined' || __VX_DEPLOY__ !== 'lbs';
   const tools = (
     <>
+      {vyntex && <a href={BRAND.site} className="auth-site" data-testid="auth-site-back"><LuArrowLeft aria-hidden="true" />vyntexusa.com</a>}
       <div className="seg" role="group" aria-label={t('auth.language')}>
         {DEPLOY.languages.map((code) => <button type="button" key={code} aria-pressed={lang === code} onClick={() => setLanguage(code)} lang={code} data-testid={`auth-lang-${code}`}>{LANG_NAME[code]}</button>)}
       </div>
       {/* LBS signs in on its own dark ground and has no switch here; it still has the one in its workspace */}
-      {(typeof __VX_DEPLOY__ === 'undefined' || __VX_DEPLOY__ !== 'lbs') && <ThemeToggle />}
+      {vyntex && <ThemeToggle />}
     </>
   );
   return (
-    <BrandFrame title={title} sub={sub} tools={tools} footer={t('auth.support', { email: DEPLOY.support.email, phone: DEPLOY.support.phone })}>
+    <BrandFrame title={title} sub={sub} tools={tools} eyebrow={look?.eyebrow} panelExtra={look?.panel} className={look?.className} footer={t('auth.support', { email: DEPLOY.support.email, phone: DEPLOY.support.phone })}>
       <div className="stack auth-step" data-testid={testId} data-step={step} ref={body} tabIndex={-1} role="group" aria-label={title}>{children}</div>
     </BrandFrame>
   );

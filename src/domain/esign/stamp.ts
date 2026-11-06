@@ -8,7 +8,7 @@ import type { Lang } from '../types';
 import type { EnvelopeHashes, EnvelopeX } from './types';
 import { cleaner } from './text';
 import { dataUrlBytes, drawOps, openFonts, pageFrame, pdfLib, sha256Hex, type Fonts, type PdfLib } from './pdfkit';
-import { certificateModel, layoutCertificate, watermarkText, type CertificateInput } from './certificate';
+import { CERT_IMG, certificateModel, layoutCertificate, watermarkText, type CertImageSizes, type CertificateInput } from './certificate';
 
 export interface SignedCopyInput extends Omit<CertificateInput, 'env' | 'hashes' | 'lang' | 'sample'> { lang?: Lang }
 export interface SignedCopy { bytes: Uint8Array; hashes: Required<EnvelopeHashes>; pages: number }
@@ -93,10 +93,23 @@ export async function buildSignedPdf(source: Uint8Array, env: EnvelopeX, i: Sign
   // a certificate is always drawn upright on a page a person can read: at least as large as a half-letter sheet
   const size = { w: Math.max(396, Math.min(first.w, first.h)), h: Math.max(560, Math.max(first.w, first.h)) };
   const model = certificateModel({ ...i, env, hashes: { original, signed }, lang, sample });
-  const sheets = layoutCertificate(model, kit.measure, size, lang);
+  // the images of the certificate: the product's logo and each signer's signature as drawn. One that cannot be read is
+  // left out, and the page says so in words instead.
+  const images: Record<string, PDFImage> = {};
+  const embed = async (key: string, bytes: Uint8Array | undefined): Promise<{ w: number; h: number } | undefined> => {
+    if (!bytes || bytes.length < 8) return undefined;
+    const png = bytes[0] === 0x89 && bytes[1] === 0x50;
+    try { const img = png ? await out.embedPng(bytes) : await out.embedJpg(bytes); images[key] = img; return { w: img.width, h: img.height }; } catch { return undefined; }
+  };
+  const sizes: CertImageSizes = {
+    mark: await embed(CERT_IMG.mark, i.brand?.mark),
+    wordmark: await embed(CERT_IMG.wordmark, i.brand?.wordmark),
+    ink: await Promise.all(model.signers.map(async (s, n) => { try { return s.ink ? await embed(CERT_IMG.ink(n), dataUrlBytes(s.ink)) : undefined; } catch { return undefined; } })),
+  };
+  const sheets = layoutCertificate(model, kit.measure, size, lang, { brand: i.brand, sizes });
   for (const sheet of sheets) {
     const page = out.addPage([sheet.w, sheet.h]);
-    drawOps(lib, page, sheet.ops, kit.fonts);
+    drawOps(lib, page, sheet.ops, kit.fonts, images);
     if (sample) watermark(lib, page, kit.fonts, mark);
   }
   out.setSubject(`${model.title} ${env.id}`);

@@ -5,7 +5,7 @@ import type { Dict } from '@/i18n';
 export const dict: Dict = {
   en: {
     'docs.title': 'Documents', 'docs.sub': 'Estimates, agreements and invoices, written from the details of each {job}.',
-    'docs.new': 'New document', 'docs.search': 'Search number, title or {client}', 'docs.kind': 'Type of document', 'docs.allKinds': 'All',
+    'docs.upload': 'Upload file', 'docs.new': 'New document', 'docs.search': 'Search number, title or {client}', 'docs.kind': 'Type of document', 'docs.allKinds': 'All',
     'docs.kinds.estimate': 'Estimates', 'docs.kinds.contract': 'Agreements', 'docs.kinds.invoice': 'Invoices', 'docs.allStatuses': 'All statuses',
     'docs.col.doc': 'Document', 'docs.col.title': 'Title', 'docs.col.client': '{Client}', 'docs.col.job': '{Job}', 'docs.col.status': 'Status', 'docs.col.updated': 'Last updated',
     'docs.empty': 'No documents yet', 'docs.emptyHint': 'Pick a {job} and its estimate, agreement or invoice is written from the details you already entered.',
@@ -140,7 +140,7 @@ export const dict: Dict = {
   },
   es: {
     'docs.title': 'Documentos', 'docs.sub': 'Presupuestos, acuerdos y facturas, redactados con los datos de cada {job}.',
-    'docs.new': 'Nuevo documento', 'docs.search': 'Buscar número, título o {client}', 'docs.kind': 'Tipo de documento', 'docs.allKinds': 'Todos',
+    'docs.upload': 'Subir archivo', 'docs.new': 'Nuevo documento', 'docs.search': 'Buscar número, título o {client}', 'docs.kind': 'Tipo de documento', 'docs.allKinds': 'Todos',
     'docs.kinds.estimate': 'Presupuestos', 'docs.kinds.contract': 'Acuerdos', 'docs.kinds.invoice': 'Facturas', 'docs.allStatuses': 'Todos los estados',
     'docs.col.doc': 'Documento', 'docs.col.title': 'Título', 'docs.col.client': '{Client}', 'docs.col.job': '{Job}', 'docs.col.status': 'Estado', 'docs.col.updated': 'Última actualización',
     'docs.empty': 'Aún no hay documentos', 'docs.emptyHint': 'Elija un {job} y su presupuesto, acuerdo o factura se redacta con los datos que ya capturó.',

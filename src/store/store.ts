@@ -6,6 +6,7 @@
 //            are never written to browser storage, and every change is sent to the server right after it is made.
 //
 // The pages do not know which one is running: they use `useStore`, `act`, `mutate` and the selectors either way.
+import { resetTrade } from '@/features/trade/store';
 import { addFieldExtras } from '@/packs/field-extras';
 import { demoClearLinks, demoCtxLinks } from '@/platform/demo-links';
 import { useSyncExternalStore } from 'react';
@@ -276,6 +277,7 @@ export function resetDemo() {
   if (!seedReady(id)) { void loadSeed(id).then(() => { if (prefs.pack === id) resetDemo(); }, () => undefined); return; }
   storage.del(dataKey(id));
   demoClearLinks();
+  resetTrade();
   prefs = { ...prefs, viewAs: 'owner' };
   data = freshData(id, prefs.lang);
   sampleLoaded = true;
@@ -354,7 +356,11 @@ export function bootLive(live: WorkspaceData, who: WorkspaceSession, sync: SyncF
   const role: ViewAs = who.role === 'worker' ? `worker:${who.actorId}` : who.role;
   const pack = DEPLOY.lockedEdition ?? who.industry;
   // the plan is the company's: the plan picker of the demo has no say here
-  const tier = plansFor(pack).find((p) => p.id === who.planId)?.tier;
+  // Trial shows the edition's highest exploration tier; live provider permissions remain server-side.
+  const plans = plansFor(pack);
+  const tier = who.planId === 'trial'
+    ? plans.length ? plans[plans.length - 1].tier : prefs.planTier
+    : plans.find((p) => p.id === who.planId)?.tier;
   prefs = { ...prefs, pack, viewAs: role, lang: who.lang && offered(who.lang) ? who.lang : prefs.lang, planTier: tier ?? prefs.planTier };
   data = liveData(live);
   acked = clone(data);

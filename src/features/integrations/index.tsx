@@ -20,12 +20,36 @@ import './integrations.css';
 const TONE: Record<ConnState, Tone> = { demo: 'ok', not_connected: 'neutral', setup: 'accent', connected: 'ok', attention: 'warn', reauth: 'warn', error: 'bad', pending_approval: 'violet' };
 /** The server asks for a fresh identity check with this answer (docs/SERVER.md, section 6). */
 const STEP_UP = 'stepup_required';
+/**
+ * Opens public/connect/whatsapp.html in a small window. That page (with its own security policy, the only one that
+ * may load Meta's script) runs Meta's Embedded Signup and posts back what Meta returned. Only a message from this
+ * site's own origin, from that window, is taken.
+ */
+function embeddedSignup(cfg: { appId: string; configId: string; version: string }, lang: string): Promise<{ ok: true; data: { code: string; wabaId: string; phoneId: string; event: string } } | { ok: false; reason: string }> {
+  return new Promise((resolve) => {
+    const q = new URLSearchParams({ app: cfg.appId, config: cfg.configId, v: cfg.version, lang });
+    const w = window.open('/connect/whatsapp.html?' + q.toString(), 'vx-whatsapp', 'popup,width=620,height=760');
+    if (!w) { resolve({ ok: false, reason: 'popup_blocked' }); return; }
+    let done = false;
+    const finish = (r: Parameters<typeof resolve>[0]) => { if (done) return; done = true; window.removeEventListener('message', onMsg); clearInterval(timer); resolve(r); };
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || e.source !== w) return;
+      const d = e.data as { type?: string; ok?: boolean; reason?: string; code?: string; wabaId?: string; phoneId?: string; event?: string } | null;
+      if (!d || d.type !== 'vx-whatsapp') return;
+      if (d.ok && typeof d.code === 'string') finish({ ok: true, data: { code: d.code, wabaId: String(d.wabaId || ''), phoneId: String(d.phoneId || ''), event: String(d.event || '') } });
+      else finish({ ok: false, reason: d.reason || 'denied_at_provider' });
+    };
+    window.addEventListener('message', onMsg);
+    const timer = window.setInterval(() => { if (w.closed) finish({ ok: false, reason: 'denied_at_provider' }); }, 700);
+  });
+}
+
 type Busy = { id: ProviderId; what: 'connect' | 'test' | 'sync' | 'disconnect' } | null;
 /** What an action answered. `note` is an explanation, not a failure (a sample workspace has nothing to act on). */
 type Result = { tone: 'ok' | 'bad' | 'note'; text: string };
 
 export default function IntegrationsPage(_props: PageProps) {
-  const { t, data, can, live, dateTime } = useApp();
+  const { t, data, can, live, dateTime, lang } = useApp();
   const route = useRoute();
   const write = can('write');
   const [rows, setRows] = useState<ConnectionInfo[] | null>(null);
@@ -88,6 +112,14 @@ export default function IntegrationsPage(_props: PageProps) {
       } else if (what === 'connect') {
         const out = await guarded(() => g.connect(p.id));
         if (out.ok && out.data.redirect) { window.location.assign(out.data.redirect); return; }
+        if (out.ok && out.data.embedded) {
+          // WhatsApp: Meta's own window, opened from a small VYNTEX page; its answer is exchanged by the server
+          const got = await embeddedSignup(out.data.embedded, lang);
+          if (!got.ok) { say(p.id, false, reasonText(got.reason)); return; }
+          const done = await guarded(() => g.finishEmbedded(p.id, got.data));
+          say(p.id, done.ok, done.ok ? t('integrations.done.connect') : reasonText(done.reason));
+          return;
+        }
         if (out.ok) say(p.id, true, t('integrations.done.connect'));
         else say(p.id, false, out.sample ? t('integrations.sample.connect') : reasonText(out.reason), out.sample);
       } else if (what === 'disconnect') {

@@ -62,6 +62,15 @@ insert into test.mod_spec values
    $$insert into public.social_posts (tenant_id, text) values ({t}, 'Matrix post')$$),
   -- the consent switch per number (0048): read with "comms", written by the server only (a STOP is a fact a provider reports)
   ('messaging_consents', '{comms}', null, null, null),
+  -- invoices (0086): read with "money", written only through the invoice functions (checked in 91_invoices)
+  ('invoices', '{money}', null, null, null),
+  -- team chat (0087): read by the members of each room only, written only through the chat functions (checked in 92_chat)
+  ('chat_rooms', null, null, null, null),
+  ('chat_members', null, null, null, null),
+  ('chat_messages', null, null, null, null),
+  ('chat_reactions', null, null, null, null),
+  -- VYNTEX AI conversations (0096): read by the person who had them only, written only through the functions (checked in 93_assistant)
+  ('assistant_chats', null, null, null, null),
   -- the shop floor (0063). A chair is read and its status set by people who work appointments, added and paid by the
   -- people who change configuration: checked by hand below.
   ('chairs', '{appointments}', null, null, null),
@@ -80,7 +89,7 @@ insert into test.mod_spec values
   ('reveal_requests', null, null, null, null),
   ('secure_access_log', null, null, null, null);
 
-select test.ok((select count(*) = 31 from test.mod_spec) and not exists (
+select test.ok((select count(*) = 37 from test.mod_spec) and not exists (
     select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
     where n.nspname = 'public' and c.relkind = 'r' and c.relname not in (select relname from test.core_tables) and c.relname not in (select rel from test.mod_spec)),
   'the matrix names every module table') \g /dev/null
@@ -161,7 +170,7 @@ begin
       end if;
     end loop;
   end loop;
-  perform test.ok(n = 2 * 31 * 9, format('the matrix covered 31 tables, 9 people and 2 editions (%s passes)', n));
+  perform test.ok(n = 2 * 37 * 9, format('the matrix covered 37 tables, 9 people and 2 editions (%s passes)', n));
 end $$;
 
 -- Controls: the matrix above really tells roles apart in both editions.

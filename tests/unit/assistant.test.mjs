@@ -179,3 +179,64 @@ test('the name and the default follow the deployment', async () => {
   }
   assert.equal(lbs.makeT('es', lbs.PACKS.practice)('nav.assistant'), 'Asistente');
 });
+
+// VYNTEX AI (0095): the model's tool calls become actions checked by the same rules; safe ones run, risky ones wait
+test('VYNTEX AI: clients, projects, lead and task edits and draft invoices become checked actions', async () => {
+  const e = await env('build');
+  const ctx = buildContext(e);
+  assert.ok(Array.isArray(ctx.leadStages) && ctx.leadStages.length > 1, 'the model knows the lead stages');
+  const client = toProposal('create_client', { name: 'Brian Corales', phone: '6095550100' }, e);
+  assert.equal(client.kind, 'client'); assert.equal(client.name, 'Brian Corales');
+  assert.equal(typeof toProposal('create_client', { name: 'B' }, e), 'string', 'a name is needed');
+  // a project for a client named in the same answer: refused until that client exists, accepted once it does
+  assert.equal(typeof toProposal('create_project', { client_name: 'Brian Corales', name: 'Website' }, e), 'string');
+  e.data.clients.unshift({ id: 'c-new', name: 'Brian Corales', phone: '', email: '', addresses: [], since: '2026-11-05', notes: [] });
+  const job = toProposal('create_project', { client_name: 'brian corales', name: 'Website', price: 2300 }, e);
+  assert.equal(job.kind, 'job'); assert.equal(asst.projectClient(job, e.data).id, 'c-new');
+  const lead = e.data.leads[0]; const stage = ctx.leadStages.find((s) => s.id !== lead.status && s.kind === 'open');
+  const lu = toProposal('update_lead', { lead_id: lead.id, stage: stage.id, value: 5000 }, e);
+  assert.equal(lu.kind, 'leadUpdate'); assert.equal(lu.value, 5000);
+  assert.equal(typeof toProposal('update_lead', { lead_id: lead.id, stage: 'not-a-stage' }, e), 'string', 'only the company\'s stages');
+  assert.equal(typeof toProposal('update_lead', { lead_id: lead.id }, e), 'string', 'something to change');
+  const task = e.data.tasks[0];
+  assert.equal(toProposal('update_task', { task_id: task.id, due_date: '2026-12-01' }, e).kind, 'taskUpdate');
+  const jobId = e.data.jobs[0].id;
+  const inv = toProposal('create_invoice', { job_id: jobId, lines: [{ description: 'Deposit', quantity: 1, unit_price: 1150 }] }, e);
+  assert.equal(inv.kind, 'invoice'); assert.deepEqual(inv.lines, [{ description: 'Deposit', qty: 1, price: 1150 }]);
+  assert.equal(typeof toProposal('create_invoice', { job_id: jobId, lines: [{ description: 'No price' }] }, e), 'string', 'every line has a price');
+  // what waits for Confirm: anything that reaches a client or records money
+  assert.ok(asst.RISKY.has('payment') && asst.RISKY.has('review'));
+  for (const k of ['client', 'job', 'leadUpdate', 'taskUpdate', 'invoice', 'task', 'lead', 'note']) assert.ok(!asst.RISKY.has(k), k);
+  // every new action has a card
+  for (const p of [client, job, lu, inv]) assert.ok(asst.describe(p, e).rows.length >= 1);
+});
+
+test('VYNTEX AI: a role without money cannot make an invoice', async () => {
+  const e = await env('build', 'en', 'staff');
+  if (e.can('money')) return; // an edition whose staff role has money rights has nothing to check here
+  const r = toProposal('create_invoice', { job_id: e.data.jobs[0].id, lines: [{ description: 'x', quantity: 1, unit_price: 10 }] }, e);
+  assert.equal(typeof r, 'string');
+});
+
+test('a payment on a project that is still an estimate: one confirm marks it signed and records the payment', async () => {
+  const e = await env('build', 'en');
+  const job = e.data.jobs.find((j) => j.price > 3000) ?? e.data.jobs[0];
+  job.status = 'estimate'; job.price = Math.max(job.price, 12420);
+  // VYNTEX AI's tool call
+  const p = toProposal('record_client_payment', { job_id: job.id, amount: 3000, method: 'zelle', date: '2026-10-29' }, e);
+  assert.equal(typeof p, 'object', String(p));
+  assert.equal(p.approve, true);
+  assert.equal(asst.check(p, e), null, 'it can be confirmed');
+  const card = asst.describe(p, e);
+  assert.ok(card.rows.some(([, v]) => /→/.test(v)), 'the card says the status changes');
+  assert.match(card.note, /signed projects/);
+  // without the approval flag the reason is clear, not a dead end
+  assert.match(asst.check({ ...p, approve: false }, e), /still an estimate/);
+  // the built-in assistant finds the estimate by name too
+  const r = asst.interpret(`record a payment of $3000 by zelle for ${job.name}`, e);
+  assert.ok(JSON.stringify(r).includes('"approve":true'), JSON.stringify(r).slice(0, 300));
+  // Spanish
+  const es = await env('build', 'es');
+  const j2 = es.data.jobs[0]; j2.status = 'estimate'; j2.price = 12420;
+  assert.match(asst.check({ kind: 'payment', jobId: j2.id, amount: 100, method: 'zelle', date: '2026-10-29' }, es), /todavía es un presupuesto/);
+});

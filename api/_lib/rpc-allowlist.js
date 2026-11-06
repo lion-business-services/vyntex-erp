@@ -17,6 +17,8 @@ export const RPCS = {
   // people and access
   member_invite: { stepUp: true, special: 'invite' }, member_set_role: { stepUp: true }, member_disable: { stepUp: true },
   invite_list: { stepUp: false, read: true }, invite_revoke: { stepUp: false }, session_revoke_member: { stepUp: true },
+  // how many people count against the plan's users (0078): the Team page shows it, the invitation route enforces it
+  seat_usage: { stepUp: false, read: true },
   grant_decide: { stepUp: false }, grant_revoke: { stepUp: false },
   member_enable: { stepUp: true }, member_update_profile: { stepUp: false },
   // appointments, credits, cash
@@ -26,8 +28,23 @@ export const RPCS = {
   finance_unmatched: { stepUp: false, read: true }, finance_payment_assign: { stepUp: false }, finance_customer_approve: { stepUp: false },
   // signature requests, review requests and the website form key (docs/SERVER.md section 17). The same operations
   // still answer under /api/public/office/<name>.
-  envelope_send: { stepUp: false, special: 'office' }, envelope_remind: { stepUp: false, special: 'office' }, review_send: { stepUp: false, special: 'office' },
+  envelope_send: { stepUp: false, special: 'office' }, envelope_remind: { stepUp: false, special: 'office' }, envelope_link: { stepUp: false, special: 'office' }, review_send: { stepUp: false, special: 'office' },
   intake_key_rotate: { stepUp: true, special: 'office' }, intake_key_state: { stepUp: false, special: 'office', read: true },
+  // AI employees of the VYNTEX USA workspace and what they ask a person to decide (0084). The key is made by the server
+  // (bot_key_issue, api/_lib/public/office.js) and shown once
+  bot_list: { stepUp: false, read: true }, bot_save: { stepUp: true }, bot_set_status: { stepUp: false },
+  bot_key_issue: { stepUp: true, special: 'office' }, bot_key_revoke: { stepUp: false }, bot_activity_list: { stepUp: false, read: true },
+  approvals_list: { stepUp: false, read: true }, approval_decide: { stepUp: false }, approval_done: { stepUp: false },
+  // invoices (0086). Sending is the office operation invoice_send (api/_lib/public/office.js)
+  invoice_list: { stepUp: false, read: true }, invoice_save: { stepUp: false }, invoice_discard: { stepUp: false }, invoice_void: { stepUp: true },
+  invoice_send: { stepUp: false, special: 'office' },
+  // an invoice paid outside Stripe (0097)
+  invoice_record_payment: { stepUp: false },
+  // team chat (0087). Sending, translating and a bot's chat address are office operations (api/_lib/chat)
+  chat_sync: { stepUp: false, read: true }, chat_history: { stepUp: false, read: true }, chat_room_open: { stepUp: false }, chat_room_update: { stepUp: false },
+  chat_edit: { stepUp: false }, chat_delete: { stepUp: false }, chat_react: { stepUp: false }, chat_read: { stepUp: false }, chat_mute: { stepUp: false },
+  chat_send: { stepUp: false, special: 'office' }, chat_translate: { stepUp: false, special: 'office' }, bot_webhook_set: { stepUp: true, special: 'office' }, bot_webhook_test: { stepUp: false, special: 'office' }, assistant_ask: { stepUp: false, special: 'office' }, assistant_status: { stepUp: false, special: 'office' }, assistant_transcribe: { stepUp: false, special: 'office' },
+  assistant_chat_save: { stepUp: false }, assistant_chat_list: { stepUp: false, read: true }, assistant_chat_get: { stepUp: false, read: true }, assistant_chat_delete: { stepUp: false },
   // exports
   export_request: { stepUp: true }, export_1099_data: { stepUp: true },
   // worker tax IDs and consent (migrations 0005 to 0007; these functions take no company argument)

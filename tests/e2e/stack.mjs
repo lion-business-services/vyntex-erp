@@ -62,14 +62,16 @@ async function serve(port, dist, env) {
 }
 
 /** One deployment: database, double, site. `sql(text, data)` runs as the local superuser (values through _in, never in the text). */
-async function deployment(id, { pgDir, sbPort, sitePort, dist }) {
+async function deployment(id, { pgDir, sbPort, sitePort, dist, mailFile = null }) {
   sh('bash', [path.join(root, 'tests/server/pg_local.sh'), 'start'], { PGTEST_DIR: pgDir, MIGRATIONS_MODE: process.env.E2E_MIGRATIONS || 'all' });
   const { startDevSupabase, totp } = await import('../../scripts/dev-supabase.mjs');
   const sb = await startDevSupabase({ port: sbPort, host: pgDir + '/sock', database: DB });
   const secrets = secretsFor();
   // VX_ENV=test: plain http cookies, and an invitation that cannot be emailed (no email provider here) hands its link
   // back to the caller instead of being withdrawn. That is the server's own test switch, see api/ws.js.
-  const site = await serve(sitePort, dist, { VX_ENV: 'test', VX_HEADERS: '1', VX_DEPLOY: id, SUPABASE_URL: sb.url, SUPABASE_ANON_KEY: sb.anonKey, SUPABASE_SERVICE_ROLE_KEY: sb.serviceKey, ...secrets });
+  // `mailFile`: system email is "sent" into that file (scripts/serve.mjs, test runs only), so the public trial is offered
+  const mail = mailFile ? { RESEND_API_KEY: 're_test_' + randomBytes(12).toString('hex'), SYSTEM_EMAIL_FROM: 'VYNTEX ERP <system@mail.example.com>', VX_TEST_MAIL_FILE: mailFile } : {};
+  const site = await serve(sitePort, dist, { VX_ENV: 'test', VX_HEADERS: '1', VX_DEPLOY: id, SUPABASE_URL: sb.url, SUPABASE_ANON_KEY: sb.anonKey, SUPABASE_SERVICE_ROLE_KEY: sb.serviceKey, ...secrets, ...mail });
   const sql = (text, data = {}) => sb.db.run('supabase_admin', [text], data);
   let n = 0;
   /**
@@ -88,8 +90,10 @@ async function deployment(id, { pgDir, sbPort, sitePort, dist }) {
     const token = await sql(String.raw`select '@@R@@' || to_jsonb(public.invite_bootstrap((select v from _in where k = 'id')::uuid, (select v from _in where k = 'email')))::text;`, { id: made.id, email });
     return { tenantId: made.id, slug: s, name, industry, ownerEmail: email, inviteLink: `${site.origin}/invite/${token}` };
   }
+  /** Emails "sent" so far (only with `mailFile`), oldest first. */
+  const mails = () => (mailFile && fs.existsSync(mailFile) ? fs.readFileSync(mailFile, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
   return {
-    id, origin: site.origin, sb, sql, totp, company, secrets, serverLog: site.log,
+    id, origin: site.origin, sb, sql, totp, company, secrets, serverLog: site.log, mails,
     async stop() {
       site.child.kill();
       await sb.stop();
@@ -98,9 +102,12 @@ async function deployment(id, { pgDir, sbPort, sitePort, dist }) {
   };
 }
 
-export async function startStack() {
+/** `mail: true` gives VYNTEX ERP a system email that writes into a file (the public trial needs email to be offered). */
+export async function startStack({ mail = false } = {}) {
   buildBoth();
-  const vyntex = await deployment('vyntex', { pgDir: DIRS.vyntexPg, sbPort: PORTS.vyntexSb, sitePort: PORTS.vyntex, dist: DIRS.vyntexDist });
+  const mailFile = mail ? path.join(DIRS.vyntexPg + '-mail', 'mail.jsonl') : null;
+  if (mailFile) { fs.rmSync(path.dirname(mailFile), { recursive: true, force: true }); fs.mkdirSync(path.dirname(mailFile), { recursive: true }); }
+  const vyntex = await deployment('vyntex', { pgDir: DIRS.vyntexPg, sbPort: PORTS.vyntexSb, sitePort: PORTS.vyntex, dist: DIRS.vyntexDist, mailFile });
   const lbs = await deployment('lbs', { pgDir: DIRS.lbsPg, sbPort: PORTS.lbsSb, sitePort: PORTS.lbs, dist: DIRS.lbsDist });
   // a deployment nobody configured: no Supabase settings, no secrets. The sign-in page must say so, calmly.
   const bare = await serve(PORTS.bare, DIRS.vyntexDist, { VX_ENV: 'test', VX_HEADERS: '1', VX_DEPLOY: 'vyntex' });

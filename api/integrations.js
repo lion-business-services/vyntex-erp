@@ -5,6 +5,7 @@
 //                                                        OAuth providers:  -> { url }  (send the browser there)
 //                                                        key providers:    -> { connection }  (verified now, or an error)
 //   GET   /api/integrations/<provider>/callback?code&state    the provider's answer. Ends in a redirect to the screen.
+//   POST  /api/integrations/<provider>/embedded         { tenant, code, wabaId, phoneId, event }  Embedded Signup (WhatsApp)
 //   POST  /api/integrations/<provider>/disconnect       { tenant }  revokes at the provider and deletes the tokens
 //   POST  /api/integrations/<provider>/sync             { tenant, what? }  queues a sync
 //   POST  /api/integrations/<provider>/test             { tenant }  a real call that says whether it works right now
@@ -17,7 +18,7 @@ import { guard, assertConfigured } from './_lib/guard.js';
 import { requireSession } from './_lib/session.js';
 import { limit, keyHash } from './_lib/ratelimit.js';
 import { enqueue } from './_lib/jobs.js';
-import { listFor, startConnect, finishConnect, discardState, disconnect, checkHealth, authorize, getAdapter } from './_lib/integrations/core.js';
+import { listFor, startConnect, finishConnect, finishEmbedded, discardState, disconnect, checkHealth, authorize, getAdapter } from './_lib/integrations/core.js';
 
 const uidKey = (uid) => keyHash('uid', uid);
 const RETURN_TO = /^\/[A-Za-z0-9/_?=&.-]{0,200}$/;
@@ -46,7 +47,7 @@ async function connect(request, adapter) {
   const returnTo = typeof body.returnTo === 'string' && RETURN_TO.test(body.returnTo) && !body.returnTo.startsWith('//') ? body.returnTo : '/';
   try {
     const out = await startConnect({ adapter, session, tenantId: tenant, request, returnTo });
-    return ok(out.url ? { url: out.url } : { connection: out.card }, { cookies });
+    return ok(out.url ? { url: out.url } : out.embedded ? { embedded: out.embedded } : { connection: out.card }, { cookies });
   } catch (e) {
     if (e instanceof HttpError) e.extra = { ...(e.extra || {}), cookies };
     throw e;
@@ -117,7 +118,22 @@ async function test(request, adapter) {
   return ok({ working: out.ok, health: out.health, reason: out.reason || null }, { cookies });
 }
 
-const ACTIONS = { connect: ['POST', connect], callback: ['GET', callback], disconnect: ['POST', remove], sync: ['POST', sync], test: ['POST', test] };
+/** Embedded Signup ended in the provider's window (WhatsApp): the one-time code and the ids it returned. */
+async function embedded(request, adapter) {
+  const { session, cookies } = await guard(request, { stepUp: true });
+  const body = await readJson(request, 4096);
+  const tenant = tenantOf(body.tenant);
+  await limit('integration.connect', uidKey(session.uid), 20, 600);
+  try {
+    const card = await finishEmbedded({ adapter, session, tenantId: tenant, request, input: { code: body.code, wabaId: body.wabaId, phoneId: body.phoneId, event: body.event } });
+    return ok({ connection: card }, { cookies });
+  } catch (e) {
+    if (e instanceof HttpError) e.extra = { ...(e.extra || {}), cookies };
+    throw e;
+  }
+}
+
+const ACTIONS = { embedded: ['POST', embedded], connect: ['POST', connect], callback: ['GET', callback], disconnect: ['POST', remove], sync: ['POST', sync], test: ['POST', test] };
 
 const handle = entry('integrations', async (request, path) => {
   if (path === '') return request.method === 'GET' ? list(request) : methodNotAllowed('GET');

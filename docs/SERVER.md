@@ -275,7 +275,8 @@ its own value. Nothing is shared.**
 | `RESEND_API_KEY`, `SYSTEM_EMAIL_FROM` | own key and sender | own key and sender | key: yes | no invitations, no reset emails, no notices (the screens say so) |
 | `RESEND_WEBHOOK_SECRET` | optional | optional | yes | delivery events are refused |
 | `SESSION_SECRET_PREVIOUS`, `TOKEN_ENC_KEY_PREVIOUS`, `SESSION_MAX_HOURS`, `VX_ENV` | optional | optional | first two | |
-| `DEMO_REQUEST_TO`, `DEMO_REQUEST_FROM` | yes | not used (no sales pages) | no | the demo form says it could not send |
+| `DEMO_REQUEST_TO`, `DEMO_REQUEST_FROM` | yes | not used (no sales pages) | no | only the FormSubmit notification goes out |
+| `FORMSUBMIT_EMAIL`, `FORMSUBMIT_ENABLED` | optional (on by default, to info@vyntexusa.com) | off unless `FORMSUBMIT_ENABLED=true` | no | with Resend also missing, the demo form says it could not send |
 | `ANTHROPIC_API_KEY`, `ASSISTANT_MODEL` | optional | optional | key: yes | the built-in assistant is used |
 | provider variables | per provider | per provider | secrets: yes | that provider shows "not connected" with the reason |
 
@@ -435,7 +436,7 @@ Retry waits 30 s, 1 min, 2 min, ... up to an hour; after the last attempt the jo
 
 ```js
 export default {
-  id, name, kind: 'oauth' | 'key' | 'platform',
+  id, name, kind: 'oauth' | 'key' | 'platform' | 'embedded',   // embedded: the provider's own sign-up window (WhatsApp Embedded Signup)
   env: ['...'],                      // settings that must exist; missing => not_connected / not_configured
   scopes: ['...'],                   // the least that works
   approval: null | { needed: true, flag: '<ID>_APPROVED', note },   // pending_approval until the flag is true

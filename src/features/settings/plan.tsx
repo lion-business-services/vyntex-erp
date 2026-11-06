@@ -52,7 +52,7 @@ export function PlanSection() {
             <dt>{t('settings.plan.monthly')}</dt><dd>{money(plan.monthly)} {t('settings.plan.perMonth')}</dd>
             <dt>{t('settings.plan.yearly')}</dt><dd>{money(plan.yearly)} {t('settings.plan.perYear')}</dd>
             {plan.yearlyFreeMonths > 0 && <><dt>{t('settings.plan.freeMonths')}</dt><dd>{plan.yearlyFreeMonths}</dd></>}
-            <dt>{t('settings.plan.setup')}</dt><dd>{money(plan.setup)} {t('settings.plan.once')}</dd>
+            {plan.setup > 0 && <><dt>{t('settings.plan.setup')}</dt><dd>{money(plan.setup)} {t('settings.plan.once')}</dd></>}
             <dt>{t('settings.plan.users')}</dt><dd>{users}</dd>
           </dl>
         </div>

@@ -70,13 +70,24 @@ export function checkConfig(config) {
   check('frame-options', String(page['x-frame-options'] || '').toUpperCase() === 'DENY', 'X-Frame-Options is DENY');
   check('referrer', ['no-referrer', 'same-origin', 'strict-origin', 'strict-origin-when-cross-origin'].includes(String(page['referrer-policy'] || '').toLowerCase()), 'Referrer-Policy does not send full addresses to other sites');
   const perms = String(page['permissions-policy'] || '');
-  check('permissions', ['camera', 'microphone', 'geolocation'].every((f) => new RegExp(`${f}=\\(\\)`).test(perms)), 'Permissions-Policy turns off camera, microphone and location');
+  // the microphone may be used by the site itself (VYNTEX AI's voice to text, 0096), never by a frame or another site
+  check('permissions', ['camera', 'geolocation'].every((f) => new RegExp(`${f}=\\(\\)`).test(perms)) && /microphone=\((self)?\)/.test(perms), 'Permissions-Policy turns off camera and location, and keeps the microphone to the site itself');
 
   const api = headersFor(config, '/api/health');
   check('api-no-store', /no-store/i.test(String(api['cache-control'] || '')), 'answers of /api/ are never cached (Cache-Control: no-store)');
   check('api-csp', !!api['content-security-policy'], 'the Content-Security-Policy also covers /api/');
   const index = headersFor(config, '/index.html');
   check('index-revalidate', /no-cache|no-store|max-age=0/i.test(String(index['cache-control'] || '')), 'index.html is checked for a new version on every visit');
+
+  // The one page that may load Meta's script: WhatsApp's Embedded Signup (public/connect/whatsapp.html). It adds Meta's
+  // hosts and nothing else, keeps every other protection, and no other page is changed by it.
+  const wa = parseCsp(headersFor(config, '/connect/whatsapp.html')['content-security-policy']);
+  const metaOnly = (list, extra = []) => (list || []).every((s) => ["'self'", ...extra].includes(s) || /^https:\/\/([a-z0-9-]+\.)?(facebook\.com|fbcdn\.net|facebook\.net)$/.test(s) || s === 'https://*.facebook.com' || s === 'https://*.fbcdn.net');
+  check('csp-whatsapp-page', !!wa['script-src'] && metaOnly(wa['script-src']) && metaOnly(wa['connect-src']) && metaOnly(wa['frame-src']) && metaOnly(wa['img-src'], ['data:'])
+    && (wa['frame-ancestors'] || []).join(' ') === "'none'" && (wa['object-src'] || []).join(' ') === "'none'" && (wa['default-src'] || []).join(' ') === "'self'",
+    'the WhatsApp connect page adds only Meta\'s hosts and keeps the other protections');
+  const other = parseCsp(headersFor(config, '/connect/other.html')['content-security-policy']);
+  check('csp-whatsapp-only', JSON.stringify(other) === JSON.stringify(csp), 'no other page gets the WhatsApp page\'s policy');
 
   const all = (config.headers || []).flatMap((r) => r.headers || []);
   check('no-open-cors', !all.some((h) => h.key.toLowerCase() === 'access-control-allow-origin' && h.value.trim() === '*'), 'no rule opens the site to requests from every origin (Access-Control-Allow-Origin: *)');

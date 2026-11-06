@@ -8,7 +8,7 @@ import { useApp } from '@/app/hooks';
 import { A, go, useRoute } from '@/app/router';
 import type { PageProps } from '@/app/routes';
 import { ctx, getSnapshot, mutateQuiet } from '@/store/store';
-import { Avatar, Button, Card, Empty, PageHeader, SearchBox, Seg, Stat, cx, toast } from '@/ui';
+import { Button, Card, Empty, PageHeader, SearchBox, Seg, Stat, cx, toast } from '@/ui';
 import { CanWrite } from '@/app/shared';
 import { byId } from '@/domain/selectors';
 import { creditState, endOf, holdsSlot, isOpenAppt, personOf, sumMoney, sweepAppointments, sweepDue, wasMoved } from '@/domain/actions/appointments';
@@ -21,6 +21,7 @@ import { ApptDetail } from './Detail';
 import { CreditsView } from './Credits';
 import '@/features/leads/work.css';
 import './appointments.css';
+import { PersonAvatar } from '@/app/person';
 
 const STATUSES: ApptStatus[] = ['requested', 'scheduled', 'awaiting_payment', 'confirmed', 'completed', 'no_show', 'cancelled_unpaid', 'cancelled_client', 'cancelled_staff'];
 type Tab = 'today' | 'upcoming' | 'awaiting' | 'past';
@@ -163,7 +164,7 @@ function ApptList() {
                             <div className={cx('xs', late ? 'neg strong' : 'dim')}>{late ? t('appointments.needsOutcome') : t('appointments.minutes', { n: a.minutes })}</div></td>
                           <td data-label={t('appointments.col.with')}><span><PersonLink appt={a} className="appointments-name" />{(p?.kind === 'lead' || p?.company) && <span className="xs dim appointments-block">{[p.kind === 'lead' ? t('appointments.lead') : '', p.company].filter(Boolean).join(' · ')}</span>}</span></td>
                           <td data-label={t('common.type')}><span className="appointments-type"><ModeIcon mode={a.mode} />{typeName(a)}</span></td>
-                          <td data-label={t('common.assignedTo')}>{u ? <span className="row tight nowrap"><Avatar name={u.name} size="sm" />{u.name.split(' ')[0]}</span> : <span className="dim">{t('common.unassigned')}</span>}</td>
+                          <td data-label={t('common.assignedTo')}>{u ? <span className="row tight nowrap"><PersonAvatar user={u} name={u.name} size="sm" />{u.name.split(' ')[0]}</span> : <span className="dim">{t('common.unassigned')}</span>}</td>
                           <td data-label={t('common.status')}><ApptStatusBadge appt={a} /></td>
                           {can('money') && <td data-label={t('appointments.col.fee')} className="num"><FeeLine appt={a} /></td>}
                         </tr>

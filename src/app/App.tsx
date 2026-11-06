@@ -2,12 +2,12 @@
 //   VYNTEX   /, /pricing, /request-demo (sales pages), /demo/* (sample workspace), /<company-slug>/* (live workspace)
 //   LBS      / (sign-in), /app/* (live workspace), /preview/* (sample workspace, review builds only)
 //   both     /signin, /invite/<token>, /reset-password, /mfa, /sign/<token>, /review/<token>
-import { Suspense, lazy, useEffect, useState, useSyncExternalStore } from 'react';
+import { Suspense, lazy, useDeferredValue, useEffect, useState, useSyncExternalStore } from 'react';
 import { useRoute, A, workspaceOf } from './router';
 import { useApp } from './hooks';
 import { Shell } from './Shell';
 import { PAGES } from './routes';
-import { moduleExists } from './modules';
+import { moduleExists, prefetchSections, sectionOf, type ModuleDef } from './modules';
 import { NoAccess } from './shared';
 import { Empty, Overlays, Button } from '@/ui';
 import { hasSample, loadSample, setPrefs, useStore } from '@/store/store';
@@ -23,9 +23,13 @@ const PortalPage = lazy(() => import('@/features/portal'));
 const LandingPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/marketing').then((m) => ({ default: m.LandingPage })));
 const PricingPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/marketing').then((m) => ({ default: m.PricingPage })));
 const RequestDemoPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/marketing').then((m) => ({ default: m.RequestDemoPage })));
+const StartTrialPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/marketing').then((m) => ({ default: m.StartTrialPage })));
 const Tour = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/tour').then((m) => ({ default: m.Tour })));
 const SignIn = lazy(() => import('@/features/auth').then((m) => ({ default: m.SignIn })));
 const AdminPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/admin'));
+// The VYNTEX Partner Portal (/partners/*) and the client proposal page (/proposal/<token>): VYNTEX ERP only.
+const PartnersPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/partners'));
+const ProposalPage = (typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs') ? null : lazy(() => import('@/features/partners/proposal'));
 const LiveGate = lazy(() => import('@/features/auth').then((m) => ({ default: m.LiveGate })));
 const LiveChrome = lazy(() => import('@/features/auth').then((m) => ({ default: m.LiveChrome })));
 const Invite = lazy(() => import('@/features/auth').then((m) => ({ default: m.Invite })));
@@ -38,7 +42,14 @@ const DAY_SKY = !(typeof __VX_DEPLOY__ !== 'undefined' && __VX_DEPLOY__ === 'lbs
 const NotFound = lazy(() => import('@/features/public').then((m) => ({ default: m.NotFound })));
 
 /** Shown for the instant a page is being fetched. Quiet on purpose. */
-function Loading() { return <div className="page-loading" role="status" aria-live="polite"><span className="sr">Loading</span></div>; }
+function Loading() {
+  return (
+    <div className="page-loading" role="status" aria-live="polite"><span className="sr">Loading</span>
+      <div className="sk sk-title" /><div className="sk-row"><div className="sk sk-card" /><div className="sk sk-card" /><div className="sk sk-card" /></div>
+      <div className="sk sk-line" /><div className="sk sk-line" /><div className="sk sk-line short" />
+    </div>
+  );
+}
 
 /** Makes sure the sample business is in memory before a page that shows it is drawn (someone can arrive from the sign-in page). */
 function useSample(): boolean {
@@ -51,7 +62,12 @@ function useSample(): boolean {
 function Workspace() {
   const app = useApp();
   const { t, can, isWorker, prefs, pack } = app;
-  const route = useRoute();
+  const live = useRoute();
+  // the page that is on screen stays there while the next section's code is fetched (React keeps the old one until the
+  // new one is ready), with a thin bar at the top; every section's code is also fetched ahead of time once idle
+  const route = useDeferredValue(live);
+  const switching = route !== live;
+  useEffect(() => { prefetchSections(); }, []);
   const [tour, setTour] = useState(false);
   const [, section = '', id, ...rest] = route.parts;
   const tourParam = !!Tour && route.query.get('tour') === '1';
@@ -69,10 +85,11 @@ function Workspace() {
     // a screen the company's edition does not have is not there at all, whatever the address says
     if (!def || !moduleExists(def.module, app)) body = <Empty title={t('app.notFound')} action={<A to=""><Button variant="primary">{t('app.goHome')}</Button></A>} />;
     else if (def.perm && !can(def.perm)) body = <NoAccess />;
-    else { const Page = def.page; body = <Page key={section + '/' + (id || '')} id={id} sub={rest.join('/') || undefined} />; }
+    else { const Page = def.page; body = <><SectionTabs current={def.module} /><Page key={section + '/' + (id || '')} id={id} sub={rest.join('/') || undefined} /></>; }
   }
   return (
     <Shell onTour={() => setTour(true)}>
+      {switching && <div className="route-bar" role="progressbar" aria-label="Loading" />}
       <Suspense fallback={<Loading />}>{body}</Suspense>
       {tour && Tour && <Suspense fallback={null}><Tour onClose={closeTour} /></Suspense>}
     </Shell>
@@ -94,7 +111,9 @@ export function App() {
   const top = route.parts[0] || '';
   const ws = workspaceOf(route.path);
   // every page, the sales pages included, follows the visitor's theme (day unless they picked night)
-  useEffect(() => { applyTheme(prefs.theme); }, [prefs.theme]);
+  // the Partner Portal and its proposals are dark on every device, whatever the visitor picked elsewhere
+  const portal = !!PartnersPage && (top === 'partners' || top === 'proposal');
+  useEffect(() => { applyTheme(portal ? 'dark' : prefs.theme); }, [prefs.theme, portal]);
   useEffect(() => { document.documentElement.lang = prefs.lang; }, [prefs.lang]);
 
   let page;
@@ -104,21 +123,44 @@ export function App() {
   // stays as it is, so signing in leads back to the page that was asked for. The sample controls never appear here.
   else if (ws.mode === 'workspace') page = isLive() && who?.slug === ws.slug ? <><Workspace /><Suspense fallback={null}><LiveChrome /></Suspense></> : <LiveGate slug={ws.slug} />;
   else if (top === 'admin' && AdminPage) page = <AdminPage />;
+  else if (top === 'partners' && PartnersPage) page = <PartnersPage />;
+  else if (top === 'proposal' && ProposalPage) page = <ProposalPage token={route.parts[1]} />;
   else if (top === 'signin') page = <SignIn />;
   else if (top === 'invite') page = <Invite token={route.parts[1]} />;
   else if (top === 'reset-password') page = <ResetPassword />;
   else if (top === 'mfa') page = <Mfa />;
   else if (top === 'sign') page = <SignPage token={route.parts[1]} />;
   else if (top === 'review') page = <ReviewPage token={route.parts[1]} />;
-  else if (LandingPage && PricingPage && RequestDemoPage) {
+  else if (LandingPage && PricingPage && RequestDemoPage && StartTrialPage) {
     if (top === '') page = <Sales><LandingPage /></Sales>;
     else if (top === 'pricing') page = <Sales><PricingPage /></Sales>;
     else if (top === 'request-demo') page = <Sales><RequestDemoPage /></Sales>;
+    // the public 7-day trial; an old /signup link lands on it too
+    else if (top === 'start-trial' || top === 'signup') page = <Sales><StartTrialPage /></Sales>;
     else page = <Sales><LandingPage notFound /></Sales>;
   }
   // a deployment without sales pages: its home page is the sign-in page
   else page = top === '' ? <SignIn /> : <NotFound />;
   // every page outside a workspace (sales, sign-in, invitations, signing) gets the living day ground; a workspace keeps a still one
-  const inWorkspace = ws.mode === 'demo' || (ws.mode === 'workspace' && isLive() && who?.slug === ws.slug);
+  const inWorkspace = ws.mode === 'demo' || (ws.mode === 'workspace' && isLive() && who?.slug === ws.slug) || portal;
   return <>{DAY_SKY && !inWorkspace && <DayBackdrop />}<Suspense fallback={<Loading />}>{page}</Suspense><Overlays /></>;
+}
+
+/** The tabs of a section, above its page: each tab is a screen with its own address, permission and on/off switch. */
+function SectionTabs({ current }: { current: ModuleDef }) {
+  const app = useApp();
+  const entry = sectionOf(current.id, app);
+  if (!entry) return null;
+  return (
+    <nav className="tabs section-tabs" aria-label={app.t(entry.module.labelKey)} data-testid="section-tabs">
+      {entry.tabs.map((m) => {
+        const n = m.count?.(app) ?? 0;
+        return (
+          <A key={m.id} to={'/' + m.path} aria-current={m.id === current.id ? 'page' : undefined} data-tab={m.id}>
+            {app.t(m.tabKey ?? m.labelKey)}{n > 0 && <span className="count">{n}</span>}
+          </A>
+        );
+      })}
+    </nav>
+  );
 }

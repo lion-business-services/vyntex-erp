@@ -117,7 +117,7 @@ function TierModal({ o, onPick, onClose }: { o: Opp; onPick: (tierId: string) =>
       <div className="stack tight">
         <p className="small"><b>{serviceName(service, lang)}</b></p>
         <div role="radiogroup" aria-label={t('jobs.f.tier')} className="stack tight">
-          {service.tiers.map((x) => <label key={x.id} className="check"><input type="radio" name="opp-tier" checked={tierId === x.id} onChange={() => setTierId(x.id)} /><span>{x.name}{can('money') && <span className="muted"> · {tierPrice(t, x)}</span>}</span></label>)}
+          {service.tiers.map((x) => <label key={x.id} className="check"><input type="radio" name="opp-tier" checked={tierId === x.id} onChange={() => setTierId(x.id)} /><span>{x.name}{can('money') && <span className="muted"> · {tierPrice(t, x, true)}</span>}</span></label>)}
         </div>
         <p className="xs muted">{t('opportunities.toJob.hint')}</p>
       </div>

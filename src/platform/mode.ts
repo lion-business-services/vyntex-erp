@@ -35,6 +35,10 @@ export const RESERVED_SLUGS: readonly string[] = [
   'billing', 'checkout', 'pay', 'webhooks', 'support', 'help', 'docs', 'legal', 'privacy', 'terms', 'about',
   'contact', 'blog', 'status', 'health', 'new', 'onboarding', 'portal', 'worker', 'client', 'dashboard', 'sign',
   'vyntex', 'null', 'undefined',
+  // the VYNTEX Partner Portal (/partners/*) and client proposals (/proposal/<token>), 0070_partner_core.sql
+  'partners', 'partner', 'proposal',
+  // the public seven-day trial page (/start-trial), 0078_public_trials.sql
+  'start-trial',
 ];
 
 /**

@@ -4,6 +4,7 @@
 // The page content itself is worked out in layout.ts; this file embeds the pictures and writes the pages.
 import type { PDFImage } from 'pdf-lib';
 import type { DocModel } from './model';
+import { storedImageSrc } from '@/features/settings/image';
 import { layoutDoc, sigKey, type DocLayout, type ImageSizes } from './layout';
 import { cleaner } from '@/domain/esign/text';
 import { drawOps, openFonts, pdfLib } from '@/domain/esign/pdfkit';
@@ -52,7 +53,8 @@ export async function renderDoc(model: DocModel): Promise<RenderedDoc> {
       embedded[key] = img; sizes[key] = { w: img.width, h: img.height }; images[key] = png;
     } catch { /* the document is drawn without this picture */ }
   };
-  await picture('logo', model.company.logo, 480);
+  // a live workspace keeps a path to a private file: read it through its short-lived address first
+  await picture('logo', await storedImageSrc(model.company.logo), 480);
   for (let bi = 0; bi < model.blocks.length; bi++) {
     const b = model.blocks[bi];
     if (b.t === 'sign') for (let i = 0; i < b.parties.length; i++) await picture(sigKey(bi, i), b.parties[i].signed?.image, 640);

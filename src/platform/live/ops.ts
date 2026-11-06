@@ -8,7 +8,7 @@
 import type { AccessRequest, Appointment, CashClose, Connection, ConnState, Credit, ProviderId, RevealRequest, TeamUser } from '@/domain/types';
 import { vaultRules } from '@/domain/config';
 import { applyServer, getSnapshot } from '@/store/store';
-import type { ComplianceOperations, Export1099Row, ExportFile, FileOperations, IntegrationOperations, Outcome, ProtectedOperations, ServerPatch } from '../gateway';
+import type { ComplianceOperations, EmbeddedSignup, Export1099Row, ExportFile, FileOperations, IntegrationOperations, Outcome, ProtectedOperations, ServerPatch } from '../gateway';
 import { session } from '../session';
 import { get, post, reasonOf, type Answer, type CallOptions, type Fail } from './http';
 import { newKey } from './carry';
@@ -65,6 +65,10 @@ export const liveProtected: ProtectedOperations = {
     const email = input.email.trim();
     // the server makes the link and emails it to the invited address; the inviter never sees it
     const a = await rpc<never>('member_invite', { email, role: input.role, name: input.name.trim(), lang: getSnapshot().prefs.lang }, { idem: newKey() });
+    // the plan's users are all taken (api/ws.js, from the pricing file): the screen explains how to upgrade
+    if (!a.ok && a.code === 'seat_limit') return refuse('seat_limit');
+    // a Partner Portal account cannot join a company workspace; someone already on the team needs no invitation
+    if (!a.ok && (a.code === 'partner_account' || a.code === 'already_member')) return refuse(a.code);
     if (!a.ok) return no(a);
     const answer = a.data as unknown as { invitation?: { id: string; email: string; role: TeamUser['role']; expiresAt?: string }; delivery?: string; link?: string };
     const inv = answer.invitation;
@@ -157,10 +161,17 @@ export const liveIntegrations: IntegrationOperations = {
     return list;
   },
   async connect(id) {
-    const a = await post<{ url?: string; connection?: Card }>(provider(id) + '/connect', { tenant: tenant(), returnTo: location.pathname + location.search });
+    const a = await post<{ url?: string; connection?: Card; embedded?: EmbeddedSignup }>(provider(id) + '/connect', { tenant: tenant(), returnTo: location.pathname + location.search });
     if (!a.ok) return no(a);
     if (a.data.connection) applyServer({ connections: [connection(a.data.connection)] as unknown as { id: string }[] });
-    return ok({ redirect: a.data.url });
+    return ok({ redirect: a.data.url, embedded: a.data.embedded });
+  },
+  async finishEmbedded(id, input) {
+    const a = await post<{ connection: Card }>(provider(id) + '/embedded', { tenant: tenant(), ...input });
+    if (!a.ok) return no(a);
+    const c = connection(a.data.connection);
+    applyServer({ connections: [c] as unknown as { id: string }[] });
+    return ok(c);
   },
   async disconnect(id) {
     const a = await post(provider(id) + '/disconnect', { tenant: tenant() });
@@ -226,6 +237,13 @@ export async function envelopeSend(envelopeId: string): Promise<EnvelopeAnswer<{
   if (!a.ok) return envelopeFail(a);
   refresh();
   return { ok: true, data: a.data.result };
+}
+/** A fresh private link for any signer who has not answered yet, to copy and share or to sign here (0090). Nothing is emailed. */
+export async function envelopeLink(envelopeId: string, signerId: string): Promise<EnvelopeAnswer<{ url: string }>> {
+  const a = await officeOp<{ url?: string }>('envelope_link', { p_envelope: envelopeId, p_signer: signerId });
+  if (!a.ok) return envelopeFail(a);
+  const url = String(a.data.result?.url || '');
+  return url.includes('/sign/') ? { ok: true, data: { url } } : { ok: false, reason: 'server' };
 }
 /** Asks the server to remind everyone who has their link and has not answered. Each gets a new link. */
 export async function envelopeRemind(envelopeId: string): Promise<EnvelopeAnswer<{ reminded: number; expired: boolean }>> {

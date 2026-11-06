@@ -113,7 +113,7 @@ export function SigningFlow({ adapter, wording, sample, exit }: {
   );
   const pages = (pick: boolean) => (
     <div className="es-pages" data-testid="esign-sign-pages">
-      {mode !== 'drawn' && <Note>{t(mode === 'viewer' ? 'esign.pages.viewer' : 'esign.pages.blank')}{adapter.openDocument && <> <button type="button" className="linkbtn" onClick={() => void adapter.openDocument!()}><LuExternalLink aria-hidden="true" /> {t('esign.pages.open')}</button></>}</Note>}
+      {(mode === 'viewer' || mode === 'blank') && <Note>{t(mode === 'viewer' ? 'esign.pages.viewer' : 'esign.pages.blank')}{adapter.openDocument && <> <button type="button" className="linkbtn" onClick={() => void adapter.openDocument!()}><LuExternalLink aria-hidden="true" /> {t('esign.pages.open')}</button></>}</Note>}
       {sizes.map((size, i) => (
         <PageSheet key={i} index={i} size={size} view={view.view?.[i]} images={view.images} pdfUrl={view.fileUrl} mode={mode} label={t('esign.pages.page', { n: i + 1, total: sizes.length })} blankNote={t('esign.pages.blankSheet')}>
           {view.fields.filter((f) => f.page === i + 1).map((f) => {

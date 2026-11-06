@@ -12,6 +12,7 @@ import { serviceRpc, storage } from '../supabase.js';
 import { ipHash } from '../ratelimit.js';
 import { sha256Hex, sealWith, openWith, deriveKey } from '../crypto.js';
 import { productName } from '../mail.js';
+import { certificateBrand } from './brand.js';
 import { enqueue } from '../jobs.js';
 import { cannotOpen, hashToken, newToken } from '../public/core.js';
 import { notice, sendOrQueue } from './emails.js';
@@ -183,7 +184,7 @@ export async function finalize(tenantId, envelopeId) {
   if (!source) { log('esign', 'signed_copy_no_source'); return 'failed'; }
   const copy = await esign.buildSignedPdf(source, e, {
     docTitle: (g.data.doc && g.data.doc.title) || e.title, docNumber: (g.data.doc && g.data.doc.number) || e.docNumber,
-    company: g.data.company, sentBy: g.data.sentBy || undefined, product: productName(),
+    company: g.data.company, sentBy: g.data.sentBy || undefined, product: productName(), brand: certificateBrand(),
   });
   // the fingerprint of the file as sent is the server's own reading of it, not a number the browser supplied
   if (e.hashes && e.hashes.original && e.hashes.original !== copy.hashes.original) log('esign', 'original_hash_differs');

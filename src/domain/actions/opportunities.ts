@@ -8,7 +8,7 @@ import { emit } from '../rules/engine';
 import { sourcesOf } from '../config';
 import { addDaysFrom, today } from '@/lib/dates';
 import { uid } from '@/lib/id';
-import { serviceName, serviceOf, tierOf } from './catalog';
+import { serviceName, serviceOf, tierAmount, tierOf } from './catalog';
 import { createJob, fromService, periodFor, type Engagement } from './jobs';
 import { createLead } from './leads';
 import { createTask } from './tasks';
@@ -78,7 +78,7 @@ export function evaluateCrossSell(d: DemoState, ctx: Ctx, clientId?: string): Op
     if ((d.opportunities ?? []).some((o) => o.clientId === c.id && o.serviceId === rule.suggestServiceId)) continue;
     if (!ruleMatches(d, rule, c)) continue;
     const service = serviceOf(d, rule.suggestServiceId)!;
-    const o: Opportunity = { id: uid('op'), clientId: c.id, serviceId: service.id, ruleId: rule.id, status: 'open', created: today(), by: 'automation', value: tierOf(service)?.price ?? 0, ...(rule.note ? { note: rule.note } : {}) };
+    const o: Opportunity = { id: uid('op'), clientId: c.id, serviceId: service.id, ruleId: rule.id, status: 'open', created: today(), by: 'automation', value: tierAmount(tierOf(service)), ...(rule.note ? { note: rule.note } : {}) };
     d.opportunities = [o, ...(d.opportunities ?? [])];
     made.push(o);
     logActivity(d, 'automation', 'opportunity.created', { type: 'opportunity', id: o.id }, { service: serviceName(service, ctx.lang), rule: rule.name }, [{ type: 'client', id: c.id }]);
@@ -122,7 +122,7 @@ export function addOpportunity(d: DemoState, ctx: Ctx, input: { clientId: string
   if (!service || !client) return null;
   const open = (d.opportunities ?? []).find((o) => o.clientId === client.id && o.serviceId === service.id && isOpen(o));
   if (open) return open;
-  const o: Opportunity = { id: uid('op'), clientId: client.id, serviceId: service.id, status: 'open', created: today(), by: ctx.actor, value: tierOf(service)?.price ?? 0, ...(input.note?.trim() ? { note: input.note.trim() } : {}) };
+  const o: Opportunity = { id: uid('op'), clientId: client.id, serviceId: service.id, status: 'open', created: today(), by: ctx.actor, value: tierAmount(tierOf(service)), ...(input.note?.trim() ? { note: input.note.trim() } : {}) };
   d.opportunities = [o, ...(d.opportunities ?? [])];
   logActivity(d, ctx.actor, 'opportunity.created', { type: 'opportunity', id: o.id }, { service: serviceName(service, ctx.lang), rule: '' }, [{ type: 'client', id: client.id }]);
   announce(d, ctx, o);
@@ -164,7 +164,7 @@ export function opportunityToLead(d: DemoState, ctx: Ctx, id: string): Lead | nu
   const types = ctx.pack.serviceTypes.map((x) => x.id); const sources = sourcesOf(d, ctx.pack).map((x) => x.id);
   const owner = d.users.find((u) => u.id === c.assignedTo && u.active !== false)?.id;
   const lead = createLead(d, ctx, {
-    name: c.name, company: c.company, phone: c.phone, email: c.email, address: c.addresses[0] ?? '', pri: 'medium', value: o.value ?? tierOf(service)?.price ?? null,
+    name: c.name, company: c.company, phone: c.phone, email: c.email, address: c.addresses[0] ?? '', pri: 'medium', value: o.value ?? (tierOf(service) && !tierOf(service)!.quote ? tierOf(service)!.price : null),
     type: types.includes(service.category) ? service.category : types.includes('other') ? 'other' : types[0],
     source: sources.includes('existing_client') ? 'existing_client' : sources.includes('referral') ? 'referral' : sources[0],
     clientId: c.id, serviceIds: [service.id], ...(owner ? { ownerId: owner } : {}), ...(c.kind ? { kind: c.kind } : {}), ...(c.lang ? { lang: c.lang } : {}), ...(c.officeId ? { officeId: c.officeId } : {}),

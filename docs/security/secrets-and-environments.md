@@ -71,6 +71,7 @@ One copy of this table exists per deployment. "Holder" is a person, and is left 
 | --- | --- | --- |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `SYSTEM_EMAIL_FROM` | System email (invitations, password resets) | first two |
 | `DEMO_REQUEST_TO`, `DEMO_REQUEST_FROM` | Demo request form (VYNTEX only) | no |
+| `FORMSUBMIT_EMAIL`, `FORMSUBMIT_ENABLED` | Demo request notification through FormSubmit, on every valid request (default inbox info@vyntexusa.com; `false` turns it off) | no |
 | `ANTHROPIC_API_KEY`, `ASSISTANT_MODEL` | Assistant | first |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Gmail, Calendar, Meet, Business Profile | second |
 | `GOOGLE_MAPS_API_KEY` | Maps | yes |
